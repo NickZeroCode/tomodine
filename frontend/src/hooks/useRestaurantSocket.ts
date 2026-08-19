@@ -30,7 +30,7 @@ export function useRestaurantSocket(
     if (!slug || !token) return;
 
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const url = `${protocol}://${window.location.host}/ws/restaurants/${slug}/events/?token=${token}`;
+    const url = `${protocol}://${window.location.host}/api/ws/restaurants/${slug}/events/?token=${token}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
     setStatus("connecting");

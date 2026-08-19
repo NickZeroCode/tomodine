@@ -6,7 +6,7 @@ from .consumers import RestaurantEventsConsumer
 
 websocket_urlpatterns = [
     re_path(
-        r"^ws/restaurants/(?P<slug>[\w-]+)/events/$",
+        r"^api/ws/restaurants/(?P<slug>[\w-]+)/events/$",
         RestaurantEventsConsumer.as_asgi(),
     ),
 ]
