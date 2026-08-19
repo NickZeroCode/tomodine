@@ -33,8 +33,20 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
             status=status.HTTP_404_NOT_FOUND,
         )
     if isinstance(exc, DjangoPermissionDenied):
+        # Detect plan-gating exceptions — surface a machine-readable code
+        # and the user-facing message so the frontend can show an upgrade
+        # prompt instead of a bare "permission denied".
+        if getattr(exc, "plan_gate", False):
+            return Response(
+                {
+                    "code": "plan_upgrade_required",
+                    "message": str(exc),
+                    "errors": {},
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
         return Response(
-            {"code": "permission_denied", "message": "You do not have permission.", "errors": {}},
+            {"code": "permission_denied", "message": str(exc) or "You do not have permission.", "errors": {}},
             status=status.HTTP_403_FORBIDDEN,
         )
 
@@ -51,12 +63,6 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
         "message": "Request failed.",
         "errors": {},
     }
-
-    # Surface plan-gating as a distinct, machine-readable code so the
-    # frontend can show a meaningful upgrade prompt instead of a bare 403.
-    if getattr(exc, "plan_gate", False):
-        payload["code"] = "plan_upgrade_required"
-        payload["message"] = str(exc)
 
     detail = response.data
     if isinstance(detail, dict) and "detail" in detail:

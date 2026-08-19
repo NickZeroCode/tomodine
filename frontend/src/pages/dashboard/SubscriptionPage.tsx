@@ -69,6 +69,21 @@ export function SubscriptionPage() {
       <h3 className="mb-3 text-sm font-semibold text-ink-900">
         {t("landing.pricingTitle")}
       </h3>
+
+      {plans.length === 0 ? (
+        <div className="card flex flex-col items-center justify-center gap-2 py-12 text-center">
+          <p className="text-sm font-medium text-ink-700">
+            {lang === "bn"
+              ? "কোনো প্ল্যান পাওয়া যায়নি"
+              : "No plans available at the moment"}
+          </p>
+          <p className="text-xs text-ink-500">
+            {lang === "bn"
+              ? "অনুগ্রহ করে পরে আবার চেষ্টা করুন বা সাহায্যের জন্য যোগাযোগ করুন।"
+              : "Please try again later or contact support for assistance."}
+          </p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         {plans.map((plan) => {
           const isCurrent = subscription?.plan.id === plan.id;
@@ -119,6 +134,7 @@ export function SubscriptionPage() {
           );
         })}
       </div>
+      )}
     </section>
   );
 }
