@@ -51,7 +51,7 @@ SECRET_KEY = env(
     "django-insecure-dev-only-change-me-in-production-0123456789abcdef",
 )
 DEBUG = env_bool("DJANGO_DEBUG", True)
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", ["localhost", "127.0.0.1", "testserver"])
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", ["localhost", "127.0.0.1", "testserver", ".vercel.app"])
 
 # ---------------------------------------------------------------------------
 # Applications
@@ -100,6 +100,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # ---------------------------------------------------------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # Must be after SecurityMiddleware
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
@@ -284,6 +285,9 @@ CACHES = {
 }
 
 # ---------------------------------------------------------------------------
+# WhiteNoise — compressed static file serving for production
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 # Security headers (production hardening controlled via DEBUG)
 # ---------------------------------------------------------------------------
 if not DEBUG:
