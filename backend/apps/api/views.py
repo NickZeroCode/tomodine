@@ -348,12 +348,16 @@ class DishViewSet(TenantScopedViewSet):
 
     def perform_create(self, serializer):
         from apps.billing import entitlements
+        import logging
+        from rest_framework.exceptions import PermissionDenied
 
+        logger = logging.getLogger("apps")
+        restaurant = self.get_restaurant()
+        logger.info("Dish create: restaurant=%s", restaurant.slug)
         try:
-            entitlements.check_dish_limit(self.get_restaurant())
+            entitlements.check_dish_limit(restaurant)
         except entitlements.PlanLimitExceeded as exc:
-            from rest_framework.exceptions import PermissionDenied
-
+            logger.warning("Dish limit exceeded: %s", exc)
             raise PermissionDenied(str(exc))
         super().perform_create(serializer)
 
@@ -431,6 +435,46 @@ class SubscriptionViewSet(TenantScopedViewSet):
     queryset = Subscription.objects.select_related("plan")
     required_permission = "billing.view"
     http_method_names = ["get", "post", "patch", "head", "options"]
+
+    @action(detail=False, methods=["post"], url_path="subscribe")
+    def subscribe(self, request):
+        """Subscribe the current restaurant to a plan (simulated payment)."""
+        plan_id = request.data.get("plan_id")
+        if not plan_id:
+            return Response(
+                {"detail": "plan_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            plan = SubscriptionPlan.objects.get(pk=plan_id, is_active=True)
+        except SubscriptionPlan.DoesNotExist:
+            return Response(
+                {"detail": "Invalid or inactive plan."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        restaurant = self.get_restaurant()
+        from datetime import timedelta
+        from django.utils import timezone
+
+        trial_days = plan.trial_days or 14
+        subscription, created = Subscription.objects.update_or_create(
+            restaurant=restaurant,
+            defaults={
+                "plan": plan,
+                "status": Subscription.Status.ACTIVE,
+                "started_at": timezone.now(),
+                "trial_ends_at": timezone.now() + timedelta(days=trial_days),
+                "current_period_end": timezone.now() + timedelta(days=30),
+                "auto_renew": True,
+                "cancelled_at": None,
+            },
+        )
+        return Response(
+            self.get_serializer(subscription).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
 
 
 class BillingRecordViewSet(TenantScopedViewSet):

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { formatBDT, localized, localizedDescription } from "@/lib/format";
@@ -10,6 +10,7 @@ export function SubscriptionPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language === "bn" ? "bn" : "en";
   const { restaurant } = useRestaurant();
+  const queryClient = useQueryClient();
 
   const plansQuery = useQuery({
     queryKey: ["subscription-plans"],
@@ -29,6 +30,16 @@ export function SubscriptionPage() {
       return items[0] ?? null;
     },
     enabled: !!restaurant,
+  });
+
+  const subscribe = useMutation({
+    mutationFn: async (planId: string) => {
+      const res = await api.post("/subscriptions/subscribe/", { plan_id: planId });
+      return res.data as Subscription;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    },
   });
 
   if (plansQuery.isLoading || subscriptionQuery.isLoading) return <LoadingState />;
@@ -120,6 +131,9 @@ export function SubscriptionPage() {
                     `${t("tables.title")}: ${plan.max_tables}`,
                     `${t("nav.staff")}: ${plan.max_staff}`,
                     `${t("menu.title")}: ${plan.max_dishes}`,
+                    plan.has_analytics
+                      ? (lang === "bn" ? "অ্যানালিটিক্স ✓" : "Analytics ✓")
+                      : (lang === "bn" ? "অ্যানালিটিক্স ✗" : "Analytics ✗"),
                   ].map((line) => (
                     <li key={line} className="flex items-center gap-2">
                       <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-brand-600" aria-hidden="true">
@@ -129,6 +143,25 @@ export function SubscriptionPage() {
                     </li>
                   ))}
                 </ul>
+
+                {isCurrent ? (
+                  <p className="mt-4 text-center text-xs font-semibold text-brand-600">
+                    {lang === "bn" ? "বর্তমান প্ল্যান" : "Current plan"}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-primary mt-4 w-full"
+                    disabled={subscribe.isPending}
+                    onClick={() => subscribe.mutate(plan.id)}
+                  >
+                    {subscribe.isPending
+                      ? t("common.loading")
+                      : lang === "bn"
+                        ? "সাবস্ক্রাইব করুন"
+                        : "Subscribe"}
+                  </button>
+                )}
               </div>
             </div>
           );

@@ -114,7 +114,10 @@ export function MenuPage() {
   const onMutError =
     (setErrors: (e: Record<string, string[]>) => void) => (err: unknown) => {
       const apiErr = err as unknown as ApiError;
-      setErrors(apiErr.errors ?? { non_field_errors: [apiErr.message] });
+      const errors = apiErr.errors && Object.keys(apiErr.errors).length > 0
+        ? apiErr.errors
+        : { non_field_errors: [apiErr.message || "An unexpected error occurred."] };
+      setErrors(errors);
     };
 
   const saveDish = useMutation({

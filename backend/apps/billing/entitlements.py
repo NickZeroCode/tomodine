@@ -67,6 +67,8 @@ def check_table_limit(restaurant) -> None:
     from apps.tables.models import Table
 
     ent = get_entitlements(restaurant)
+    if ent.max_tables <= 0:
+        raise PlanLimitExceeded("tables", ent.max_tables)
     count = Table.objects.filter(restaurant=restaurant, is_active=True).count()
     if count >= ent.max_tables:
         raise PlanLimitExceeded("tables", ent.max_tables)
@@ -76,6 +78,8 @@ def check_dish_limit(restaurant) -> None:
     from apps.menus.models import Dish
 
     ent = get_entitlements(restaurant)
+    if ent.max_dishes <= 0:
+        raise PlanLimitExceeded("dishes", ent.max_dishes)
     count = Dish.objects.filter(restaurant=restaurant).count()
     if count >= ent.max_dishes:
         raise PlanLimitExceeded("dishes", ent.max_dishes)
@@ -85,6 +89,8 @@ def check_staff_limit(restaurant) -> None:
     from apps.restaurants.models import RestaurantMembership
 
     ent = get_entitlements(restaurant)
+    if ent.max_staff <= 0:
+        raise PlanLimitExceeded("staff", ent.max_staff)
     count = RestaurantMembership.objects.filter(
         restaurant=restaurant, is_active=True
     ).count()
