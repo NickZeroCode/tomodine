@@ -491,9 +491,12 @@ class AnalyticsViewSet(viewsets.ViewSet):
 
         restaurant = self._restaurant(request)
         if not get_entitlements(restaurant).has_analytics:
-            raise PermissionDenied(
-                "Analytics is not available on your current plan."
+            exc = PermissionDenied(
+                "Analytics is not available on your current plan. "
+                "Upgrade to access reports and insights."
             )
+            exc.plan_gate = True
+            raise exc
         return restaurant
 
     @action(detail=False, methods=["get"])

@@ -4,6 +4,8 @@ import { api } from "@/lib/api";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { formatBDT } from "@/lib/format";
 import { LoadingState, ErrorState } from "@/components/States";
+import { PlanGate } from "@/components/PlanGate";
+import { isPlanUpgradeRequired } from "@/types";
 import type { MenuEngineering as METype, MenuEngineeringItem } from "@/types";
 
 const QUADRANTS = [
@@ -62,13 +64,14 @@ export function MenuEngineeringPage() {
   const lang = i18n.language === "bn" ? "bn" : "en";
   const { restaurant } = useRestaurant();
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["analytics", "menu-engineering", restaurant?.slug],
     queryFn: async () => (await api.get<METype>("/analytics/menu_engineering/")).data,
     enabled: !!restaurant,
   });
 
   if (isLoading) return <LoadingState />;
+  if (isError && isPlanUpgradeRequired(error)) return <PlanGate error={error} />;
   if (isError || !data) return <ErrorState onRetry={() => void refetch()} />;
 
   return (

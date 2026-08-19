@@ -4,6 +4,8 @@ import { api } from "@/lib/api";
 import { formatBDT } from "@/lib/format";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
+import { PlanGate } from "@/components/PlanGate";
+import { isPlanUpgradeRequired } from "@/types";
 import type { AnalyticsOverview, OrdersOverTimePoint, PopularDish, PeakHour } from "@/types";
 
 function shortDate(iso: string, lang: "en" | "bn"): string {
@@ -45,6 +47,8 @@ export function ReportsPage() {
 
   if (!restaurant) return <EmptyState />;
   if (overviewQuery.isLoading) return <LoadingState />;
+  if (overviewQuery.isError && isPlanUpgradeRequired(overviewQuery.error))
+    return <PlanGate error={overviewQuery.error} />;
   if (overviewQuery.isError) return <ErrorState onRetry={() => void overviewQuery.refetch()} />;
 
   const overview = overviewQuery.data!;

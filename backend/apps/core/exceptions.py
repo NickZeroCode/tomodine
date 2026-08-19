@@ -51,6 +51,13 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
         "message": "Request failed.",
         "errors": {},
     }
+
+    # Surface plan-gating as a distinct, machine-readable code so the
+    # frontend can show a meaningful upgrade prompt instead of a bare 403.
+    if getattr(exc, "plan_gate", False):
+        payload["code"] = "plan_upgrade_required"
+        payload["message"] = str(exc)
+
     detail = response.data
     if isinstance(detail, dict) and "detail" in detail:
         payload["message"] = str(detail["detail"])

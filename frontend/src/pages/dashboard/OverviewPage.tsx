@@ -9,6 +9,8 @@ import { useRestaurantSocket } from "@/hooks/useRestaurantSocket";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { SophiaInsights } from "@/components/SophiaInsights";
 import { DemandForecast } from "@/components/DemandForecast";
+import { PlanGate } from "@/components/PlanGate";
+import { isPlanUpgradeRequired } from "@/types";
 import type {
   AnalyticsOverview,
   EnhancedOverview,
@@ -144,7 +146,7 @@ export function OverviewPage() {
   const slug = restaurant?.slug;
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["analytics", "overview", slug],
     queryFn: async () => (await api.get<AnalyticsOverview>("/analytics/overview/")).data,
     enabled: !!restaurant,
@@ -186,6 +188,7 @@ export function OverviewPage() {
 
   if (!restaurant) return <EmptyState />;
   if (isLoading) return <LoadingState />;
+  if (isError && isPlanUpgradeRequired(error)) return <PlanGate error={error} />;
   if (isError || !data) return <ErrorState onRetry={() => void refetch()} />;
 
   const tablesByStatus = data.tables_by_status as Record<string, number>;

@@ -324,6 +324,19 @@ export interface ApiError {
   errors?: Record<string, string[]>;
 }
 
+/** Structured plan-gating error returned by the backend when a feature
+ * is not available on the restaurant's current subscription plan. */
+export const PLAN_UPGRADE_REQUIRED = "plan_upgrade_required";
+
+export function isPlanUpgradeRequired(error: unknown): error is ApiError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as ApiError).code === PLAN_UPGRADE_REQUIRED
+  );
+}
+
 export interface Role {
   id: string;
   name_en: string;
