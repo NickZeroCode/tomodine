@@ -31,6 +31,21 @@ class RestaurantSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "slug", "status", "created_at")
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        for field_name in ("logo", "cover_image"):
+            img = getattr(instance, field_name, None)
+            if img and hasattr(img, "path"):
+                try:
+                    import base64, mimetypes
+                    with open(img.path, "rb") as f:
+                        encoded = base64.b64encode(f.read()).decode()
+                    mime = mimetypes.guess_type(img.path)[0] or "image/png"
+                    data[field_name] = f"data:{mime};base64,{encoded}"
+                except (FileNotFoundError, OSError):
+                    data[field_name] = None
+        return data
+
 
 class MembershipSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source="user.email", read_only=True)
@@ -137,15 +152,27 @@ class DishSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Scope the category choices to the current tenant so an empty or
-        # cross-restaurant id surfaces a clear "invalid choice" error instead
-        # of a raw null/integrity failure.
         request = self.context.get("request")
         restaurant = getattr(request, "restaurant", None) if request else None
         if restaurant is not None:
             self.fields["category"].queryset = MenuCategory.objects.filter(
                 menu__restaurant=restaurant
             )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # On serverless (Vercel) file URLs don't work — return inline data URI.
+        img = getattr(instance, "image", None)
+        if img and hasattr(img, "path"):
+            try:
+                import base64, mimetypes
+                with open(img.path, "rb") as f:
+                    encoded = base64.b64encode(f.read()).decode()
+                mime = mimetypes.guess_type(img.path)[0] or "image/png"
+                data["image"] = f"data:{mime};base64,{encoded}"
+            except (FileNotFoundError, OSError):
+                data["image"] = None
+        return data
 
 
 class MenuCategorySerializer(serializers.ModelSerializer):

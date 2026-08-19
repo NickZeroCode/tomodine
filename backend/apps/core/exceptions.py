@@ -53,8 +53,13 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
     response = exception_handler(exc, context)
     if response is None:
         logger.exception("Unhandled API exception: %s", exc)
+        import traceback as tb
         return Response(
-            {"code": "server_error", "message": "An unexpected error occurred.", "errors": {}},
+            {
+                "code": "server_error",
+                "message": str(exc) or "An unexpected error occurred.",
+                "errors": {"traceback": [tb.format_exc()]},
+            },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
