@@ -29,9 +29,19 @@ export function useRestaurantSocket(
     const token = tokenStore.access;
     if (!slug || !token) return;
 
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const url = `${protocol}://${window.location.host}/api/ws/restaurants/${slug}/events/?token=${token}`;
-    const ws = new WebSocket(url);
+    // In production, connect directly to the backend (Vercel rewrites don't
+    // forward WebSocket upgrade headers). In dev, Vite proxy handles it.
+    const apiBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
+    let wsUrl: string;
+    if (apiBase) {
+      // e.g. https://tomodine-backend.vercel.app → wss://tomodine-backend.vercel.app
+      const wsBase = apiBase.replace(/^http/, "ws");
+      wsUrl = `${wsBase}/api/ws/restaurants/${slug}/events/?token=${token}`;
+    } else {
+      const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+      wsUrl = `${protocol}://${window.location.host}/api/ws/restaurants/${slug}/events/?token=${token}`;
+    }
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     setStatus("connecting");
 
