@@ -210,7 +210,14 @@ LOCALE_PATHS = [BASE_DIR / "locale"]
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+
+if env("VERCEL"):
+    import tempfile
+    _media = tempfile.gettempdir() + "/tomodine_media"
+    os.makedirs(_media, exist_ok=True)
+    MEDIA_ROOT = _media
+else:
+    MEDIA_ROOT = BASE_DIR / "media"
 
 # ---------------------------------------------------------------------------
 # Django REST Framework
