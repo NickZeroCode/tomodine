@@ -153,6 +153,8 @@ DATABASE_URL = env("DATABASE_URL")
 
 if DATABASE_URL:
     tmpPostgres = urlparse(DATABASE_URL)
+    db_options = dict(parse_qsl(tmpPostgres.query))
+    db_options.setdefault("sslmode", "require")
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -160,9 +162,9 @@ if DATABASE_URL:
             "USER": tmpPostgres.username,
             "PASSWORD": tmpPostgres.password,
             "HOST": tmpPostgres.hostname,
-            "PORT": 5432,
+            "PORT": tmpPostgres.port or 5432,
             "CONN_MAX_AGE": 60,
-            "OPTIONS": dict(parse_qsl(tmpPostgres.query)),
+            "OPTIONS": db_options,
         }
     }
 else:
