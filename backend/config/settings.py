@@ -279,7 +279,7 @@ CSRF_TRUSTED_ORIGINS = env_origin_list(
 # ---------------------------------------------------------------------------
 REDIS_URL = env("REDIS_URL", "redis://localhost:6379/0")
 
-if env_bool("USE_REDIS_CHANNEL_LAYER", False):
+if env_bool("USE_REDIS_CHANNEL_LAYER", False) and not env("VERCEL"):
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -287,7 +287,8 @@ if env_bool("USE_REDIS_CHANNEL_LAYER", False):
         }
     }
 else:
-    # In-memory layer keeps local development friction-free; do NOT use in prod.
+    # In-memory layer — suitable for Vercel serverless (each function
+    # instance handles its own WebSocket connection) and local dev.
     CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 
 # ---------------------------------------------------------------------------

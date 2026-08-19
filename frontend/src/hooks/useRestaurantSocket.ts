@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { tokenStore } from "@/lib/api";
+import { tokenStore, refreshAccessToken } from "@/lib/api";
 
 export type WsEvent =
   | { type: "order_event"; event: string; order: unknown }
@@ -57,11 +57,21 @@ export function useRestaurantSocket(
         /* malformed frame — ignore */
       }
     };
-    ws.onclose = (event) => {
+    ws.onclose = async (event) => {
       setStatus("closed");
       wsRef.current = null;
-      // 4401/4403 are auth/permission closures — don't retry those.
-      if (event.code === 4401 || event.code === 4403) return;
+      // 4403 = not a restaurant member — don't retry.
+      if (event.code === 4403) return;
+      // 4401 = token expired/invalid — try refreshing the token once
+      // before giving up.
+      if (event.code === 4401) {
+        const fresh = await refreshAccessToken();
+        if (!fresh) return; // refresh failed — user must re-login
+        // Token refreshed — reconnect immediately.
+        retriesRef.current = 0;
+        connect();
+        return;
+      }
       const delay = Math.min(
         RECONNECT_DELAY_MS * 2 ** retriesRef.current,
         MAX_RECONNECT_DELAY_MS

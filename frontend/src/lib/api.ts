@@ -42,7 +42,7 @@ api.interceptors.request.use((config) => {
 
 let refreshing: Promise<string | null> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   const refresh = tokenStore.refresh;
   if (!refresh) return null;
   try {
