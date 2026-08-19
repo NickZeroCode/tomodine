@@ -6,11 +6,14 @@ fresh environments get a consistent baseline without manual admin work.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
-from apps.billing.models import SubscriptionPlan
+from apps.billing.models import Subscription, SubscriptionPlan
+from apps.restaurants.models import Restaurant, RestaurantMembership
 from apps.rbac.models import Permission, Role
 
 PERMISSIONS: list[tuple[str, str, str, str]] = [
@@ -48,6 +51,8 @@ class Command(BaseCommand):
         self._seed_permissions()
         self._seed_roles()
         self._seed_plans()
+        self._seed_subscriptions()
+        self._seed_owner_roles()
         self.stdout.write(self.style.SUCCESS("Seed complete."))
 
     def _seed_permissions(self) -> None:
@@ -111,3 +116,36 @@ class Command(BaseCommand):
         ]
         for data in plans:
             SubscriptionPlan.objects.update_or_create(code=data["code"], defaults=data)
+
+    def _seed_subscriptions(self) -> None:
+        """Assign trial subscriptions to restaurants that have none."""
+        trial = SubscriptionPlan.objects.filter(code="trial", is_active=True).first()
+        if trial is None:
+            return
+        orphaned = Restaurant.objects.filter(subscription__isnull=True)
+        count = 0
+        for restaurant in orphaned:
+            trial_days = trial.trial_days or 14
+            Subscription.objects.get_or_create(
+                restaurant=restaurant,
+                defaults={
+                    "plan": trial,
+                    "status": Subscription.Status.TRIALING,
+                    "trial_ends_at": timezone.now() + timedelta(days=trial_days),
+                },
+            )
+            count += 1
+        if count:
+            self.stdout.write(f"  Assigned trial subscription to {count} restaurant(s).")
+
+    def _seed_owner_roles(self) -> None:
+        """Assign the 'manager' system role to owner memberships with no role."""
+        manager = Role.objects.filter(slug="manager", is_system=True).first()
+        if manager is None:
+            return
+        updated = (
+            RestaurantMembership.objects.filter(is_owner=True, role__isnull=True)
+            .update(role=manager)
+        )
+        if updated:
+            self.stdout.write(f"  Assigned manager role to {updated} owner(s).")
