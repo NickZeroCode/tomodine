@@ -1,0 +1,15 @@
+.card-cta .card-after-cta {
+  margin-top: var(--baseline);
+}
+
+.module-card-cta .card-cta-body{
+  margin-bottom: var(--baseline-2);
+}
+
+:is(.module-card-cta .card-cta-body) .card-cta-copy{
+  max-width: 90%;
+}
+
+.dnd-section:has(.active-geolocation){
+  padding: var(--baseline-4); 0 !important;
+}

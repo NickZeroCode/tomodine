@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Actions blocked</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style type="text/css">
+      html,
+      body {
+          background-color: #fff;
+          text-align: center;
+          font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
+          font-size: 16px;
+          line-height: 25px;
+          color: #33475b;
+      }
+      h1 {
+          font-weight: bold;
+          font-size: 32px;
+          line-height: 1.25;
+          margin: 10px 0 20px;
+      }
+      p {
+          font-size: 16px;
+          line-height: 1.5;
+          margin-bottom: 15px;
+      }
+      a,
+      a:visited {
+          color: #0091b0;
+          transition: all .15s ease-out;
+          text-decoration: none;
+          cursor: pointer;
+      }
+      a:hover {
+          color: #007a8c;
+          text-decoration: underline;
+      }
+      .hs_container {
+          margin: 0 auto;
+          padding: 60px 15px 15px;
+      }
+      .hs_content {
+          padding-top: 24px;
+      }
+      .hs_content p {
+          display: inline;
+          margin: 0 0 20px;
+      }
+      .request-details {
+        margin-top: 65px;
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+      .request-details > span {
+        display: block;
+      }
+      @media screen and (min-width: 376px) {
+          .hs_container {
+              padding: 95px 20px 20px;
+          }
+          .hs_content {
+              padding-top: 0px;
+          }
+          .hs_content p {
+              display: block;
+          }
+          .request-details > span {
+            display: inline-block;
+            padding: 0 5px;
+          }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="hs_container">
+      <svg viewbox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="width: 120px;">
+        <path fill="#cbd6e2" d="M16 0C8.82 0 3 5.82 3 13s5.82 13 13 13 13-5.82 13-13S23.18 0 16 0zm9 13c-.005 1.771-.526 3.42-1.421 4.805l.021-.035L11.23 5.4c1.35-.874 2.998-1.395 4.769-1.4H16c4.971 0 9 4.029 9 9zM7 13c.005-1.771.526-3.42 1.421-4.805L8.4 8.23l12.37 12.35c-1.348.88-2.996 1.409-4.767 1.42H16c-4.971 0-9-4.029-9-9z"/>
+      </svg>
+      <div class="hs_content">
+        <h1>You’ve been blocked for security reasons</h1>                   
+        <p>If you believe this is a mistake, please contact the website owner<br>and include the request ID number from this page.</p>
+        <div class="request-details">
+          <span>REQUEST ID: a2b23b0a3e47862c</span>
+          <span>IP ADDRESS: 121.229.106.186</span>
+          <span id="timestamp"></span>
+        </div>
+      </div>
+    </div>
+    <script>
+      var t = new Date();
+      document.getElementById("timestamp").innerHTML = t;
+    </script>
+  </body>
+</html>

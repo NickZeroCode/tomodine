@@ -1,0 +1,2465 @@
+<!doctype html><html lang="en">
+<!-- Mirrored from www.theforkmanager.com/en/book-a-demo?conversion_point=BOOK_A_DEMO by HTTrack Website Copier/3.x [XR&CO'2014], Fri, 14 Aug 2026 19:11:04 GMT -->
+<!-- Added by HTTrack --><meta http-equiv="content-type" content="text/html;charset=UTF-8" /><!-- /Added by HTTrack -->
+<head><script>var supportedLang = {};
+</script>
+
+  <!-- =========================
+       1. FUNZIONI HUBSPOT (updateHubspotConsent)
+  ========================== -->
+  <script>
+    function updateHubspotConsent(categories) {
+      // Mappo le categorie Evidon -> HubSpot
+      var analytics = categories['analytics & customisation'] === true;
+      var advertisement = categories['advertising'] === true;
+      var functionality = true;
+
+      if (categories.all) {
+        analytics = true;
+        advertisement = true;
+        functionality = true;
+      }
+
+      window.hsConsent = {
+        analytics: analytics,
+        advertisement: advertisement,
+        functionality: functionality
+      };
+
+      window._hsp = window._hsp || [];
+      window.dataLayer = window.dataLayer || [];
+
+      window._hsp.push([
+        'setHubSpotConsent',
+        window.hsConsent
+      ]);
+
+      if (analytics) {
+        // riabilito il tracking
+        //window._hsq.push(['doNotTrack', { track: true }]);
+        window._hsq.push(['trackPageView']);
+      }
+
+      console.log('✅ Consenso HubSpot:', window.hsConsent);
+
+      // Page view GTM solo se tfmBaseDL è definita
+      try {
+        window.dataLayer.push(
+          Object.assign(
+            { event: 'page_view' },
+            typeof tfmBaseDL === 'function' ? tfmBaseDL() : {}
+          )
+        );
+      } catch (e) {
+        console.warn('[CONSENT] errore nel push su dataLayer:', e);
+      }
+    }
+  </script>
+
+  <!-- =========================
+       2. SCRIPT EVIDON ORIGINALE (LOADER) + CALLBACK DOPO LOAD
+       Le callback vengono attaccate DOPO che Evidon è completamente caricato
+       per evitare che vengano sovrascritte dagli script di Evidon
+  ========================== -->
+  <script type="text/javascript">
+    (function (id) {
+      function append(scriptid, url, async) {
+        var d = document,
+          sn = 'script',
+          f = d.getElementsByTagName(sn)[0];
+        if (!f) f = d.head;
+        var s = d.createElement(sn);
+        s.async = async;
+        s.id = scriptid;
+        s.src = url;
+        s.charset = 'utf-8';
+        f.parentNode.insertBefore(s, f);
+        console.log('[EVIDON] appended script:', scriptid, '->', url);
+      }
+
+      function is2parttld(value) {
+        var tldindicators = ['co', 'com', 'info', 'web', 'gov', 'edu', 'biz', 'net', 'org'];
+        var countryindicators = [
+          'uk','us','fr','es','de','at','au','ae','be','br','ca','ch','cn','co','cz','dk','eg','eu',
+          'fi','gb','gr','hk','hr','hu','ie','in','jp','mx','nl','no','nz','pl','ro','ru','se'
+        ];
+        return (tldindicators.indexOf(value) !== -1 || countryindicators.indexOf(value) !== -1);
+      }
+
+      function getRootDomain() {
+        var parts = window.location.hostname.split('.');
+        var rootDomain = '';
+
+        if (parts.length === 2) {
+          rootDomain = parts[0];
+        } else if (parts.length > 2) {
+          var part = parts[parts.length - 2];
+          if (is2parttld(part)) {
+            rootDomain = parts[parts.length - 3];
+          } else {
+            rootDomain = part;
+          }
+        }
+
+        console.log('[EVIDON] computed rootDomain:', rootDomain || '(empty)');
+        return rootDomain;
+      }
+
+      // Variabili per tracciare il consenso
+      var consentGiven = false;
+      
+      // Funzione wrapper per updateHubspotConsent che previene doppie esecuzioni
+      function handleConsentGiven(categories) {
+        if (consentGiven) {
+          console.log('[EVIDON] Consent already processed, skipping duplicate call');
+          return;
+        }
+        consentGiven = true;
+        console.log('[EVIDON] Consent given');
+        updateHubspotConsent(categories);
+      }
+
+      // Funzione per attaccare le callback (definita qui per essere accessibile)
+      function attachEvidonCallbacks() {
+        if (!window.evidon) {
+          console.warn('[EVIDON] evidon object non presente quando provo ad attaccare le callback');
+          return;
+        }
+        
+        // Se il consenso è già stato dato, non riattaccare le callback
+        if (consentGiven) {
+          console.log('[EVIDON] Consent already given, skipping callback attachment');
+          return;
+        }
+
+        // priorConsent: viene chiamata:
+        // - al click "Accept" del banner
+        // - quando trova il cookie _evidon_consent_cookie (returning user)
+        // - quando il sito non richiede consenso
+        window.evidon.priorConsentCallback = function (categories, vendors, cookies) {
+          console.log('[EVIDON] priorConsentCallback fired', { categories, vendors, cookies });
+          handleConsentGiven(categories);
+        };
+
+        // consentChanged: utente che riapre il pannello e cambia le preferenze
+        window.evidon.consentChangedCallback = function (categories, vendors, cookies) {
+          console.log('[EVIDON] consentChangedCallback fired', { categories, vendors, cookies });
+          handleConsentGiven(categories);
+        };
+
+        // Callback base (non toccano il consenso HubSpot, sono solo log/housekeeping)
+        window.evidon.closeCallback = function () {
+          console.log('[EVIDON] closeCallback fired (UI chiusa senza scelta esplicita)');
+        };
+
+        window.evidon.consentWithdrawnCallback = function () {
+          console.log('[EVIDON] consentWithdrawnCallback fired');
+          if (window.evidon && window.evidon.notice && typeof window.evidon.notice.dropSuppressionCookie === 'function') {
+            window.evidon.notice.dropSuppressionCookie(30);
+          }
+        };
+
+        window.evidon.consentDeclinedCallback = function () {
+          console.log('[EVIDON] consentDeclinedCallback fired');
+          if (window.evidon && window.evidon.notice && typeof window.evidon.notice.dropSuppressionCookie === 'function') {
+            window.evidon.notice.dropSuppressionCookie(30);
+          }
+        };
+
+        console.log('[EVIDON] Callbacks attached after Evidon scripts loaded');
+      }
+
+      // Inizializza l'oggetto evidon PRESERVANDO le proprietà esistenti (incluse le callback)
+      if (!window.evidon) {
+        window.evidon = {};
+      }
+      // Usa Object.assign per aggiungere proprietà senza sovrascrivere quelle esistenti
+      // Questo preserva le callback se sono state definite prima
+      Object.assign(window.evidon, {
+        id: id,
+        test: false // true per ambiente di test
+      });
+      
+      // ATTACCA LE CALLBACK SUBITO (come da documentazione Evidon)
+      // Questo garantisce che siano disponibili sia al primo load che ai reload successivi
+      // quando Evidon rileva il cookie esistente
+      console.log('[EVIDON] Attaching callbacks immediately (before Evidon scripts load)...');
+      attachEvidonCallbacks();
+      
+      // Riattacca le callback dopo 2 secondi se sono state sovrascritte da Evidon
+      // Questo è necessario perché Evidon potrebbe sovrascriverle quando carica i suoi script
+      setTimeout(function() {
+        if (!consentGiven && window.evidon) {
+          // Verifica se le callback sono ancora quelle corrette
+          var currentCallback = window.evidon.priorConsentCallback;
+          if (!currentCallback || currentCallback.toString().indexOf('handleConsentGiven') === -1) {
+            console.log('[EVIDON] Callbacks were overwritten, re-attaching after 2 seconds...');
+            attachEvidonCallbacks();
+          }
+        }
+      }, 2000);
+
+      var cdn = 'http://c.evidon.com/',
+          rootDomain = getRootDomain(),
+          noticecdn = cdn + 'sitenotice/';
+
+      append('evidon-notice', noticecdn + 'evidon-sitenotice-tag.js', false);
+      append('evidon-location', cdn + 'geo/country.js', true);
+      append('evidon-themes', noticecdn + id + '/snthemes.js', true);
+
+      // come da doc: settingsV2.js
+      if (rootDomain) {
+        append(
+          'evidon-settings',
+          noticecdn + id + '/' + rootDomain + (window.evidon.test ? '/test' : '') + '/settingsV2.js',
+          true
+        );
+      }
+
+
+      console.log('[EVIDON] init complete, id:', id);
+    })(1402);
+  </script>
+
+  
+  
+  <!-- =========================
+       4. HUBSPOT: DISABLE CONSENT DEFAULT + DL BASE
+  ========================== -->
+  <script>
+    // Queue HubSpot tracking
+    window._hsq = window._hsq || [];
+    window._hsp = window._hsp || [];
+
+    // 1) HubSpot "do not track" di default
+    //window._hsq.push(['doNotTrack']);
+
+    // 2) Disabilito il banner HubSpot (usa solo Evidon)
+    window.disableHubSpotCookieBanner = true;
+
+    // 3) Consenso iniziale tutto false
+    window.hsConsent = {
+      analytics: false,
+      advertisement: false,
+      functionality: false
+    };
+
+    window._hsp.push(['setHubSpotConsent', window.hsConsent]);
+
+    const urlObj = new URL(https://www.theforkmanager.com/en/window.location.href, window.location.origin);
+    var language, category, subcategory;
+    [language, category, subcategory] = urlObj.pathname.split('https://www.theforkmanager.com/').filter(Boolean);
+
+    window.dlData = {
+      browser_name: '',
+      device_category: '',
+      consent_analytics: false,
+      consent_marketing: false,
+      lead_source: 'unknown',
+      lead_source_detail: '',
+      user: {
+        id: '0',
+        status: 'guest'
+      },
+      page_market: 'en',
+      page_name: '2025 \- EN \- Book a demo',
+      page_path: '\/en\/book\-a\-demo',
+      page_title: 'Book a Free Demo | TheFork Manager',
+      page_url: 'https:\/\/www.theforkmanager.com\/en\/book\-a\-demo',
+      category: category,
+      subcategory: subcategory
+    };
+
+    window._hsp.push([
+      'setHubSpotConsent',
+      window.hsConsent
+    ]);
+  </script>
+
+  <!-- =========================
+       5. DATA LAYER, DEVICE/UA, tfmBaseDL
+  ========================== -->
+  <script>
+    function getDebugPushLogFlag() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('debugPushLog') === '1';
+    }
+    const debugPushLog = getDebugPushLogFlag();
+
+    /* Inizializza lo spazio globale */
+    window.dataLayer = window.dataLayer || [];
+
+    function getDeviceCategory() {
+      const ua = navigator.userAgent || navigator.vendor || window.opera;
+
+      // Mobile check
+      if (/android/i.test(ua) && !/tablet/i.test(ua)) return 'mobile';
+      if (/iPhone|iPod/i.test(ua)) return 'mobile';
+
+      // Tablet check
+      if (/iPad/i.test(ua) || (/android/i.test(ua) && /tablet/i.test(ua))) return 'tablet';
+      if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) return 'tablet';
+
+      // Desktop fallback
+      return 'desktop';
+    }
+
+    function getBrowserName() {
+      const userAgent = navigator.userAgent;
+
+      if (userAgent.includes('Firefox')) return 'Firefox';
+      if (userAgent.includes('Edg')) return 'Edge';
+      if (userAgent.includes('Chrome') && !userAgent.includes('Edg')) return 'Chrome';
+      if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) return 'Safari';
+      if (userAgent.includes('OPR') || userAgent.includes('Opera')) return 'Opera';
+      return 'Other';
+    }
+
+    /* Funzione helper: restituisce la struttura comune minima */
+    function tfmBaseDL() {
+      const pathnameParts = window.location.pathname.split('https://www.theforkmanager.com/').filter(Boolean);
+      const language = 'en' || 'en';
+      const section = pathnameParts[1] || 'unknown';
+      const subSection = pathnameParts[2] || 'unknown';
+
+      window.dlData.consent_analytics = window.hsConsent.analytics || false;
+      // Uso advertisement come "marketing"
+      window.dlData.consent_marketing = window.hsConsent.advertisement || false;
+      window.dlData.browser_name = getBrowserName();
+      window.dlData.device_category = getDeviceCategory();
+
+      return {
+        page: {
+          url: window.location.href,
+          title: document.title,
+          language: document.documentElement.lang || language,
+          section: section,
+          subSection: subSection,
+          country: 'en'
+        },
+        user: {
+          id: '0',
+          status: 'guest'
+        },
+        consent: window.hsConsent,
+        ...window.dlData
+      };
+    }
+  </script>
+
+  <!-- =========================
+       6. GOOGLE TAG MANAGER
+  ========================== -->
+  <script>
+    console.log('debug gtm: ', dataLayer);
+
+    (function(w,d,s,l,i){
+      w[l]=w[l]||[];
+      w[l].push({'gtm.start': new Date().getTime(), event:'gtm.js'});
+      var f=d.getElementsByTagName(s)[0],
+          j=d.createElement(s),
+          dl=l!='dataLayer'?'&l='+l:'';
+      j.async=true;
+      j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+      f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-NNTS89Q');
+  </script>
+  <script>
+let lang_vars = JSON.parse(localStorage.getItem("lang_vars")) || {};
+const addTranslateLabel = (obj) => {
+  console.log(obj)
+  for (const key in obj) {
+    if (!lang_vars.hasOwnProperty(key)) {
+      lang_vars[key] = obj[key];
+    }
+  }
+  //Salvo in storage
+  localStorage.setItem("lang_vars", JSON.stringify(lang_vars));
+}
+
+const createCSVfromLangVar = () => {
+  const data = JSON.parse(localStorage.getItem("lang_vars")) || {};
+
+  const csvData = Object.entries(data).map(([key, value], index) => ({
+    identity: key,
+    ref_EN: value,
+  }));
+
+  return csvData;
+}
+</script>
+
+
+
+
+
+
+
+<meta charset="utf-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><title>Book a Free Demo | TheFork Manager</title>
+  <meta name="description" content="Ready to see TheFork Manager in action? Schedule a free, personalised demo with one of our experts."><meta property="og:site_name" content="TheFork Manager">
+  
+  <meta name="trustpilot-one-time-domain-verification-id" content="336383af-1727-4638-9349-3f331f0a9f1e">
+  
+  
+
+  
+
+  <link rel="icon" href="https://www.theforkmanager.com/hubfs/TheFOrm-Manager-favicon.svg" sizes="48x48" type="image/png">
+
+  <!-- CSS -->
+  <link type="text/css" rel="stylesheet" href="https://www.theforkmanager.com/hubfs/hub_generated/template_assets/1/223947360497/1786091811319/template_root.min.css">
+  <link type="text/css" rel="stylesheet" href="https://www.theforkmanager.com/hubfs/hub_generated/template_assets/1/223932861670/1786091803849/template_override.min.css"><link rel="preconnect" href="https://fonts.googleapis.com/">
+  <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet">
+
+  <style>
+    @font-face {
+      font-family: 'Valizas';
+      src: url('https://www.theforkmanager.com/hubfs/raw_assets/public/d360-thefork-manager-2025/fonts/valizas/valizas-regular-webfont.woff2') format('woff2'),
+           url('https://www.theforkmanager.com/hubfs/raw_assets/public/d360-thefork-manager-2025/fonts/valizas/valizas-regular-webfont.woff') format('woff');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: 'Valizas';
+      src: url('https://www.theforkmanager.com/hubfs/raw_assets/public/d360-thefork-manager-2025/fonts/valizas/valizas-semibold-webfont.woff2') format('woff2'),
+           url('https://www.theforkmanager.com/hubfs/raw_assets/public/d360-thefork-manager-2025/fonts/valizas/valizas-semibold-webfont.woff') format('woff');
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: 'Valizas';
+      src: url('https://www.theforkmanager.com/hubfs/raw_assets/public/d360-thefork-manager-2025/fonts/valizas/valizas-bold-new.woff2') format('woff2'),
+           url('https://www.theforkmanager.com/hubfs/raw_assets/public/d360-thefork-manager-2025/fonts/valizas/valizas-bold-new.woff') format('woff');
+      font-weight: bold;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: 'odyicon';
+      src: url('https://www.theforkmanager.com/hubfs/raw_assets/public/d360-thefork-manager-2025/fonts/icomoon.eot?udcen8');
+      src: url('https://www.theforkmanager.com/hubfs/raw_assets/public/d360-thefork-manager-2025/fonts/icomoon.eot?udcen8#iefix') format('embedded-opentype'),
+           url('https://www.theforkmanager.com/hubfs/raw_assets/public/d360-thefork-manager-2025/fonts/icomoon.ttf?udcen8') format('truetype'),
+           url('https://www.theforkmanager.com/hubfs/raw_assets/public/d360-thefork-manager-2025/fonts/icomoon.woff?udcen8') format('woff'),
+           url('https://www.theforkmanager.com/hubfs/raw_assets/public/d360-thefork-manager-2025/fonts/icomoon.svg?udcen8#icomoon') format('svg');
+      font-weight: normal;
+      font-style: normal;
+      font-display: block;
+    }
+  </style>
+<script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "url": "https://www.theforkmanager.com/",
+      "name": "TheFork Manager",
+      "alternateName": "TheFork Manager",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.theforkmanager.com/hubfs/144984776/TheFOrm-Manager-favicon.svg"
+      }
+    }
+    </script>
+
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+    <meta property="og:description" content="Ready to see TheFork Manager in action? Schedule a free, personalised demo with one of our experts.">
+    <meta property="og:title" content="Book a Free Demo | TheFork Manager">
+    <meta name="twitter:description" content="Ready to see TheFork Manager in action? Schedule a free, personalised demo with one of our experts.">
+    <meta name="twitter:title" content="Book a Free Demo | TheFork Manager">
+
+    
+
+    
+
+    <style>
+a.cta_button{-moz-box-sizing:content-box !important;-webkit-box-sizing:content-box !important;box-sizing:content-box !important;vertical-align:middle}.hs-breadcrumb-menu{list-style-type:none;margin:0px 0px 0px 0px;padding:0px 0px 0px 0px}.hs-breadcrumb-menu-item{float:left;padding:10px 0px 10px 10px}.hs-breadcrumb-menu-divider:before{content:'›';padding-left:10px}.hs-featured-image-link{border:0}.hs-featured-image{float:right;margin:0 0 20px 20px;max-width:50%}@media (max-width: 568px){.hs-featured-image{float:none;margin:0;width:100%;max-width:100%}}.hs-screen-reader-text{clip:rect(1px, 1px, 1px, 1px);height:1px;overflow:hidden;position:absolute !important;width:1px}
+</style>
+
+<link rel="stylesheet" href="https://www.theforkmanager.com/hubfs/hub_generated/module_assets/1/233741366517/1763658916934/module_header-contacts-redirector.min.css">
+<link rel="stylesheet" href="https://www.theforkmanager.com/hubfs/hub_generated/module_assets/1/223932861662/1773055792416/module_navigation-mobile-nav.min.css">
+<link rel="stylesheet" href="https://www.theforkmanager.com/hubfs/hub_generated/module_assets/1/236555352312/1783514519968/module_card-registration.min.css">
+
+  <style>
+    :root{
+      --image-url: url('https://www.theforkmanager.com/hs-fs/hubfs/TFM-2025-website-assets/images/registration.jpg?width=700&amp;height=700&amp;name=registration.jpg');
+    }
+
+    @media screen and (min-width: 768px) {
+      :root{
+        --image-url: url('https://www.theforkmanager.com/hubfs/TFM-2025-website-assets/images/registration.jpg');
+      }
+     }
+    
+    .registration-right:has(.module-card-registration),
+    .book-a-demo-left:has(.module-card-registration){
+      background-image: var(--image-url);
+      background-size: cover;
+      background-repeat: no-repeat;
+    }
+
+  </style>
+
+<link rel="stylesheet" href="https://www.theforkmanager.com/hubfs/hub_generated/module_assets/1/283531444427/1785255118915/module_tfm-form-new-main.min.css">
+
+<style>
+/* Mobile reordering for hero layout: heading → sub-heading → form.
+   All locale variants share a common structure: the hero left column
+   (.dnd-column) has a direct child row whose class ends in
+   -row-0-vertical-alignment (e.g. hero-commercial-simple-column-1-row-0-
+   vertical-alignment for FR, cell_XXXX-row-0-vertical-alignment for ES/IT/DE).
+   Collapsing that inner row and its wrappers via display:contents brings all
+   content rows into the same flex context so CSS order can interleave the
+   sub-heading (a sibling of the inner row) between heading and form. */
+@media screen and (max-width: 767px) {
+  .dnd-column:has(> .row-fluid-wrapper[class*="-row-0-vertical-alignment"]) {
+    display: flex !important;
+    flex-direction: column;
+  }
+  .dnd-column:has(> .row-fluid-wrapper[class*="-row-0-vertical-alignment"]) > .row-fluid-wrapper[class*="-row-0-vertical-alignment"],
+  .dnd-column:has(> .row-fluid-wrapper[class*="-row-0-vertical-alignment"]) > .row-fluid-wrapper[class*="-row-0-vertical-alignment"] > .row-fluid,
+  .dnd-column:has(> .row-fluid-wrapper[class*="-row-0-vertical-alignment"]) > .row-fluid-wrapper[class*="-row-0-vertical-alignment"] > .row-fluid > .dnd-column {
+    display: contents !important;
+  }
+  .dnd-column:has(> .row-fluid-wrapper[class*="-row-0-vertical-alignment"]) .row-number-3 { order: 1; }
+  .dnd-column:has(> .row-fluid-wrapper[class*="-row-0-vertical-alignment"]) .row-number-4 { order: 2; }
+  .dnd-column:has(> .row-fluid-wrapper[class*="-row-0-vertical-alignment"]) .row-number-7 { order: 3; }
+  .dnd-column:has(> .row-fluid-wrapper[class*="-row-0-vertical-alignment"]) .row-number-6 { order: 4; }
+  .dnd-column:has(> .row-fluid-wrapper[class*="-row-0-vertical-alignment"]) .row-number-5 { order: 5; }
+
+  /* PT and NL referral landing pages: hero column has no vertical-alignment
+     wrapper, so the :has() rule above never matches. Heading/list/form are
+     flat siblings instead, scoped per page via body.hs-content-id-{pageId}
+     so this never leaks onto other pages sharing the same column class. */
+  body.hs-content-id-421597607101 .hero-commercial-simple-column-1-margin {
+    display: flex !important;
+    flex-direction: column;
+  }
+  body.hs-content-id-421597607101 .hero-commercial-simple-column-1-margin .row-number-2 { order: 1; }
+  body.hs-content-id-421597607101 .hero-commercial-simple-column-1-margin .row-number-3 { order: 2; }
+  body.hs-content-id-421597607101 .hero-commercial-simple-column-1-margin .row-number-7 { order: 3; }
+  body.hs-content-id-421597607101 .hero-commercial-simple-column-1-margin .row-number-6 { order: 4; }
+  body.hs-content-id-421597607101 .hero-commercial-simple-column-1-margin .row-number-5 { order: 5; }
+
+  body.hs-content-id-421596950764 .hero-commercial-simple-column-1-margin {
+    display: flex !important;
+    flex-direction: column;
+  }
+  body.hs-content-id-421596950764 .hero-commercial-simple-column-1-margin .row-number-2 { order: 1; }
+  body.hs-content-id-421596950764 .hero-commercial-simple-column-1-margin .row-number-3 { order: 2; }
+  body.hs-content-id-421596950764 .hero-commercial-simple-column-1-margin .row-number-6 { order: 3; }
+  body.hs-content-id-421596950764 .hero-commercial-simple-column-1-margin .row-number-5 { order: 4; }
+  body.hs-content-id-421596950764 .hero-commercial-simple-column-1-margin .row-number-4 { order: 5; }
+}
+
+/* TEMPORARY fix, mobile/tablet only (max-width: 992px) — do not apply on desktop.
+   Referral landing page hero image: FR has HubSpot's native "Hide module on
+   Tablet/Mobile" visibility setting applied (generates a widget-specific
+   -hidden class + a max-width: 992px rule). ES/IT/EN/NL/DE/SV/PT/PL never
+   had that setting applied, so their image stays visible on mobile. Rather
+   than toggle each page's module settings individually, replicate the same
+   effect here, scoped per page via body.hs-content-id so it can't affect
+   any other page that happens to reuse the .module-image class.
+   The proper long-term fix is to enable "Hide module on Tablet/Mobile" on
+   the image module directly in each page's HubSpot editor (matching FR) and
+   then remove this override — it exists only as a stand-in until that's done. */
+@media (max-width: 992px) {
+  body.hs-content-id-421596948666 .module-image,
+  body.hs-content-id-421597613272 .module-image,
+  body.hs-content-id-417594673378 .module-image,
+  body.hs-content-id-421596950764 .module-image,
+  body.hs-content-id-421596947646 .module-image,
+  body.hs-content-id-421596946628 .module-image,
+  body.hs-content-id-421597607101 .module-image,
+  body.hs-content-id-426825652453 .module-image {
+    display: none !important;
+  }
+}
+</style>
+
+
+<style>
+/* New styles added for combined module */
+#hs_cos_wrapper_widget_1759907599070 .module-tfm-lpheader-wrap {
+  display:flex;
+  padding-top:10px;
+}
+
+#hs_cos_wrapper_widget_1759907599070 .module-tfm-content {
+  width:50%;
+  padding-right:5%;
+}
+
+#hs_cos_wrapper_widget_1759907599070 .module-tfm-content h1 { font-size:230%; }
+
+#hs_cos_wrapper_widget_1759907599070 .module-tfm-content .module-tfm-content__image { margin-top:20px; }
+
+#hs_cos_wrapper_widget_1759907599070 .module-tfm-form-main {
+  width:100%;
+  max-width:600px;
+  height:fit-content;
+  border-radius:4px;
+  margin-top:16px;
+}
+
+#hs_cos_wrapper_widget_1759907599070 .module-tfm-form-main.form-center { margin:0 auto; }
+
+#hs_cos_wrapper_widget_1759907599070 .registration-form__container {
+  padding-top:0px;
+  padding-bottom:0px;
+  margin-bottom:30px;
+}
+
+#hs_cos_wrapper_widget_1759907599070 [data-hsfc-id=Renderer] .hsfc-RichText em { font-size:0.8em; }
+
+#hs_cos_wrapper_widget_1759907599070 [data-hsfc-id=DataPrivacyField] div.hsfc-Row:nth-of-type(2) { margin-bottom:0px; }
+
+#hs_cos_wrapper_widget_1759907599070 .registration-form__form-step-1 .hsfc-NavigationRow__Buttons { margin-top:-38px; }
+
+#hs_cos_wrapper_widget_1759907599070 .narrow .registration-form__stepper { gap:20px; }
+
+#hs_cos_wrapper_widget_1759907599070 .narrow .registration-form__step {
+  text-indent:-1000em;
+  height:1px;
+  padding:2px;
+  width:100px;
+  background:#ffffff;
+  border-radius:2px;
+  opacity:0.4;
+}
+
+#hs_cos_wrapper_widget_1759907599070 .narrow.dark .registration-form__step {
+  background:#00665a;
+  border-color:#00665a;
+}
+
+#hs_cos_wrapper_widget_1759907599070 .narrow .registration-form__step--active { opacity:1; }
+
+#hs_cos_wrapper_widget_1759907599070 .narrow .registration-form__stepper:before { background:none; }
+
+@media screen and (max-width:768px) {
+  #hs_cos_wrapper_widget_1759907599070 .module-tfm-lpheader-wrap { flex-direction:column; }
+
+  #hs_cos_wrapper_widget_1759907599070 .module-tfm-content { display:contents; }
+
+  #hs_cos_wrapper_widget_1759907599070 .module-tfm-content__heading { order:1; }
+
+  #hs_cos_wrapper_widget_1759907599070 .module-tfm-content__sub-heading {
+    order:2;
+    margin-bottom:20px;
+  }
+
+  #hs_cos_wrapper_widget_1759907599070 .module-tfm-form-main {
+    order:3;
+    width:100%;
+  }
+
+  #hs_cos_wrapper_widget_1759907599070 .module-tfm-content__image {
+    order:4;
+    width:100%;
+    margin-top:24px;
+  }
+
+  #hs_cos_wrapper_widget_1759907599070 .narrow .registration-form__stepper { gap:10px; }
+
+  #hs_cos_wrapper_widget_1759907599070 .narrow .registration-form__step { width:60px; }
+}
+
+</style>
+
+<!-- Editor Styles -->
+<style id="hs_editor_style" type="text/css">
+.image_and_card-row-0-force-full-width-section > .row-fluid {
+  max-width: none !important;
+}
+/* HubSpot Styles (default) */
+.image_and_card-row-0-padding {
+  padding-top: 0px !important;
+  padding-bottom: 0px !important;
+  padding-left: 0px !important;
+  padding-right: 0px !important;
+}
+.registration_form-row-0-padding {
+  padding-top: 0px !important;
+  padding-bottom: 0px !important;
+  padding-left: 0px !important;
+  padding-right: 0px !important;
+}
+</style>
+
+    
+
+
+    
+    <link rel="canonical" href="https://www.theforkmanager.com/en/book-a-demo">
+
+
+<meta property="og:image" content="https://www.theforkmanager.com/hubfs/TFM-2025-website-assets/images/registration.jpg">
+<meta property="og:image:width" content="1300">
+<meta property="og:image:height" content="1860">
+
+<meta name="twitter:image" content="https://www.theforkmanager.com/hubfs/TFM-2025-website-assets/images/registration.jpg">
+
+
+<meta property="og:url" content="https://www.theforkmanager.com/en/book-a-demo">
+<meta name="twitter:card" content="summary_large_image">
+<meta http-equiv="content-language" content="en">
+<link rel="alternate" hreflang="de" href="https://www.theforkmanager.com/de/demo-anfordern">
+<link rel="alternate" hreflang="en" href="https://www.theforkmanager.com/en/book-a-demo">
+<link rel="alternate" hreflang="es" href="https://www.theforkmanager.com/es/solicita-una-demo">
+<link rel="alternate" hreflang="fr" href="https://www.theforkmanager.com/fr/reservez-une-demo">
+<link rel="alternate" hreflang="it" href="https://www.theforkmanager.com/it/prenota-una-demo">
+<link rel="alternate" hreflang="nl" href="https://www.theforkmanager.com/nl/demo-boeken">
+<link rel="alternate" hreflang="pl" href="https://www.theforkmanager.com/pl/bezpłatna-prezentacja">
+<link rel="alternate" hreflang="pt" href="https://www.theforkmanager.com/pt/solicitar-uma-demonstracao">
+<link rel="alternate" hreflang="sv" href="https://www.theforkmanager.com/sv/boka-en-demo">
+
+
+
+
+
+
+<meta name="generator" content="HubSpot"></head>
+
+
+<body data-system-page="" data-portal="144984776" class="app body-wrapper template-landing book-a-demo theme-negative    hs-content-id-284375838924 hs-site-page page ">
+  <a href="#content" class="skip-link">Skip to content</a>
+
+  <!-- Multilanguage form -->
+  <div id="hs_cos_wrapper_multilanguage_form" class="hs_cos_wrapper hs_cos_wrapper_widget hs_cos_wrapper_type_module" style="" data-hs-cos-general-type="widget" data-hs-cos-type="module">
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+
+<!-- Multilanguage form privacy item: {privacy_text=I wish to receive communications from TheFork., privacy_description=By clicking below, <a href="https://www.thefork.co.uk/legal#PrivacyPolicy" rel="noopener" target="_blank">I agree to TheFork’s Privacy Policy</a>} -->
+
+
+<!-- html_lang___: en -->
+<!-- Multilanguage form strings: [{type=text, text={label_text=First Name, placeholder=First Name}, checkbox={}, dropdown={option=[]}, multiplecheckbox={option=[]}, property_internal_name=firstname}, {type=dropdown, text={}, checkbox={}, dropdown={option=[{option_key=I own a restaurant and I want to learn about TheFork Manager, option_value=I own a restaurant and I want to learn about TheFork Manager}, {option_key=I am a diner and I want to book a reservation, option_value=I am a diner and I want to make a reservation}, {option_key=I am looking for a job in a restaurant, option_value=I am looking for a job in a restaurant}], label_text=Why are you contacting us?}, multiplecheckbox={option=[]}, property_internal_name=contact_choice}, {type=text, text={label_text=Last Name, placeholder=Last Name}, checkbox={}, dropdown={option=[]}, multiplecheckbox={option=[]}, property_internal_name=lastname}, {type=text, text={label_text=Email, placeholder=Email}, checkbox={}, dropdown={option=[]}, multiplecheckbox={option=[]}, property_internal_name=email}, {type=text, text={label_text=Phone}, checkbox={}, dropdown={option=[]}, multiplecheckbox={option=[]}, property_internal_name=phone}, {type=text, text={label_text=Firstly, what is the name of your restaurant?}, checkbox={}, dropdown={option=[]}, multiplecheckbox={option=[]}, property_internal_name=company}, {type=text, text={label_text=And the address?, placeholder=And the address?}, checkbox={}, dropdown={option=[]}, multiplecheckbox={option=[]}, property_internal_name=address}, {type=text, text={label_text=What is your average customer spend?}, checkbox={}, dropdown={option=[]}, multiplecheckbox={option=[]}, property_internal_name=average_bill__c}] -->
+
+<!-- Multilanguage errors: [{error_label=Please complete this required field., error_value=Please complete this required field.}, {error_label=This field is required., error_value=This field is required.}, {error_label=Email must be formatted correctly., error_value=Email must be formatted correctly.}, {error_label=Please enter a valid email address., error_value=Please enter a valid email address.}, {error_label=Email must be valid., error_value=Email must be valid.}, {error_label=Please complete all required fields., error_value=Please complete all required fields.}, {error_label=This phone number is either invalid or is in the wrong format., error_value=This phone number is either invalid or is in the wrong format.}] -->
+
+<!-- Multilanguage form errors: [{error_label=Please complete this required field., error_value=Please complete this required field.}, {error_label=This field is required., error_value=This field is required.}, {error_label=Email must be formatted correctly., error_value=Email must be formatted correctly.}, {error_label=Please enter a valid email address., error_value=Please enter a valid email address.}, {error_label=Email must be valid., error_value=Email must be valid.}, {error_label=Please complete all required fields., error_value=Please complete all required fields.}, {error_label=This phone number is either invalid or is in the wrong format., error_value=This phone number is either invalid or is in the wrong format.}] -->
+
+<!-- Multilanguage form privacy: [{privacy_text=I wish to receive communications from TheFork., privacy_description=By clicking below, <a href="https://www.thefork.co.uk/legal#PrivacyPolicy" rel="noopener" target="_blank">I agree to TheFork’s Privacy Policy</a>}] -->
+
+<script>
+  /***********************
+   * ⚪️ TRADUZIONI UI
+   ***********************/
+  let translatedMap = {};
+  let translatedField = {};
+  const translation = null;
+  const translatedFieldsLang = [{"checkbox":{},"dropdown":{"option":[]},"multiplecheckbox":{"option":[]},"property_internal_name":"firstname","text":{"label_text":"First Name","placeholder":"First Name"},"type":"text"},{"checkbox":{},"dropdown":{"label_text":"Why are you contacting us?","option":[{"option_key":"I own a restaurant and I want to learn about TheFork Manager","option_value":"I own a restaurant and I want to learn about TheFork Manager"},{"option_key":"I am a diner and I want to book a reservation","option_value":"I am a diner and I want to make a reservation"},{"option_key":"I am looking for a job in a restaurant","option_value":"I am looking for a job in a restaurant"}]},"multiplecheckbox":{"option":[]},"property_internal_name":"contact_choice","text":{},"type":"dropdown"},{"checkbox":{},"dropdown":{"option":[]},"multiplecheckbox":{"option":[]},"property_internal_name":"lastname","text":{"label_text":"Last Name","placeholder":"Last Name"},"type":"text"},{"checkbox":{},"dropdown":{"option":[]},"multiplecheckbox":{"option":[]},"property_internal_name":"email","text":{"label_text":"Email","placeholder":"Email"},"type":"text"},{"checkbox":{},"dropdown":{"option":[]},"multiplecheckbox":{"option":[]},"property_internal_name":"phone","text":{"label_text":"Phone"},"type":"text"},{"checkbox":{},"dropdown":{"option":[]},"multiplecheckbox":{"option":[]},"property_internal_name":"company","text":{"label_text":"Firstly, what is the name of your restaurant?"},"type":"text"},{"checkbox":{},"dropdown":{"option":[]},"multiplecheckbox":{"option":[]},"property_internal_name":"address","text":{"label_text":"And the address?","placeholder":"And the address?"},"type":"text"},{"checkbox":{},"dropdown":{"option":[]},"multiplecheckbox":{"option":[]},"property_internal_name":"average_bill__c","text":{"label_text":"What is your average customer spend?"},"type":"text"}];
+  
+  /*const ERROR_I18N = {
+    "please complete this required field.": "Campo obbligatorio",
+    "please complete this required field":  "Campo obbligatorio",
+    "this field is required":               "Campo obbligatorio",
+    "email must be formatted correctly.":   "Inserisci un'email valida",
+    "email must be formatted correctly":    "Inserisci un'email valida",
+    "please enter a valid email address":   "Inserisci un'email valida",
+    "email must be valid":                  "Inserisci un'email valida",
+    "please complete all required fields.": "Compila tutti i campi obbligatori",
+    "please complete all required fields":  "Compila tutti i campi obbligatori"
+  };*/
+
+  let ERROR_I18N = [{"error_label":"Please complete this required field.","error_value":"Please complete this required field."},{"error_label":"This field is required.","error_value":"This field is required."},{"error_label":"Email must be formatted correctly.","error_value":"Email must be formatted correctly."},{"error_label":"Please enter a valid email address.","error_value":"Please enter a valid email address."},{"error_label":"Email must be valid.","error_value":"Email must be valid."},{"error_label":"Please complete all required fields.","error_value":"Please complete all required fields."},{"error_label":"This phone number is either invalid or is in the wrong format.","error_value":"This phone number is either invalid or is in the wrong format."}];
+  if(typeof ERROR_I18N == "string"  && ERROR_I18N?.length) {
+    ERROR_I18N = JSON.parse(ERROR_I18N);
+  }
+
+  let PRIVACY_I18N = [{"privacy_description":"By clicking below, <a href=\"https://www.thefork.co.uk/legal#PrivacyPolicy\" rel=\"noopener\" target=\"_blank\">I agree to TheFork’s Privacy Policy</a>","privacy_text":"I wish to receive communications from TheFork."}];
+  if(typeof PRIVACY_I18N == "string" && PRIVACY_I18N?.length) {
+    PRIVACY_I18N = JSON.parse(PRIVACY_I18N);
+  }
+  console.log("PRIVACY_I18N:", PRIVACY_I18N);
+</script></div>
+   
+  <!-- Country thresholds -->
+  
+  
+  <!-- Is form get Started onpage -->
+  
+  
+
+  <script type="text/javascript">
+    let countryThresholds = {};
+    
+      countryThresholds["ES"] = 15;
+    
+      countryThresholds["FR"] = 18;
+    
+      countryThresholds["IT"] = 15;
+    
+      countryThresholds["SE"] = 150;
+    
+      countryThresholds["BE"] = 18;
+    
+      countryThresholds["CH"] = 20;
+    
+      countryThresholds["NL"] = 15;
+    
+      countryThresholds["PT"] = 10;
+    
+      countryThresholds["MC"] = 20;
+    
+      countryThresholds["AU"] = 20;
+    
+      countryThresholds["GB"] = 15;
+    
+      countryThresholds["DE"] = 15;
+    
+      countryThresholds["AT"] = 15;
+    
+      countryThresholds["PL"] = 38;
+    
+      countryThresholds["IE"] = 15;
+    
+      countryThresholds["AE"] = 15;
+    
+    console.log(countryThresholds);    
+  </script>
+
+  <!-- Start: Country Restricted List -->
+  
+  
+      
+      
+  
+      
+  
+  <!-- End: Country Restricted List -->
+
+  <div id="hs_cos_wrapper_module_17464700640633" class="hs_cos_wrapper hs_cos_wrapper_widget hs_cos_wrapper_type_module" style="" data-hs-cos-general-type="widget" data-hs-cos-type="module">
+</div>
+  <!-- Start: Layer UI to cover body content -->
+  <div class="layer-background-overlay"></div>
+  <!-- End: Layer UI to cover body content -->
+
+  
+  
+  
+  
+  <!-- Start: Header --><div data-global-resource-path="https://www.theforkmanager.com/en/d360-thefork-manager-2025/templates/partials/landing/_header.html"><!-- Begin partial -->
+<header class="headermain theme-negative">
+  <div class="header-outer">
+    <div class="header-inner">
+
+      <!-- Start: Logo -->
+      <div class="site-logo">
+        <a href="https://www.theforkmanager.com/en/">
+          <img class="logo-positive" src="https://www.theforkmanager.com/hubfs/raw_assets/public/d360-thefork-manager-2025/images/thefork-manager-logo.svg" alt="https://www.theforkmanager.com/enen" width="146" height="45">
+          <img class="logo-negative" src="https://www.theforkmanager.com/hubfs/raw_assets/public/d360-thefork-manager-2025/images/thefork-manager-logo-negative.svg" alt="https://www.theforkmanager.com/enen" width="146" height="45">
+        </a>
+      </div>
+      <!-- End: Logo -->
+
+    </div>
+  </div>
+</header>
+<!-- End partial --></div><!-- End: Header -->
+
+  <!-- Start: body --><section class="landing-page">
+      <main id="content">
+        <div class="book-a-demo-content book-a-demo-content-2026">
+          <div class="book-a-demo-left">
+            <div class="container-fluid">
+<div class="row-fluid-wrapper">
+<div class="row-fluid">
+<div class="span12 widget-span widget-type-cell " style="" data-widget-type="cell" data-x="0" data-w="12">
+
+<div class="row-fluid-wrapper row-depth-1 row-number-1 image_and_card-row-0-padding dnd-section image_and_card-row-0-force-full-width-section">
+<div class="row-fluid ">
+<div class="span12 widget-span widget-type-custom_widget dnd-module" style="" data-widget-type="custom_widget" data-x="0" data-w="12">
+<div id="hs_cos_wrapper_widget_1759913401912" class="hs_cos_wrapper hs_cos_wrapper_widget hs_cos_wrapper_type_module" style="" data-hs-cos-general-type="widget" data-hs-cos-type="module"><div class="module-card-registration">  
+  
+</div>
+
+
+</div>
+
+</div><!--end widget-span -->
+</div><!--end row-->
+</div><!--end row-wrapper -->
+
+</div><!--end widget-span -->
+</div>
+</div>
+</div>
+          </div>
+          <div class="book-a-demo-right theme-negative">
+            <div class="container-fluid">
+<div class="row-fluid-wrapper">
+<div class="row-fluid">
+<div class="span12 widget-span widget-type-cell " style="" data-widget-type="cell" data-x="0" data-w="12">
+
+<div class="row-fluid-wrapper row-depth-1 row-number-1 dnd-section registration_form-row-0-padding">
+<div class="row-fluid ">
+<div class="span12 widget-span widget-type-custom_widget dnd-module" style="" data-widget-type="custom_widget" data-x="0" data-w="12">
+<div id="hs_cos_wrapper_widget_1759907599070" class="hs_cos_wrapper hs_cos_wrapper_widget hs_cos_wrapper_type_module" style="" data-hs-cos-general-type="widget" data-hs-cos-type="module"><!-- module html  -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section id="form" class="module-tfm-lpheader-wrap">
+
+  
+
+<div class="module-tfm-form-main form-center  no-shadow theme-negative" data-module-id="tfm-form-1131" data-portal-id="144984776" style="padding-top: 30px; ">
+  <div class="module-header header-gamma container">
+        <div class="header-outer">      
+          <div class="header-inner">
+            <div class="form-1-header">
+              <h2 class="header-title">Are you a restaurant owner?</h2>
+              
+              <div class="header-text sf-16">
+                <p>Fill in your restaurant details to book a demo.</p>
+              </div>
+              
+            </div>
+            <div class="form-2-header">
+              <h2 class="header-title">It's almost done! </h2>
+              
+              <div class="header-text sf-16">
+                <p>Share more details on your restaurant. This information will help our expert provide you with the best possible demo.</p>
+              </div>
+              
+            </div>
+          </div>
+        </div>
+  </div>
+  
+  <div class="container">
+    <div class="module-inner">
+      
+        
+          <div class="registration-form__stepper-wrapper narrow light">
+            <div class="registration-form__stepper">
+              
+                <div class="registration-form__step registration-form__step--active" data-step="1" data-step-text="Contact details">
+                  1
+                </div>
+              
+                <div class="registration-form__step " data-step="2" data-step-text="Restaurant details">
+                  2
+                </div>
+              
+            </div>
+          </div>
+        
+      
+
+      <div class="module-content">
+        <div class="registration-form__container multilanguage-form-wrapper" style="display: none;">
+          <div class="registration-form__container-inner">
+              
+              
+              <div class="registration-form__container-inner-form">
+
+                  <div class="registration-form__form-step-1" data-form-id="796fa455-7391-499a-9fbb-026949030b29" data-form-name="" data-form-type="multi_step" data-form-step="1" data-form-source="HUBSPOT">
+                      <!-- Il form 1 sarà creato qui via JavaScript -->
+                  </div>
+                  <div class="registration-form__form-step-2" style="display: none;" data-form-id="a159c963-59cb-4211-a55b-498a4e3c192d" data-form-name="" data-form-type="multi_step" data-form-step="2" data-form-source="HUBSPOT">
+                      <!-- Il form 2 sarà creato qui via JavaScript -->
+                  </div>
+
+                  <!-- Contenitore per i suggerimenti degli indirizzi -->
+                  <div id="address-suggestions" class="address-suggestions"></div>
+
+                  
+                  <div class="job-select-feedback" style="display: none;">
+                      <h2>Message</h2>
+                      <span>&nbsp;</span>
+                  </div>
+                  
+                  
+                                  
+              </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</section>
+
+
+
+</div>
+
+</div><!--end widget-span -->
+</div><!--end row-->
+</div><!--end row-wrapper -->
+
+</div><!--end widget-span -->
+</div>
+</div>
+</div>
+          </div>
+        </div>
+      </main> 
+    </section>
+
+    <style>
+      .book-a-demo section.landing-page {
+        height: auto;
+        overflow: unset;
+      }
+    </style><!-- End: body -->
+
+  <!-- Start: footer --><div data-global-resource-path="d360-thefork-manager-2025/templates/partials/landing/_footer.html"><!-- Begin partial -->
+<footer class="theme-dark">
+  <div class="footer-inner container">
+    
+    <!-- Start: Footer row -->
+    <div class="footer-row ody-row">
+      <div class="col-lg-6">
+        <div class="module-footer-legal-nav">
+  <nav class="footer-legal-privacy">
+    <ul class="no-style">
+    
+      
+      
+      <li>
+        <a data-cta-id="footer_nav_list_item" data-cta-type="text_link" data-cta-position="footer" data-cta-url="https://www.thefork.co.uk/legal#LegalNotices" data-cta-label="Terms of use" class="sf-14 underlined " href="https://www.thefork.co.uk/legal#LegalNotices">
+          Terms of use
+        </a>
+      </li>
+    
+      
+      
+      <li>
+        <a data-cta-id="footer_nav_list_item" data-cta-type="text_link" data-cta-position="footer" data-cta-url="https://www.thefork.co.uk/legal#privacy-and-cookie-statement" data-cta-label="Privacy and Cookies Statement" class="sf-14 underlined " href="https://www.thefork.co.uk/legal#privacy-and-cookie-statement">
+          Privacy and Cookies Statement
+        </a>
+      </li>
+    
+      
+      
+      <li>
+        <a data-cta-id="footer_nav_list_item" data-cta-type="text_link" data-cta-position="footer" data-cta-url="/#" data-cta-label="Cookie settings" class="sf-14 underlined nav-link nav-link-cookie-consent" href="#cookie-consent">
+          Cookie settings
+        </a>
+      </li>
+     
+    </ul>
+  </nav>
+</div>
+      </div>
+      <div class="col-lg-6">
+        <p class="sf-14 m-b-0">
+          <span id="hs_cos_wrapper_copyright_text_" class="hs_cos_wrapper hs_cos_wrapper_widget hs_cos_wrapper_type_rich_text" style="" data-hs-cos-general-type="widget" data-hs-cos-type="rich_text">© 2026 LaFourchette SAS. All rights reserved.</span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+</footer>
+
+<!-- End partial --></div><!-- End: footer -->
+
+  
+  <!-- Start: Aside nav --><div data-global-resource-path="https://www.theforkmanager.com/en/d360-thefork-manager-2025/templates/partials/global/aside-nav.html"><div id="hs_cos_wrapper_main_panel_nav" class="hs_cos_wrapper hs_cos_wrapper_widget hs_cos_wrapper_type_module" style="" data-hs-cos-general-type="widget" data-hs-cos-type="module">
+
+<div class="mobile-nav-aside">
+
+   <!-- Start: panel nav level alpha -->
+   <div class="module-panel-nav-mobile nav-module-panel theme-negative ody-panel " data-panel="mobile-panel-nav" data-index-panel="0">
+
+    <div class="module-panel-inner">
+
+      <div class="panel-header" style="display:none">
+        <div class="panel-header-inner">
+
+          <!-- Start: close panel -->
+          <button data-cta-id="trigger_close_mobile_nav" data-cta-type="icon" data-cta-position="mainnav" data-cta-url="" data-cta-label="" class="trigger-panel-close btn-round btn-overlay" data-close="panel">
+            <span class="ody-icon icon-close"></span>
+          </button>
+          <!-- End: close panel -->
+        </div>
+      </div>
+
+
+      <div class="panel-content">
+        <div class="panel-content-inner">
+          <!-- Start: list nav panel -->
+          <nav class="m-b-4">
+            <ul class="no-style module-accordions">
+
+              
+              <li class="item-list ody-accordion" style="--padding-base-value: 1.5; --icon-size: 1.1em">
+                
+                <!-- Start: component -->
+                <details>
+                  <summary class="">
+                    <span role="term" aria-details="accordion-detail">
+                      <div class="accordion-header">
+                        <div>
+                          <p class="h4 bold">Our Solution</p>
+                        </div>
+                        <div>
+                          <div class="icon-close">
+                            <a class="body-color" role="button">
+                              <span class="ody-icon icon-remove"></span>
+                            </a>
+                          </div>
+                          <div class="icon-open">
+                            <a class="body-color" role="button">
+                              <span class="ody-icon icon-add"></span>
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </span>
+                  </summary>
+                </details>
+                <div role="definition" id="accordion-detail" class="accordion-content">
+                  <div class="accordion-inner sf-16">
+                    <ul class="no-style">
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/attract-more-diners" data-cta-label="Attract More Diners" href="https://www.theforkmanager.com/en/attract-more-diners">
+
+                          Attract More Diners
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="trigger_sub_level_panel_nav" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="" data-cta-label="Manage Your Restaurant" class="js-trigger-panel-mobile" data-trigger-panel="nav-panel-sub-2">
+                          <span>Manage Your Restaurant</span>
+                          <span class="ody-icon icon-chevron-right"></span>
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/restaurant-experts" data-cta-label="Restaurant experts at your service" href="https://www.theforkmanager.com/en/restaurant-experts">
+
+                          Restaurant experts at your service
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/what-you-unlock-thefork-manager" data-cta-label="What you unlock with TheFork Manager" href="https://www.theforkmanager.com/en/what-you-unlock-thefork-manager">
+
+                          What you unlock with TheFork Manager
+                        </a>
+                        
+                      </li>
+                      
+                    </ul>
+                  </div>
+                </div>
+                <!-- End: component -->
+
+                
+              </li>
+              
+              <li class="item-list ody-accordion" style="--padding-base-value: 1.5; --icon-size: 1.1em">
+                
+                <!-- Start: component -->
+                <details>
+                  <summary class="">
+                    <span role="term" aria-details="accordion-detail">
+                      <div class="accordion-header">
+                        <div>
+                          <p class="h4 bold">Who we support</p>
+                        </div>
+                        <div>
+                          <div class="icon-close">
+                            <a class="body-color" role="button">
+                              <span class="ody-icon icon-remove"></span>
+                            </a>
+                          </div>
+                          <div class="icon-open">
+                            <a class="body-color" role="button">
+                              <span class="ody-icon icon-add"></span>
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </span>
+                  </summary>
+                </details>
+                <div role="definition" id="accordion-detail" class="accordion-content">
+                  <div class="accordion-inner sf-16">
+                    <ul class="no-style">
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/marketing-new-restaurant" data-cta-label="New restaurants" href="https://www.theforkmanager.com/en/marketing-new-restaurant">
+
+                          New restaurants
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/marketing-established-restaurants" data-cta-label="Established restaurants" href="https://www.theforkmanager.com/en/marketing-established-restaurants">
+
+                          Established restaurants
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/michelin-restaurants-marketing" data-cta-label="MICHELIN restaurants" href="https://www.theforkmanager.com/en/michelin-restaurants-marketing">
+
+                          MICHELIN restaurants
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/restaurant-group-marketing-software" data-cta-label="Restaurant groups" href="https://www.theforkmanager.com/en/restaurant-group-marketing-software">
+
+                          Restaurant groups
+                        </a>
+                        
+                      </li>
+                      
+                    </ul>
+                  </div>
+                </div>
+                <!-- End: component -->
+
+                
+              </li>
+              
+              <li class="item-list ody-accordion" style="--padding-base-value: 1.5; --icon-size: 1.1em">
+                
+                <!-- Start: component -->
+                <details>
+                  <summary class="">
+                    <span role="term" aria-details="accordion-detail">
+                      <div class="accordion-header">
+                        <div>
+                          <p class="h4 bold">Why TheFork Manager?</p>
+                        </div>
+                        <div>
+                          <div class="icon-close">
+                            <a class="body-color" role="button">
+                              <span class="ody-icon icon-remove"></span>
+                            </a>
+                          </div>
+                          <div class="icon-open">
+                            <a class="body-color" role="button">
+                              <span class="ody-icon icon-add"></span>
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </span>
+                  </summary>
+                </details>
+                <div role="definition" id="accordion-detail" class="accordion-content">
+                  <div class="accordion-inner sf-16">
+                    <ul class="no-style">
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/why-thefork-manager" data-cta-label="Why TheFork Manager" href="https://www.theforkmanager.com/en/why-thefork-manager">
+
+                          Why TheFork Manager
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/attract-more-diners" data-cta-label="Attract More Diners" href="https://www.theforkmanager.com/en/attract-more-diners">
+
+                          Attract More Diners
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/restaurant-management-software" data-cta-label="Manage your restaurant" href="https://www.theforkmanager.com/en/restaurant-management-software">
+
+                          Manage your restaurant
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/restaurant-experts" data-cta-label="Restaurant experts at your service" href="https://www.theforkmanager.com/en/restaurant-experts">
+
+                          Restaurant experts at your service
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/restaurant-software-integrations" data-cta-label="Integrations" href="https://www.theforkmanager.com/en/restaurant-software-integrations">
+
+                          Integrations
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/software-updates" data-cta-label="We innovate with you &amp; for you" href="https://www.theforkmanager.com/en/software-updates">
+
+                          We innovate with you &amp; for you
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://144984776.hs-sites-eu1.com/en/blog/tag/testimonials" data-cta-label="Our customers speak for us" href="https://144984776.hs-sites-eu1.com/en/blog/tag/testimonials">
+
+                          Our customers speak for us
+                        </a>
+                        
+                      </li>
+                      
+                    </ul>
+                  </div>
+                </div>
+                <!-- End: component -->
+
+                
+              </li>
+              
+              <li class="item-list ">
+                
+                <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/restaurant-software-price" data-cta-label="" href="https://www.theforkmanager.com/en/restaurant-software-price" class="h4 bold">
+                  Plans
+                </a>
+
+                
+              </li>
+              
+              <li class="item-list ody-accordion" style="--padding-base-value: 1.5; --icon-size: 1.1em">
+                
+                <!-- Start: component -->
+                <details>
+                  <summary class="">
+                    <span role="term" aria-details="accordion-detail">
+                      <div class="accordion-header">
+                        <div>
+                          <p class="h4 bold">Resources</p>
+                        </div>
+                        <div>
+                          <div class="icon-close">
+                            <a class="body-color" role="button">
+                              <span class="ody-icon icon-remove"></span>
+                            </a>
+                          </div>
+                          <div class="icon-open">
+                            <a class="body-color" role="button">
+                              <span class="ody-icon icon-add"></span>
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </span>
+                  </summary>
+                </details>
+                <div role="definition" id="accordion-detail" class="accordion-content">
+                  <div class="accordion-inner sf-16">
+                    <ul class="no-style">
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/thefork-manager-knowledge-centre" data-cta-label="TheFork Manager Knowledge Centre" href="https://www.theforkmanager.com/en/thefork-manager-knowledge-centre">
+
+                          TheFork Manager Knowledge Centre
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="//www.theforkmanager.com/en/restaurant-performance-calculator" data-cta-label="Restaurant Calculator" href="http://www.theforkmanager.com/en/restaurant-performance-calculator">
+
+                          Restaurant Calculator
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/blog" data-cta-label="Blog" href="https://www.theforkmanager.com/en/blog">
+
+                          Blog
+                        </a>
+                        
+                      </li>
+                      
+                      
+                                              
+                      <li class="item-list">
+                        
+                        <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://support.theforkmanager.com/s/?language=en_GB" data-cta-label="Help Centre" href="https://support.theforkmanager.com/s/?language=en_GB" target="_blank" rel="noopener">
+
+                          Help Centre
+                        </a>
+                        
+                      </li>
+                      
+                    </ul>
+                  </div>
+                </div>
+                <!-- End: component -->
+
+                
+              </li>
+              
+            </ul>
+          </nav>
+          <!-- End: list nav panel -->
+
+          <div class="nav-utils">
+            <div class="ui-switcher-lang">
+              
+              <span class="globe-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="25" height="26" viewbox="0 0 25 26" fill="none">
+                  <g clip-path="url(#clip0_11257_20558)">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M6.4869 21.0021C8.13845 21.9396 10.0441 22.4754 12.0735 22.4779C11.7656 22.4779 11.5159 22.7298 11.5159 23.0404V23.6317C11.5159 24.269 11.0039 24.7856 10.3721 24.7856H6.94077C6.62492 24.7856 6.36887 25.0439 6.36887 25.3625C6.36887 25.6811 6.62492 25.9395 6.94078 25.9395H17.2349C17.5507 25.9395 17.8068 25.6811 17.8068 25.3625C17.8068 25.0439 17.5507 24.7856 17.2349 24.7856H13.8035C13.1718 24.7856 12.6597 24.269 12.6597 23.6317V23.0404C12.6597 22.7298 12.41 22.4779 12.1021 22.4779C18.4125 22.47 23.5257 17.3071 23.5257 10.9393C23.5257 6.71865 21.2793 3.02726 17.9269 1.01551C17.6627 0.856948 17.3248 0.95573 17.1711 1.22434C17.009 1.50746 17.1138 1.86845 17.3914 2.03712C20.3818 3.85407 22.3819 7.16107 22.3819 10.9393C22.3819 16.6747 17.7732 21.324 12.0878 21.324C10.2773 21.324 8.57603 20.8526 7.09796 20.0246C6.8143 19.8657 6.45147 19.9545 6.28924 20.2379C6.13572 20.5062 6.21933 20.8503 6.4869 21.0021ZM12.0878 20.1702C17.1414 20.1702 21.2382 16.0374 21.2382 10.9393C21.2382 5.84129 17.1414 1.7085 12.0878 1.7085C7.03424 1.7085 2.9375 5.84129 2.9375 10.9393C2.9375 16.0374 7.03424 20.1702 12.0878 20.1702ZM12.0878 19.0163C14.8462 19.0163 17.2788 17.6092 18.7187 15.4675L16.7451 14.3181C15.3177 16.6041 13.4233 18.2555 11.5704 18.9997C11.7415 19.0108 11.914 19.0163 12.0878 19.0163ZM18.9529 15.0982C19.0027 15.0146 19.0511 14.9299 19.098 14.8444L18.9529 15.0982ZM17.317 13.3188L19.2915 14.4689C19.8058 13.4025 20.0944 12.2049 20.0944 10.9393C20.0944 9.28053 19.5986 7.73851 18.7486 6.45581C19.0365 8.44692 18.566 10.9283 17.317 13.3188ZM16.5554 4.28702C18.1832 5.7818 18.1036 9.32479 16.326 12.7417L12.869 10.7282L16.5554 4.28702ZM15.5648 3.7101L11.8785 10.1513L8.4215 8.13782C10.466 4.87645 13.4677 3.03536 15.5648 3.7101ZM11.3066 11.1505L7.8496 9.13708C6.07211 12.5539 5.99245 16.0968 7.62026 17.5917L11.3066 11.1505ZM12.6052 2.87895C10.7523 3.62318 8.85791 5.27463 7.43051 7.56064L5.45692 6.41116C6.8968 4.26955 9.32941 2.86236 12.0878 2.86236C12.2617 2.86236 12.4342 2.86794 12.6052 2.87895ZM5.07662 7.03602C5.12419 6.94927 5.17328 6.86349 5.22388 6.77873L5.07662 7.03602ZM6.85862 8.5599L4.88413 7.40991C4.36981 8.47621 4.08129 9.67378 4.08129 10.9393C4.08129 12.5981 4.577 14.1401 5.42712 15.4229C5.13915 13.4318 5.6096 10.9504 6.85862 8.5599ZM15.7541 13.7409L12.2971 11.7274L8.61081 18.1686C10.708 18.8432 13.7096 17.0023 15.7541 13.7409Z" fill="#B8B8B8" />
+                  </g>
+                  <defs>
+                    <clippath id="clip0_11257_20558">
+                      <rect width="25" height="25" fill="white" transform="translate(0 0.939453)" />
+                    </clippath>
+                  </defs>
+                </svg>
+              </span>
+              
+              
+
+
+
+
+  
+
+
+  
+    
+      
+      
+        
+      
+      
+      
+    
+  
+    
+      
+      
+        
+      
+      
+      
+    
+  
+    
+      
+      
+        
+      
+      
+      
+    
+  
+    
+      
+      
+        
+      
+      
+      
+    
+  
+    
+      
+      
+        
+      
+      
+      
+    
+  
+    
+      
+      
+        
+      
+      
+      
+    
+  
+    
+      
+      
+        
+      
+      
+      
+    
+  
+    
+      
+      
+        
+      
+      
+      
+    
+  
+
+
+
+
+<!-- Begin partial -->
+<nav class="switcher-language" role="Menu Language" aria-label="Language Switcher">
+    <!-- language.code   -->
+    <!-- locale en  -->
+    <select class="native-language-selector" onchange="window.location.href=this.value" aria-label="Select language">
+        
+            <option value="/en/book-a-demo" selected data-cta-id="switcher_lang_nav_item_list" data-cta-type="select_option" data-cta-position="navbar" data-cta-label="English">
+                English
+            </option>
+        
+            <option value="https://www.theforkmanager.com/de/demo-anfordern" data-cta-id="switcher_lang_nav_item_list" data-cta-type="select_option" data-cta-position="navbar" data-cta-label="Deutsch">
+                Deutsch
+            </option>
+        
+            <option value="https://www.theforkmanager.com/es/solicita-una-demo" data-cta-id="switcher_lang_nav_item_list" data-cta-type="select_option" data-cta-position="navbar" data-cta-label="Español">
+                Español
+            </option>
+        
+            <option value="https://www.theforkmanager.com/fr/reservez-une-demo" data-cta-id="switcher_lang_nav_item_list" data-cta-type="select_option" data-cta-position="navbar" data-cta-label="Français">
+                Français
+            </option>
+        
+            <option value="https://www.theforkmanager.com/it/prenota-una-demo" data-cta-id="switcher_lang_nav_item_list" data-cta-type="select_option" data-cta-position="navbar" data-cta-label="Italiano">
+                Italiano
+            </option>
+        
+            <option value="https://www.theforkmanager.com/nl/demo-boeken" data-cta-id="switcher_lang_nav_item_list" data-cta-type="select_option" data-cta-position="navbar" data-cta-label="Nederlands">
+                Nederlands
+            </option>
+        
+            <option value="https://www.theforkmanager.com/pl/bezpłatna-prezentacja" data-cta-id="switcher_lang_nav_item_list" data-cta-type="select_option" data-cta-position="navbar" data-cta-label="Polski">
+                Polski
+            </option>
+        
+            <option value="https://www.theforkmanager.com/pt/solicitar-uma-demonstracao" data-cta-id="switcher_lang_nav_item_list" data-cta-type="select_option" data-cta-position="navbar" data-cta-label="Português">
+                Português
+            </option>
+        
+            <option value="https://www.theforkmanager.com/sv/boka-en-demo" data-cta-id="switcher_lang_nav_item_list" data-cta-type="select_option" data-cta-position="navbar" data-cta-label="Svenska">
+                Svenska
+            </option>
+        
+    </select>
+</nav>
+<!-- End partial -->
+
+              
+            </div>
+            <ul class="no-style nav-utils-action">
+
+              
+              <li>
+                
+                
+                <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://about.thefork.com/" data-cta-label="About TheFork" href="https://about.thefork.com/" target="_blank" rel="noopener">
+                  About TheFork
+                </a>
+              </li>
+              
+              <li>
+                
+                
+                <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/contact" data-cta-label="Customer Support" href="https://www.theforkmanager.com/en/contact">
+                  Customer Support
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <!-- End: panel nav level alpha -->
+
+
+  
+  
+  
+  
+  
+
+  
+  
+  
+  
+   <!-- Start: Sub Panels -->
+   <div class="nav-module-panel nav-panels  ody-panel theme-light" data-panel="nav-panel-sub-2">
+
+    <div class="module-panel-inner">
+
+      <div class="panel-header">
+        <div class="panel-header-inner">
+
+          <div class="panel-header-info">
+            <!-- Start: back panel -->
+            <button class="trigger-panel-back btn-icon btn-round btn-overlay" data-back="panel">
+              <span class="ody-icon icon-arrow-left"></span>
+            </button>
+            <!-- End: back panel -->
+
+            <h4 class="panel-nav-main-title">Our Solution</h4>
+          </div>
+
+          <div class="panel-nav-title">
+            <p class="sf-16 type-medium">Manage Your Restaurant</p>
+          </div> 
+
+          <!-- Start: close panel -->
+          <button class="trigger-panel-close btn-icon btn-round btn-overlay" data-close="panel" style="display:none">
+            <span class="ody-icon icon-remove"></span>
+          </button>
+          <!-- End: close panel -->
+        </div>
+      </div>
+
+
+      <div class="panel-content">
+        <div class="panel-content-inner">
+          
+          
+          
+          
+          <div class="ui-nav-item"> 
+            <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/restaurant-booking-management" data-cta-label="Booking &amp; Service Management" href="https://www.theforkmanager.com/en/restaurant-booking-management" class="link-action-card"></a>
+            <div class="ui-nav-item-inner">
+              <div>
+                <span class="ody-icon icon-calendar-thirty-two"></span>
+              </div>
+              <div>            
+                <p class="sf-15 sf-14 nav-item-title">Booking &amp; Service Management</p>
+                
+              </div>
+            </div>
+          </div>
+          
+          
+          
+          
+          <div class="ui-nav-item"> 
+            <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/restaurant-performance-optimization" data-cta-label="Performance Optimisation" href="https://www.theforkmanager.com/en/restaurant-performance-optimization" class="link-action-card"></a>
+            <div class="ui-nav-item-inner">
+              <div>
+                <span class="ody-icon icon-chart-line"></span>
+              </div>
+              <div>            
+                <p class="sf-15 sf-14 nav-item-title">Performance Optimisation</p>
+                
+              </div>
+            </div>
+          </div>
+          
+          
+          
+          
+          <div class="ui-nav-item"> 
+            <a data-cta-id="nav_item_link_mobile" data-cta-type="text_link" data-cta-position="mainnav" data-cta-url="https://www.theforkmanager.com/en/restaurant-customer-retention" data-cta-label="Guest Loyalty " href="https://www.theforkmanager.com/en/restaurant-customer-retention" class="link-action-card"></a>
+            <div class="ui-nav-item-inner">
+              <div>
+                <span class="ody-icon icon-heart"></span>
+              </div>
+              <div>            
+                <p class="sf-15 sf-14 nav-item-title">Guest Loyalty </p>
+                
+              </div>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <!-- End: Sub Panels -->
+  
+
+  
+  
+
+  
+  
+
+  
+
+
+  
+  
+  
+  
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+
+
+  
+  
+  
+  
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+
+
+  
+  
+  
+  
+  
+  
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+
+
+  
+  
+
+
+</div></div></div><!-- End: Aside nav -->
+  
+
+  <!-- Start: Global Modal Form registration -->
+  
+  <!-- End: Global Modal Form registration -->
+  
+  <!-- Start: Auto language detection -->
+  
+    
+
+
+
+
+
+
+
+<nav class="tfm-lang-links" hidden aria-hidden="true">
+  
+  
+    
+      
+      
+      
+        
+          
+            
+          
+        
+        
+          <a href="https://www.theforkmanager.com/it/" data-lang-code="it"></a>
+        
+      
+    
+  
+    
+      
+      
+      
+        
+          
+        
+        
+          
+            <a href="https://www.theforkmanager.com/en/book-a-demo" data-lang-code="en"></a>
+          
+        
+      
+    
+  
+    
+      
+      
+      
+        
+          
+            
+          
+        
+        
+          
+            <a href="https://www.theforkmanager.com/en/book-a-demo" data-lang-code="fr"></a>
+          
+        
+      
+    
+  
+    
+  
+    
+  
+    
+      
+      
+      
+        
+          
+            
+          
+        
+        
+          
+            <a href="https://www.theforkmanager.com/en/book-a-demo" data-lang-code="de"></a>
+          
+        
+      
+    
+  
+    
+      
+      
+      
+        
+          
+            
+          
+        
+        
+          
+            <a href="https://www.theforkmanager.com/en/book-a-demo" data-lang-code="nl"></a>
+          
+        
+      
+    
+  
+    
+      
+      
+      
+        
+          
+            
+          
+        
+        
+          
+            <a href="https://www.theforkmanager.com/en/book-a-demo" data-lang-code="es"></a>
+          
+        
+      
+    
+  
+    
+      
+      
+      
+        
+          
+            
+          
+        
+        
+          
+            <a href="https://www.theforkmanager.com/en/book-a-demo" data-lang-code="pt"></a>
+          
+        
+      
+    
+  
+    
+      
+      
+      
+        
+          
+            
+          
+        
+        
+          
+            <a href="https://www.theforkmanager.com/en/book-a-demo" data-lang-code="sv"></a>
+          
+        
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+      
+      
+        
+          
+            
+          
+        
+        
+          
+            <a href="https://www.theforkmanager.com/en/book-a-demo" data-lang-code="pl"></a>
+          
+        
+      
+    
+  
+</nav>
+
+
+  
+  <!-- End: Auto language detection -->
+
+  <!-- Start: Language to country --><!-- End: Language to country -->
+
+  
+  
+<!-- HubSpot performance collection script -->
+<script defer src="https://www.theforkmanager.com/hs/hsstatic/content-cwv-embed/static-1.1293/embed.js"></script>
+<script>
+var hsVars = hsVars || {}; hsVars['language'] = 'en';
+</script>
+
+<script src="https://www.theforkmanager.com/hs/hsstatic/cos-i18n/static-1.53/bundles/project.js"></script>
+<script src="https://www.theforkmanager.com/hubfs/hub_generated/module_assets/1/283538214082/1783514974372/module_multilanguage-form.min.js"></script>
+<script src="https://www.theforkmanager.com/hubfs/hub_generated/module_assets/1/233741366517/1763658916934/module_header-contacts-redirector.min.js"></script>
+<script src="https://www.theforkmanager.com/hubfs/hub_generated/module_assets/1/223932861662/1773055792416/module_navigation-mobile-nav.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/CustomEase.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script type="text/javascript" src="https://www.theforkmanager.com/hubfs/hub_generated/template_assets/1/223947362519/1786091805123/template_core.min.js"></script>
+    <script type="text/javascript" src="https://www.theforkmanager.com/hubfs/hub_generated/template_assets/1/292318320837/1786091810584/template_track-cookie.min.js"></script>
+<script src="https://www.theforkmanager.com/hubfs/hub_generated/module_assets/1/283531444427/1785255118915/module_tfm-form-new-main.min.js"></script>
+
+  <script charset="utf-8" type="text/javascript" src="http://js-eu1.hsforms.net/forms/embed/v2.js"></script>
+  <script>
+  // Inizializziamo la configurazione immediatamente, prima del DOMContentLoaded
+  (function() {
+    const moduleId = "tfm-form-1131";
+    
+    // Inizializziamo la configurazione del modulo con valori di default
+    window[moduleId] = {
+      firstFormId: null,
+      secondFormId: null,
+      tp_url: null,
+      tp_no_calendly_url: null,
+      oos_url: null,
+      country_to_include: null,
+      isRegistration: false,
+      overwrite_step_2_submit_text: null,
+      back_button_text: null,
+      submit_button_first_step: null,
+      showSteps: false,
+      currentLanguage: "en",
+      mainLanguage: "English",
+      address_validation_error_message: "Please select a valid address",
+      pdf_link: null
+    };
+
+    // Impostiamo i valori usando la logica Hubl esistente
+    
+      window[moduleId].isRegistration = true;
+      
+
+    
+      window[moduleId].showSteps = true;
+    
+
+    
+      window[moduleId].firstFormId = "796fa455-7391-499a-9fbb-026949030b29";
+    
+
+    
+      window[moduleId].secondFormId = "a159c963-59cb-4211-a55b-498a4e3c192d";
+    
+
+    
+      window[moduleId].tp_url = "https://www.theforkmanager.com/en/book-a-demo?conversion_point=BOOK_A_DEMO\/\/www.theforkmanager.com\/en\/thank\-you\-page\-book\-a\-demo";
+    
+
+    
+      window[moduleId].tp_no_calendly_url = "https://www.theforkmanager.com/en/book-a-demo?conversion_point=BOOK_A_DEMO\/\/www.theforkmanager.com\/en\/thank\-you\-page\-no\-calendly";
+    
+
+    
+      window[moduleId].oos_url = "https://www.theforkmanager.com/en/book-a-demo?conversion_point=BOOK_A_DEMO\/\/www.theforkmanager.com\/en\/tars\-subscription";
+    
+
+    
+      window[moduleId].country_to_include = "en,fr,it,gb,es,nl,pt,se,ch,at,be,de";
+    
+
+    
+      window[moduleId].overwrite_step_2_submit_text = "Book a demo";
+    
+
+    
+      window[moduleId].back_button_text = "Back";
+    
+
+    
+      window[moduleId].submit_button_first_step = "";
+    
+
+    
+      
+
+      window[moduleId].pdf_link = "";
+    
+
+    console.log("Configurazione inizializzata per il modulo:", moduleId);
+    console.log("Configurazione:", window[moduleId]);
+
+    window["tfm-form-1131"] = {
+      firstFormId: "796fa455-7391-499a-9fbb-026949030b29",
+      secondFormId: "a159c963-59cb-4211-a55b-498a4e3c192d",
+      tp_url: "https:\/\/www.theforkmanager.com\/en\/thank\-you\-page\-book\-a\-demo",
+      tp_no_calendly_url: "https:\/\/www.theforkmanager.com\/en\/thank\-you\-page\-no\-calendly",
+      oos_url: "https:\/\/www.theforkmanager.com\/en\/tars\-subscription",
+      country_to_include: "[en, fr, it, gb, es, nl, pt, se, ch, at, be, de, ie, pl, ae]",
+      isRegistration: true,
+      overwrite_step_2_submit_text: "Book a demo",
+      back_button_text: "Back",
+      submit_button_first_step: "Next",
+      showSteps: true,
+      currentLanguage: "en",
+      mainLanguage: "English",
+      address_validation_error_message: "Please select a valid address",
+      pdf_link: ""
+    };
+  })();
+  </script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var COOKIE_NAME = 'user_language_preference';
+  var SUPPORTED_LANGS = ['en', 'fr', 'es', 'de', 'it', 'nl', 'pt', 'sv', 'pl'];
+  var DEFAULT_LANG = 'en';
+
+  // Country code (ISO 3166-1 alpha-2 lowercase) → site language
+  var COUNTRY_TO_LANG = {
+    'it': 'it',
+    'fr': 'fr', 'be': 'fr', 'ch': 'fr', 'lu': 'fr',
+    'us': 'en', 'gb': 'en', 'uk': 'en', 'ie': 'en', 'au': 'en', 'nz': 'en', 'ca': 'en',
+    'de': 'de', 'at': 'de',
+    'nl': 'nl',
+    'es': 'es', 'mx': 'es', 'ar': 'es', 'co': 'es', 'cl': 'es', 'pe': 'es',
+    'pt': 'pt', 'br': 'pt',
+    'se': 'sv',
+    'pl': 'pl'
+  };
+
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
+  function setCookie(name, value, days) {
+    var date = new Date();
+    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+    document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + date.toUTCString() + '; path=/';
+  }
+
+  // Preference already stored → update cookie to match current page language (do not redirect)
+  var existingPref = getCookie(COOKIE_NAME);
+  console.log('[LangDetect] existingPref:', existingPref);
+   
+  if (existingPref) {
+    var pathLangMatch = window.location.pathname.match(/^\/([a-z]{2})(\/|$)/);
+    var currentLang = pathLangMatch ? pathLangMatch[1] : null;
+    var cookieLang = existingPref.replace(/^\//, '').split('https://www.theforkmanager.com/')[0]; // '/fr' → 'fr'
+    console.log('[LangDetect] Cookie already set:', existingPref, '→ lang:', cookieLang, '— current page:', currentLang);
+    if (currentLang && currentLang !== cookieLang && SUPPORTED_LANGS.indexOf(currentLang) !== -1) {
+      setCookie(COOKIE_NAME, '/' + currentLang, 365);
+      console.log('[LangDetect] Updated cookie to match current page:', currentLang);
+    }
+    return;
+  }
+
+  // 1. navigator.language — browser language setting (equivalent to Accept-Language header)
+  var detectedLang = null;
+  var rawBrowserLang = (navigator.language || navigator.userLanguage) || '';
+  var browserLang = rawBrowserLang.split('-')[0].toLowerCase();
+  console.log('[LangDetect] navigator.language:', rawBrowserLang, '→ parsed:', browserLang);
+  if (SUPPORTED_LANGS.indexOf(browserLang) !== -1) {
+    detectedLang = browserLang;
+    console.log('[LangDetect] Source: navigator.language → detected:', detectedLang);
+  } else {
+    console.log('[LangDetect] navigator.language "' + browserLang + '" not in supported list, falling back to geo-IP');
+  }
+
+  // 2. Fallback: HubSpot server-side geo-IP country
+  if (!detectedLang) {
+    var countryCode = 'cn'.toLowerCase();
+    var geoLang = COUNTRY_TO_LANG[countryCode];
+    console.log('[LangDetect] Source: geo-IP → country:', countryCode, '→ mapped lang:', geoLang || '(none, using default)');
+    detectedLang = geoLang || DEFAULT_LANG;
+  }
+
+  console.log('[LangDetect] Final detected language:', detectedLang);
+  setCookie(COOKIE_NAME, '/' + detectedLang, 365);
+  console.log('[LangDetect] Cookie set:', COOKIE_NAME, '=', '/' + detectedLang);
+
+  // Already on the right language → no redirect needed
+  var pathLangMatch = window.location.pathname.match(/^\/([a-z]{2})(\/|$)/);
+  var currentLang = pathLangMatch ? pathLangMatch[1] : null;
+  console.log('[LangDetect] Current page language:', currentLang, '— target:', detectedLang);
+  if (currentLang === detectedLang) {
+    console.log('[LangDetect] Already on correct language, no redirect');
+    return;
+  }
+
+  // Redirect to the pre-resolved translated URL for this page
+  var targetLink = document.querySelector('.tfm-lang-links a[data-lang-code="' + detectedLang + '"]');
+  var targetHref = null;
+  if (targetLink) {
+    var cleanHref = targetLink.getAttribute('href').split('?')[0];
+    // Validate the slug actually points to the correct language path
+    if (cleanHref.indexOf('/' + detectedLang) === 0) {
+      targetHref = cleanHref;
+    } else {
+      console.warn('[LangDetect] Translated link "' + cleanHref + '" does not match lang "' + detectedLang + '", falling back to root');
+    }
+  }
+  if (!targetHref) {
+    targetHref = '/' + detectedLang + '/';
+  }
+  console.log('[LangDetect] Redirecting to:', targetHref);
+  window.location.replace(targetHref);
+});
+</script>
+
+
+<!-- Start of HubSpot Analytics Code -->
+<script type="text/javascript">
+var _hsq = _hsq || [];
+_hsq.push(["setContentType", "standard-page"]);
+_hsq.push(["setCanonicalUrl", "https:\/\/www.theforkmanager.com\/en\/book-a-demo"]);
+_hsq.push(["setPageId", "284375838924"]);
+_hsq.push(["setContentMetadata", {
+    "contentPageId": 284375838924,
+    "legacyPageId": "284375838924",
+    "contentFolderId": null,
+    "contentGroupId": null,
+    "abTestId": null,
+    "languageVariantId": 284375838924,
+    "languageCode": "en",
+    
+    
+}]);
+</script>
+
+<script type="text/javascript" id="hs-script-loader" async defer src="https://www.theforkmanager.com/hs/scriptloader/144984776.js"></script>
+<!-- End of HubSpot Analytics Code -->
+
+
+<script type="text/javascript">
+var hsVars = {
+    render_id: "6136f507-f391-4bad-8b6a-28bff4ab6ee8",
+    ticks: 1786707984088,
+    page_id: 284375838924,
+    
+    content_group_id: 0,
+    portal_id: 144984776,
+    app_hs_base_url: "https://app-eu1.hubspot.com",
+    cp_hs_base_url: "https://cp-eu1.hubspot.com",
+    language: "en",
+    analytics_page_type: "standard-page",
+    scp_content_type: "",
+    
+    analytics_page_id: "284375838924",
+    category_id: 1,
+    folder_id: 0,
+    is_hubspot_user: false
+}
+</script>
+
+
+<script defer src="https://www.theforkmanager.com/hs/hsstatic/HubspotToolsMenu/static-1.640/js/index.js"></script>
+
+
+
+<!-- Start: Dependencies --><!-- End: Dependencies -->
+
+  <!-- Start: module js -->
+  
+    <script type="text/javascript" src="https://www.theforkmanager.com/hubfs/hub_generated/template_assets/1/223930635507/1786091807989/template_panels.min.js"></script>
+  
+  <!-- End: module js -->
+
+  <!-- Start: Odyssey -->
+  <script>  
+    
+      const languageToCountryMapGlobal = {"AD":"Andorra","AE":"United Arab Emirates","AF":"Afghanistan","AG":"Antigua And Barbuda","AI":"Anguilla","AL":"Albania","AM":"Armenia","AN":"Netherlands Antilles","AO":"Angola","AQ":"Antarctica","AR":"Argentina","AS":"American Samoa","AT":"Austria","AU":"Australia","AW":"Aruba","AX":"Aland Islands","AZ":"Azerbaijan","BA":"Bosnia And Herzegovina","BB":"Barbados","BD":"Bangladesh","BE":"Belgium","BF":"Burkina Faso","BG":"Bulgaria","BH":"Bahrain","BI":"Burundi","BJ":"Benin","BL":"Saint Barthelemy","BM":"Bermuda","BN":"Brunei Darussalam","BO":"Bolivia","BR":"Brazil","BS":"Bahamas","BT":"Bhutan","BV":"Bouvet Island","BW":"Botswana","BY":"Belarus","BZ":"Belize","CA":"Canada","CC":"Cocos (Keeling) Islands","CD":"Congo, Democratic Republic","CF":"Central African Republic","CG":"Congo","CH":"Switzerland","CI":"Cote D\"Ivoire","CK":"Cook Islands","CL":"Chile","CM":"Cameroon","CN":"China","CO":"Colombia","CR":"Costa Rica","CU":"Cuba","CV":"Cape Verde","CX":"Christmas Island","CY":"Cyprus","CZ":"Czech Republic","DE":"Germany","DJ":"Djibouti","DK":"Denmark","DM":"Dominica","DO":"Dominican Republic","DZ":"Algeria","EC":"Ecuador","EE":"Estonia","EG":"Egypt","EH":"Western Sahara","ER":"Eritrea","ES":"Spain","ET":"Ethiopia","FI":"Finland","FJ":"Fiji","FK":"Falkland Islands (Malvinas)","FM":"Micronesia, Federated States Of","FO":"Faroe Islands","FR":"France","GA":"Gabon","GB":"United Kingdom","GD":"Grenada","GE":"Georgia","GF":"French Guiana","GG":"Guernsey","GH":"Ghana","GI":"Gibraltar","GL":"Greenland","GM":"Gambia","GN":"Guinea","GP":"Guadeloupe","GQ":"Equatorial Guinea","GR":"Greece","GS":"South Georgia And Sandwich Isl.","GT":"Guatemala","GU":"Guam","GW":"Guinea-Bissau","GY":"Guyana","HK":"Hong Kong","HM":"Heard Island & Mcdonald Islands","HN":"Honduras","HR":"Croatia","HT":"Haiti","HU":"Hungary","ID":"Indonesia","IE":"Ireland","IL":"Israel","IM":"Isle Of Man","IN":"India","IO":"British Indian Ocean Territory","IQ":"Iraq","IR":"Iran, Islamic Republic Of","IS":"Iceland","IT":"Italy","JE":"Jersey","JM":"Jamaica","JO":"Jordan","JP":"Japan","KE":"Kenya","KG":"Kyrgyzstan","KH":"Cambodia","KI":"Kiribati","KM":"Comoros","KN":"Saint Kitts And Nevis","KP":"North Korea","KR":"Korea","KW":"Kuwait","KY":"Cayman Islands","KZ":"Kazakhstan","LA":"Lao People\"s Democratic Republic","LB":"Lebanon","LC":"Saint Lucia","LI":"Liechtenstein","LK":"Sri Lanka","LR":"Liberia","LS":"Lesotho","LT":"Lithuania","LU":"Luxembourg","LV":"Latvia","LY":"Libyan Arab Jamahiriya","MA":"Morocco","MC":"Monaco","MD":"Moldova","ME":"Montenegro","MF":"Saint Martin","MG":"Madagascar","MH":"Marshall Islands","MK":"Macedonia","ML":"Mali","MM":"Myanmar","MN":"Mongolia","MO":"Macao","MP":"Northern Mariana Islands","MQ":"Martinique","MR":"Mauritania","MS":"Montserrat","MT":"Malta","MU":"Mauritius","MV":"Maldives","MW":"Malawi","MX":"Mexico","MY":"Malaysia","MZ":"Mozambique","NA":"Namibia","NC":"New Caledonia","NE":"Niger","NF":"Norfolk Island","NG":"Nigeria","NI":"Nicaragua","NL":"Netherlands","NO":"Norway","NP":"Nepal","NR":"Nauru","NU":"Niue","NZ":"New Zealand","OM":"Oman","PA":"Panama","PE":"Peru","PF":"French Polynesia","PG":"Papua New Guinea","PH":"Philippines","PK":"Pakistan","PL":"Poland","PM":"Saint Pierre And Miquelon","PN":"Pitcairn","PR":"Puerto Rico","PS":"Palestinian Territory, Occupied","PT":"Portugal","PW":"Palau","PY":"Paraguay","QA":"Qatar","RE":"Reunion","RO":"Romania","RS":"Serbia","RU":"Russian Federation","RW":"Rwanda","SA":"Saudi Arabia","SB":"Solomon Islands","SC":"Seychelles","SD":"Sudan","SE":"Sweden","SG":"Singapore","SH":"Saint Helena","SI":"Slovenia","SJ":"Svalbard And Jan Mayen","SK":"Slovakia","SL":"Sierra Leone","SM":"San Marino","SN":"Senegal","SO":"Somalia","SR":"Suriname","ST":"Sao Tome And Principe","SV":"El Salvador","SY":"Syrian Arab Republic","SZ":"Swaziland","TC":"Turks And Caicos Islands","TD":"Chad","TF":"French Southern Territories","TG":"Togo","TH":"Thailand","TJ":"Tajikistan","TK":"Tokelau","TL":"Timor-Leste","TM":"Turkmenistan","TN":"Tunisia","TO":"Tonga","TR":"Turkey","TT":"Trinidad And Tobago","TV":"Tuvalu","TW":"Taiwan","TZ":"Tanzania","UA":"Ukraine","UG":"Uganda","UM":"United States Outlying Islands","US":"United States","UY":"Uruguay","UZ":"Uzbekistan","VA":"Holy See (Vatican City State)","VC":"Saint Vincent And Grenadines","VE":"Venezuela","VG":"Virgin Islands, British","VI":"Virgin Islands, U.S.","VN":"Vietnam","VU":"Vanuatu","WF":"Wallis And Futuna","WS":"Samoa","YE":"Yemen","YT":"Mayotte","ZA":"South Africa","ZM":"Zambia","ZW":"Zimbabwe"};
+      window.languageToCountryMapGlobal = languageToCountryMapGlobal;
+    
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      new window.Odyssey.init();
+    });
+  </script>
+  <!-- End: Odyssey -->
+  
+  
+
+  <!-- Start: DataLayer -->
+  <script>
+
+  /* CTA listener */
+  document.addEventListener('click', function (e) {
+    const el = e.target.closest('[data-cta-id]');
+    if (!el) return;
+
+    const url = el.dataset.ctaUrl || '';
+    let language = null;
+    let category = null;
+    let subcategory = null;
+
+    if (url) {
+      const urlObj = new URL(https://www.theforkmanager.com/en/url, window.location.origin);
+      [language, category, subcategory] = urlObj.pathname.split('https://www.theforkmanager.com/').filter(Boolean);
+    }
+
+    const payload = Object.assign(tfmBaseDL(), {
+      event: 'cta_click',
+      language,
+      cta_destination_url: el.dataset.ctaUrl || null,
+      cta_element_id: el.dataset.ctaId,
+      cta_name: "undefined",
+      cta_position: el.dataset.ctaPosition,
+      cta_text: el.dataset.ctaLabel || el.innerText.trim(),
+      cta_type: el.dataset.ctaType,
+      category,
+      subcategory
+    });
+
+    window.dataLayer.push(payload);
+    if (debugPushLog) {
+      console.log('CTA Click DL Push:', payload);
+      e.preventDefault();
+    }
+  });
+
+
+  /* Video listener */
+  const videos = document.querySelectorAll('video[data-video-id]');
+  if (videos.length) {
+    videos.forEach(v => {
+      const vidData = {
+        id: v.dataset.videoId,
+        name: v.dataset.videoName,
+        provider: v.dataset.videoProvider,
+        video_player_source_url: v.dataset.dataUrlVideo || "undefined"
+
+      };
+      v.addEventListener('play', () => pushVideo('start', v, vidData));
+      v.addEventListener('pause', () => pushVideo('pause', v, vidData));
+      v.addEventListener('ended', () => pushVideo('complete', v, vidData));
+    });
+
+    function pushVideo(action, videoEl, vidData) {
+      if (!window.hsConsent.analytics) return;
+
+      const payload = Object.assign(tfmBaseDL(), {
+        event: 'video_interaction',
+        video: Object.assign({ action, video_duration: Math.round(videoEl.currentTime) }, vidData)
+      });
+
+      window.dataLayer.push(payload);
+      if (debugPushLog) {
+        console.log('Video Interaction DL Push:', payload);
+      }
+    }
+  }
+
+    /**
+  window.evidon.priorConsentCallback = function (categories, vendors, cookies) { 
+    window.consentObject = categories;
+    console.log("📥 Prior consent:", categories);
+    updateHubspotConsent(categories);
+  }
+    
+  window.evidon.consentChangedCallback = function (categories, vendors, cookies) { 
+    window.consentObject = categories;
+    console.log("📥 Consent changed:", categories);
+    updateHubspotConsent(categories);
+  }
+  **/
+
+  </script>
+  <!-- End: DataLayer -->
+  
+
+  <!-- Start: ody grid -->
+  <div class="ody-grid container"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+  <!-- End: ody grid -->
+
+</body>
+<!-- Mirrored from www.theforkmanager.com/en/book-a-demo?conversion_point=BOOK_A_DEMO by HTTrack Website Copier/3.x [XR&CO'2014], Fri, 14 Aug 2026 19:11:04 GMT -->
+</html>
