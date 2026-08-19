@@ -1,10 +1,10 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": "vite",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://tomodine-backend.vercel.app/api/:path*" },
-    { "source": "/ws/:path*", "destination": "https://tomodine-backend.vercel.app/ws/:path*" },
-    { "source": "/media/:path*", "destination": "https://tomodine-backend.vercel.app/media/:path*" }
+    { "source": "/api/(.*)", "destination": "https://tomodine-backend.vercel.app/api/$1" },
+    { "source": "/ws/(.*)", "destination": "https://tomodine-backend.vercel.app/ws/$1" },
+    { "source": "/media/(.*)", "destination": "https://tomodine-backend.vercel.app/media/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
