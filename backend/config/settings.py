@@ -43,6 +43,20 @@ def env_list(key: str, default: list[str] | None = None) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def env_origin_list(key: str, default: list[str] | None = None) -> list[str]:
+    """Like env_list but strips any path/ trailing slash from origins."""
+    from urllib.parse import urlparse
+    items = env_list(key, default or [])
+    cleaned = []
+    for item in items:
+        parsed = urlparse(item)
+        if parsed.scheme and parsed.hostname:
+            cleaned.append(f"{parsed.scheme}://{parsed.hostname}")
+        else:
+            cleaned.append(item)
+    return cleaned
+
+
 # ---------------------------------------------------------------------------
 # Core security
 # ---------------------------------------------------------------------------
@@ -236,7 +250,7 @@ SPECTACULAR_SETTINGS = {
 # ---------------------------------------------------------------------------
 # CORS / CSRF
 # ---------------------------------------------------------------------------
-CORS_ALLOWED_ORIGINS = env_list(
+CORS_ALLOWED_ORIGINS = env_origin_list(
     "CORS_ALLOWED_ORIGINS",
     ["http://localhost:5173", "http://127.0.0.1:5173"],
 )
@@ -253,7 +267,7 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
     "x-restaurant-slug",
 ]
-CSRF_TRUSTED_ORIGINS = env_list(
+CSRF_TRUSTED_ORIGINS = env_origin_list(
     "CSRF_TRUSTED_ORIGINS",
     ["http://localhost:5173", "http://127.0.0.1:5173"],
 )
