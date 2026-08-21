@@ -6,6 +6,7 @@ import axios from "axios";
 import { formatBDT, localized } from "@/lib/format";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { QrScannerModal } from "@/components/QrScannerModal";
+import { TrustedMarquee } from "@/components/TrustedMarquee";
 import { Reveal } from "@/components/Reveal";
 import type { SubscriptionPlan } from "@/types";
 
@@ -22,20 +23,6 @@ const IMG = {
   step3: "/images/order-steps/step-3.png",
   step4: "/images/order-steps/step-4.png",
 } as const;
-
-/* ─── trusted restaurants (logo wall) ─────────────────────── */
-const TRUSTED_RESTAURANTS = [
-  { name: "Star Kabab & Restaurant", city: "Dhaka", monogram: "SK", bgClass: "bg-red-50", fgClass: "text-red-600" },
-  { name: "Sultan's Dine", city: "Dhaka", monogram: "SD", bgClass: "bg-amber-50", fgClass: "text-amber-700" },
-  { name: "Panshi Restaurant", city: "Sylhet", monogram: "PS", bgClass: "bg-emerald-50", fgClass: "text-emerald-700" },
-  { name: "Handi Restaurant", city: "Dhaka", monogram: "HR", bgClass: "bg-orange-50", fgClass: "text-orange-700" },
-  { name: "Khana's Pinewood", city: "Gazipur", monogram: "KP", bgClass: "bg-teal-50", fgClass: "text-teal-700" },
-  { name: "Corola Sea Food", city: "Cox's Bazar", monogram: "CS", bgClass: "bg-sky-50", fgClass: "text-sky-700" },
-  { name: "Mermaid Beach Resort", city: "Pechar Dwip", monogram: "MB", bgClass: "bg-cyan-50", fgClass: "text-cyan-700" },
-  { name: "Nirvana Restaurant", city: "Chattogram", monogram: "NR", bgClass: "bg-violet-50", fgClass: "text-violet-700" },
-  { name: "Al-Razzak Setu Restaurant", city: "Cumilla", monogram: "AR", bgClass: "bg-rose-50", fgClass: "text-rose-700" },
-  { name: "Green Lounge", city: "Rajshahi", monogram: "GL", bgClass: "bg-lime-50", fgClass: "text-lime-700" },
-] as const;
 
 /* ─── tiny icons ──────────────────────────────────────────── */
 
@@ -446,13 +433,20 @@ function StepSlider() {
       >
         {steps.map((s, i) => (
           <div key={i} className="flex w-full shrink-0 flex-col items-center gap-8 lg:flex-row lg:items-center lg:gap-14">
-            {/* Left column: text for even steps, spacer for odd steps */}
+            {/* Mobile: text always first (top). Desktop: alternate sides. */}
             {i % 2 === 0 ? (
               <div className="max-w-md text-center lg:w-1/3 lg:text-right">
                 <StepText num={s.num} title={s.title} desc={s.desc} />
               </div>
             ) : (
-              <div className="hidden lg:block lg:w-1/3" aria-hidden="true" />
+              <>
+                {/* Mobile text block for odd steps — shown above image */}
+                <div className="max-w-md text-center lg:hidden">
+                  <StepText num={s.num} title={s.title} desc={s.desc} />
+                </div>
+                {/* Desktop left spacer for odd steps */}
+                <div className="hidden lg:block lg:w-1/3" aria-hidden="true" />
+              </>
             )}
 
             {/* Image CENTER */}
@@ -472,9 +466,9 @@ function StepSlider() {
               </span>
             </div>
 
-            {/* Right column: text for odd steps, spacer for even steps */}
+            {/* Desktop right column: text for odd steps, spacer for even */}
             {i % 2 === 1 ? (
-              <div className="max-w-md text-center lg:w-1/3 lg:text-left">
+              <div className="hidden max-w-md text-center lg:block lg:w-1/3 lg:text-left">
                 <StepText num={s.num} title={s.title} desc={s.desc} />
               </div>
             ) : (
@@ -730,35 +724,7 @@ export function LandingPage() {
         </section>
 
         {/* 3 ══ TRUST LOGOS (restaurants that already trust us) ══ */}
-        <section className="border-y border-ink-100 bg-white py-12">
-          <div className="mx-auto max-w-7xl px-6">
-            <h2 className="text-center text-xl font-bold text-ink-900 sm:text-2xl">
-              {t("landing.trustTitle")}
-            </h2>
-            <div className="mt-10 grid grid-cols-2 items-center justify-items-center gap-x-6 gap-y-8 sm:grid-cols-3 lg:grid-cols-5">
-              {TRUSTED_RESTAURANTS.map((r) => (
-                <div
-                  key={r.name}
-                  className="group flex flex-col items-center gap-3 opacity-70 transition-all duration-300 hover:opacity-100"
-                  title={r.name}
-                >
-                  {/* Logo mark — monogram in a styled frame, distinct per restaurant */}
-                  <span
-                    className={`flex h-16 w-16 items-center justify-center rounded-2xl shadow-sm ring-1 ring-ink-100 transition-transform duration-300 group-hover:scale-105 ${r.bgClass}`}
-                  >
-                    <span className={`font-display text-xl font-bold tracking-tight ${r.fgClass}`}>
-                      {r.monogram}
-                    </span>
-                  </span>
-                  <div className="text-center">
-                    <p className="font-display text-sm font-bold text-ink-700">{r.name}</p>
-                    <p className="mt-0.5 text-[11px] uppercase tracking-wider text-ink-400">{r.city}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <TrustedMarquee />
 
         {/* 4 ══ HOW IT WORKS — FOR CLIENTS ══ */}
         <section id="solution" className="py-20" style={{ background: "#EDF6F5" }}>

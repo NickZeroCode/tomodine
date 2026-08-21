@@ -73,3 +73,15 @@
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
+
+/* Infinite logo marquee — duplicated track + -50% loop.
+   Respects reduced-motion preferences. */
+.marquee-track {
+  animation: scroll 40s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
