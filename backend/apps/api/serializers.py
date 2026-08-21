@@ -33,6 +33,9 @@ class RestaurantSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        from django.conf import settings
+        if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
+            return data
         for field_name in ("logo", "cover_image"):
             img = getattr(instance, field_name, None)
             if img and hasattr(img, "path"):
@@ -161,7 +164,12 @@ class DishSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # On serverless (Vercel) file URLs don't work — return inline data URI.
+        # If using S3 storage, ImageField URLs already work — no conversion needed.
+        from django.conf import settings
+        if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
+            return data
+        # On serverless (Vercel) or local dev, file URLs may not work —
+        # return inline base64 data URI instead.
         img = getattr(instance, "image", None)
         if img and hasattr(img, "path"):
             try:

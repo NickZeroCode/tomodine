@@ -1,0 +1,27 @@
+[Unit]
+Description=TomoDine Gunicorn WSGI Server
+After=network.target redis.service
+Requires=redis.service
+
+[Service]
+Type=notify
+User=tomodine
+Group=tomodine
+RuntimeDirectory=tomodine
+WorkingDirectory=/opt/tomodine/backend
+EnvironmentFile=/opt/tomodine/backend/.env
+ExecStart=/opt/tomodine/backend/venv/bin/gunicorn \
+    config.wsgi:application \
+    --bind 127.0.0.1:8000 \
+    --workers 3 \
+    --timeout 120 \
+    --access-logfile /var/log/tomodine/gunicorn-access.log \
+    --error-logfile /var/log/tomodine/gunicorn-error.log
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -209,15 +209,30 @@ LOCALE_PATHS = [BASE_DIR / "locale"]
 # ---------------------------------------------------------------------------
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-MEDIA_URL = "media/"
 
-if env("VERCEL"):
+if env("AWS_STORAGE_BUCKET_NAME"):
+    # S3-backed media storage (production on EC2)
+    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", "eu-west-1")
+    AWS_S3_SIGNATURE_VERSION = "s3v4"
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_DEFAULT_ACL = None
+    AWS_S3_VERIFY = True
+    MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/"
+    # Keep a local MEDIA_ROOT for any fallback logic
+    MEDIA_ROOT = BASE_DIR / "media"
+elif env("VERCEL"):
     import tempfile
     _media = tempfile.gettempdir() + "/tomodine_media"
     os.makedirs(_media, exist_ok=True)
     MEDIA_ROOT = _media
+    MEDIA_URL = "media/"
 else:
     MEDIA_ROOT = BASE_DIR / "media"
+    MEDIA_URL = "media/"
 
 # ---------------------------------------------------------------------------
 # Django REST Framework
@@ -294,19 +309,25 @@ if env_bool("USE_REDIS_CHANNEL_LAYER", False) and not env("VERCEL"):
         }
     }
 else:
-    # In-memory layer — suitable for Vercel serverless (each function
-    # instance handles its own WebSocket connection) and local dev.
     CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 
 # ---------------------------------------------------------------------------
-# Caching
+# Caching — use Redis in production, local memory in dev
 # ---------------------------------------------------------------------------
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "restaurant-saas-dev",
+if env_bool("USE_REDIS_CHANNEL_LAYER", False) and not env("VERCEL"):
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "restaurant-saas-dev",
+        }
+    }
 
 # ---------------------------------------------------------------------------
 # WhiteNoise — compressed static file serving for production
