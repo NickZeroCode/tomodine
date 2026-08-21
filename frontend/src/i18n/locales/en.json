@@ -395,7 +395,9 @@
     "inactive": "Inactive",
     "remove": "Remove",
     "removeConfirm": "Remove this staff member?",
-    "noStaff": "No staff yet"
+    "noStaff": "No staff yet",
+    "inviteLinkTitle": "Invitation ready to share",
+    "inviteLinkDesc": "Share this link with your staff member via WhatsApp or SMS so they can set up their account."
   },
   "notifications": {
     "title": "Notifications",
@@ -539,9 +541,5 @@
     "invalidTitle": "Invalid invitation",
     "invalidDesc": "This invitation link is invalid or has expired. Please ask your restaurant owner to send a new one.",
     "existingAccount": "Already have an account?"
-  },
-  "staff_invite": {
-    "inviteLinkTitle": "Invitation ready to share",
-    "inviteLinkDesc": "Share this link with your staff member via WhatsApp or SMS so they can set up their account."
   }
 }

@@ -57,16 +57,23 @@ class InviteClaimSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, trim_whitespace=False)
     password_confirm = serializers.CharField(write_only=True, trim_whitespace=False)
 
-    def validate_token(self, value: str) -> dict[str, str]:
+    def validate_token(self, value: str) -> str:
+        """Decode the signed token once and stash the payload on self."""
         from django.core import signing
 
         try:
-            data = signing.loads(value, max_age=60 * 60 * 24 * 7, salt="staff-invite")
-        except signing.BadSignature:
-            raise serializers.ValidationError(_("This invitation link is invalid or has expired."))
-        if "email" not in data or "restaurant" not in data:
+            self._token_data = signing.loads(
+                value, max_age=60 * 60 * 24 * 7, salt="staff-invite"
+            )
+        except signing.SignatureExpired:
+            raise serializers.ValidationError(_("This invitation link has expired."))
+        except (signing.BadSignature, ValueError, TypeError):
             raise serializers.ValidationError(_("This invitation link is invalid."))
-        return data
+        if "email" not in self._token_data or "restaurant" not in self._token_data:
+            raise serializers.ValidationError(_("This invitation link is invalid."))
+        # Field validators must return the cleaned *field value* (the raw
+        # token string); the decoded payload lives on ``self._token_data``.
+        return value
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         if attrs["password"] != attrs["password_confirm"]:
@@ -79,7 +86,11 @@ class InviteClaimSerializer(serializers.Serializer):
         from apps.restaurants.models import Restaurant, RestaurantMembership
 
         User = get_user_model()
-        token_data = self.validate_token(validated_data["token"])
+        token_data = getattr(self, "_token_data", None)
+        if token_data is None:
+            # Defensive: validate_token always runs before create in DRF.
+            raise serializers.ValidationError({"token": [_("This invitation link is invalid.")]})
+
         email = token_data["email"]
         restaurant_id = token_data["restaurant"]
 
@@ -88,9 +99,9 @@ class InviteClaimSerializer(serializers.Serializer):
             raise serializers.ValidationError({"token": [_("No pending invitation for this email.")]})
 
         # Placeholder users have an unusable password — only allow claiming once.
-        if user.has_usable_password() and user.last_login is not None:
+        if user.has_usable_password():
             raise serializers.ValidationError(
-                {"token": [_("This account has already been claimed. Please log in instead.")]}
+                {"token": [_("This account has already been set up. Please log in instead.")]}
             )
 
         restaurant = Restaurant.objects.filter(pk=restaurant_id).first()
