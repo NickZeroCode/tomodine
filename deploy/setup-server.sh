@@ -17,7 +17,8 @@ echo "============================================"
 echo "[1/9] Updating system packages..."
 apt-get update -y && apt-get upgrade -y
 apt-get install -y python3 python3-pip python3-venv python3-dev \
-    build-essential libpq-dev nginx certbot python3-certbot-nginx \
+    build-essential libpq-dev libjpeg-dev zlib1g-dev libfreetype-dev \
+    libwebp-dev nginx certbot python3-certbot-nginx \
     redis-server git curl
 
 # ------------------------------------------------------------------ 2. User
@@ -36,12 +37,14 @@ systemctl start redis-server
 redis-cli ping
 
 # ------------------------------------------------------------------ 5. Clone
-echo "[5/9] Cloning repo..."
-if [ ! -d "$APP_DIR/backend/manage.py" ]; then
-    # Ask user to clone or copy their repo here
-    echo "  → Copy your project to $APP_DIR/"
-    echo "    Example: scp -r . tomodine@$DOMAIN:/opt/tomodine/"
-    echo "  Or:  git clone https://github.com/YOU/tomodine.git $APP_DIR"
+echo "[5/9] Cloning repo (aws-deploy branch)..."
+if [ ! -f "$APP_DIR/backend/manage.py" ]; then
+    if [ -d "$APP_DIR/.git" ]; then
+        cd "$APP_DIR" && sudo -u tomodine git pull origin aws-deploy
+    else
+        rm -rf "$APP_DIR"
+        git clone -b aws-deploy https://github.com/NickZeroCode/tomodine.git "$APP_DIR"
+    fi
 fi
 
 # ------------------------------------------------------------------ 6. Python venv + deps

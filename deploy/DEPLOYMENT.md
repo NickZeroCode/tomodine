@@ -132,10 +132,10 @@ ssh -i your-key.pem ubuntu@YOUR_EC2_PUBLIC_IP
 # Update system
 sudo apt update && sudo apt upgrade -y
 
-# Install essentials
+# Install essentials (including image libraries for Pillow)
 sudo apt install -y python3 python3-pip python3-venv python3-dev \
-    build-essential libpq-dev nginx certbot python3-certbot-nginx \
-    redis-server git curl
+    build-essential libpq-dev libjpeg-dev zlib1g-dev libfreetype-dev \
+    libwebp-dev nginx certbot python3-certbot-nginx redis-server git curl
 ```
 
 ---
@@ -171,7 +171,7 @@ git add .
 git commit -m "Initial commit — ready for EC2 deployment"
 
 # Add your GitHub remote and push the aws-deploy branch
-git remote add origin https://github.com/YOUR_USERNAME/tomodine.git
+git remote add origin https://github.com/NickZeroCode/tomodine.git
 git checkout -b aws-deploy
 git push -u origin aws-deploy
 ```
@@ -183,8 +183,11 @@ git push -u origin aws-deploy
 ```bash
 ssh -i your-key.pem ubuntu@YOUR_EC2_PUBLIC_IP
 
+# Remove the empty directory created by the setup script (if it exists)
+sudo rm -rf /opt/tomodine
+
 # Clone the repo into /opt/tomodine (aws-deploy branch)
-sudo git clone -b aws-deploy https://github.com/YOUR_USERNAME/tomodine.git /opt/tomodine
+sudo git clone -b aws-deploy https://github.com/NickZeroCode/tomodine.git /opt/tomodine
 
 # Fix ownership
 sudo chown -R tomodine:tomodine /opt/tomodine
@@ -443,7 +446,7 @@ sudo tail -f /var/log/tomodine/gunicorn-error.log
 
 ```bash
 cd /opt/tomodine
-sudo -u tomodine git pull origin main
+sudo -u tomodine git pull origin aws-deploy
 cd backend
 set -a; source .env; set +a
 sudo -u tomodine ./venv/bin/pip install -r requirements.txt
