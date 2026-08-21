@@ -9,11 +9,7 @@ User=tomodine
 Group=tomodine
 WorkingDirectory=/opt/tomodine/backend
 EnvironmentFile=/opt/tomodine/backend/.env
-ExecStart=/opt/tomodine/backend/venv/bin/celery \
-    -A config worker \
-    --loglevel=info \
-    --concurrency=2 \
-    --logfile=/var/log/tomodine/celery.log
+ExecStart=/opt/tomodine/backend/venv/bin/celery -A config worker --loglevel=info --concurrency=2 --logfile=/var/log/tomodine/celery.log
 Restart=always
 RestartSec=10
 KillMode=mixed
