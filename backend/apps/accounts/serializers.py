@@ -28,9 +28,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         return email
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
-        if attrs["password"] != attrs.pop("password_confirm"):
+        pw = attrs.get("password")
+        if not pw:
+            # Profile update without password change — skip password validation.
+            attrs.pop("password", None)
+            attrs.pop("password_confirm", None)
+            return attrs
+        pw_confirm = attrs.pop("password_confirm", "")
+        if pw != pw_confirm:
             raise serializers.ValidationError({"password_confirm": _("Passwords do not match.")})
-        validate_password(attrs["password"])
+        validate_password(pw)
         return attrs
 
     def create(self, validated_data: dict[str, Any]) -> User:

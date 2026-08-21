@@ -49,21 +49,8 @@ class MeView(generics.RetrieveUpdateAPIView):
             read_only_fields = ("id", "email")
 
         def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
-            pw = attrs.get("password")
-            if pw:
-                # Only validate password when the user is changing it.
-                from django.contrib.auth.password_validation import validate_password
-                pw_confirm = attrs.pop("password_confirm", "")
-                if pw != pw_confirm:
-                    from django.utils.translation import gettext_lazy as _
-                    raise serializers.ValidationError(
-                        {"password_confirm": _("Passwords do not match.")}
-                    )
-                validate_password(pw)
-            else:
-                attrs.pop("password", None)
-                attrs.pop("password_confirm", None)
-            return attrs
+            # Delegate to parent — it already handles missing password gracefully.
+            return super().validate(attrs)
 
         def validate_email(self, value: str) -> str:
             # Allow keeping the same email on profile update.
