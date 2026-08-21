@@ -212,7 +212,8 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 if env("AWS_STORAGE_BUCKET_NAME"):
     # S3-backed media storage (production on EC2)
-    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    # NOTE: Django 5.x removed DEFAULT_FILE_STORAGE; use STORAGES dict instead.
+    _default_storage_backend = "storages.backends.s3boto3.S3Boto3Storage"
     AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY")
     AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME")
@@ -225,12 +226,14 @@ if env("AWS_STORAGE_BUCKET_NAME"):
     # Keep a local MEDIA_ROOT for any fallback logic
     MEDIA_ROOT = BASE_DIR / "media"
 elif env("VERCEL"):
+    _default_storage_backend = "django.core.files.storage.FileSystemStorage"
     import tempfile
     _media = tempfile.gettempdir() + "/tomodine_media"
     os.makedirs(_media, exist_ok=True)
     MEDIA_ROOT = _media
     MEDIA_URL = "media/"
 else:
+    _default_storage_backend = "django.core.files.storage.FileSystemStorage"
     MEDIA_ROOT = BASE_DIR / "media"
     MEDIA_URL = "media/"
 
@@ -330,8 +333,15 @@ else:
     }
 
 # ---------------------------------------------------------------------------
-# WhiteNoise — compressed static file serving for production
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# Storage backends (Django 5.x uses STORAGES dict; DEFAULT_FILE_STORAGE removed)
+STORAGES = {
+    "default": {
+        "BACKEND": _default_storage_backend,
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Security headers (production hardening controlled via DEBUG)
 # ---------------------------------------------------------------------------
