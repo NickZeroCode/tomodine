@@ -336,7 +336,9 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # Security headers (production hardening controlled via DEBUG)
 # ---------------------------------------------------------------------------
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    # Nginx handles SSL termination and HTTP→HTTPS redirect — Django should
+    # NOT also redirect (causes 301 loop when nginx proxies over HTTP).
+    SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", False)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
