@@ -1,7 +1,7 @@
 [Unit]
 Description=TomoDine Gunicorn WSGI Server
-After=network.target redis.service
-Requires=redis.service
+After=network.target redis-server.service
+Requires=redis-server.service
 
 [Service]
 Type=notify

@@ -224,11 +224,11 @@ sudo nano /opt/tomodine/backend/.env
 Paste and fill in (see `deploy/env.production` for template):
 
 ```env
-DJANGO_SECRET_KEY=your-random-50-char-secret-key-here
+DJANGO_SECRET_KEY='your-random-50-char-secret-key-here'
 DJANGO_DEBUG=false
 DJANGO_ALLOWED_HOSTS=YOUR_EC2_PUBLIC_IP,YOUR_DOMAIN
 
-DATABASE_URL=postgresql://neondb_owner:YOUR_PASSWORD@YOUR_NEON_HOST/neondb?sslmode=require
+DATABASE_URL='postgresql://neondb_owner:YOUR_PASSWORD@YOUR_NEON_HOST/neondb?sslmode=require'
 
 REDIS_URL=redis://localhost:6379/0
 USE_REDIS_CHANNEL_LAYER=true
@@ -237,7 +237,7 @@ CORS_ALLOWED_ORIGINS=https://YOUR_DOMAIN
 CSRF_TRUSTED_ORIGINS=https://YOUR_DOMAIN
 
 AWS_ACCESS_KEY_ID=YOUR_S3_ACCESS_KEY
-AWS_SECRET_ACCESS_KEY=YOUR_S3_SECRET_KEY
+AWS_SECRET_ACCESS_KEY='YOUR_S3_SECRET_KEY'
 AWS_STORAGE_BUCKET_NAME=YOUR_BUCKET_NAME
 AWS_S3_REGION_NAME=YOUR_REGION
 
@@ -245,6 +245,8 @@ JWT_ACCESS_MINUTES=30
 JWT_REFRESH_DAYS=7
 CUSTOMER_APP_BASE_URL=https://YOUR_DOMAIN/order
 ```
+
+> ⚠️ Wrap values containing special characters (`)`, `(`, `$`, `!`, `*`, `#`) in single quotes `'like this'` to prevent bash interpretation errors.
 
 ```bash
 # Secure the file
