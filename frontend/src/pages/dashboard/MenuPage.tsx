@@ -138,9 +138,8 @@ export function MenuPage() {
       if (dishImage) fd.append("image", dishImage);
       else if (editingDish && removeDishImage) fd.append("image", "");
 
-      const cfg = { headers: { "Content-Type": "multipart/form-data" } };
-      if (editingDish) return api.patch(`/dishes/${editingDish.id}/`, fd, cfg);
-      return api.post("/dishes/", fd, cfg);
+      if (editingDish) return api.patch(`/dishes/${editingDish.id}/`, fd);
+      return api.post("/dishes/", fd);
     },
     onSuccess: () => {
       setDishFormOpen(false);

@@ -201,9 +201,7 @@ export function SettingsPage() {
     if (!restaurant) return;
     const fd = new FormData();
     fd.append(field, file);
-    await api.patch(`/restaurants/${restaurant.slug}/`, fd, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    await api.patch(`/restaurants/${restaurant.slug}/`, fd);
     await queryClient.invalidateQueries({ queryKey: ["restaurants"] });
   }
 
@@ -216,9 +214,7 @@ export function SettingsPage() {
   async function uploadAvatar(file: File) {
     const fd = new FormData();
     fd.append("avatar", file);
-    await api.patch("/auth/me/", fd, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    await api.patch("/auth/me/", fd);
     refreshUser?.();
   }
 
