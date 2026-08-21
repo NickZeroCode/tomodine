@@ -608,84 +608,88 @@ export function LandingPage() {
             </button>
           </div>
         </div>
-        {/* Mobile slide-in sidebar (from left, like a native mobile app) */}
-        {/* Backdrop */}
-        <div
-          className={`fixed inset-0 z-40 bg-ink-900/50 backdrop-blur-sm transition-opacity duration-300 lg:hidden ${
-            mobileMenu ? "opacity-100" : "pointer-events-none opacity-0"
-          }`}
-          onClick={() => setMobileMenu(false)}
-          aria-hidden="true"
-        />
-        {/* Sidebar panel */}
-        <aside
-          className={`fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] flex-col bg-white shadow-lift transition-transform duration-300 ease-out lg:hidden ${
-            mobileMenu ? "translate-x-0" : "-translate-x-full"
-          }`}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Menu"
-        >
-          {/* Sidebar header */}
-          <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3.5">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-sm font-bold text-white shadow-soft">
-                ভ
-              </span>
-              <span className="text-base font-semibold text-ink-900">{t("common.appName")}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setMobileMenu(false)}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-ink-500 transition-colors hover:bg-ink-50"
-              aria-label="Close menu"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Sidebar links */}
-          <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-            {[{ href: "#solution", label: t("landing.navSolution") },
-              { href: "#features", label: t("landing.navFeatures") },
-              { href: "#pricing", label: t("landing.navPlans") },
-              { href: "#faq", label: t("landing.navResources") },
-            ].map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => setMobileMenu(false)}
-                className="block rounded-xl px-4 py-3 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-50 active:bg-ink-100"
-              >
-                {link.label}
-              </a>
-            ))}
-
-            {/* Scan menu — opens the QR scanner */}
-            <button
-              type="button"
-              onClick={() => {
-                setMobileMenu(false);
-                setScannerOpen(true);
-              }}
-              className="mt-2 flex w-full items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-100 active:bg-brand-100"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
-                <path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /><line x1="7" y1="12" x2="17" y2="12" />
-              </svg>
-              {t("landing.scanMenu")}
-            </button>
-          </nav>
-
-          {/* Sidebar footer actions */}
-          <div className="space-y-2 border-t border-ink-100 px-4 py-4">
-            <Link to="/login" className="btn-ghost w-full justify-center text-sm">{t("auth.login")}</Link>
-            <Link to="/register" className="btn-primary w-full justify-center text-sm">{t("landing.getStarted")}</Link>
-          </div>
-        </aside>
       </header>
+
+      {/* Mobile slide-in sidebar — MUST live outside <header> because the
+          header's backdrop-filter creates a containing block that breaks
+          position:fixed children. Slides in from the RIGHT like iOS/Android
+          drawer menus triggered by a right-side hamburger. */}
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-40 bg-ink-900/60 transition-opacity duration-300 lg:hidden ${
+          mobileMenu ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={() => setMobileMenu(false)}
+        aria-hidden="true"
+      />
+      {/* Sidebar panel */}
+      <aside
+        className={`fixed inset-y-0 right-0 z-50 flex w-[300px] max-w-[85vw] flex-col bg-white shadow-lift transition-transform duration-300 ease-out lg:hidden ${
+          mobileMenu ? "translate-x-0" : "translate-x-full"
+        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu"
+      >
+        {/* Sidebar header */}
+        <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3.5">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-sm font-bold text-white shadow-soft">
+              ভ
+            </span>
+            <span className="text-base font-semibold text-ink-900">{t("common.appName")}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMobileMenu(false)}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-ink-500 transition-colors hover:bg-ink-50"
+            aria-label="Close menu"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Sidebar links */}
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+          {[{ href: "#solution", label: t("landing.navSolution") },
+            { href: "#features", label: t("landing.navFeatures") },
+            { href: "#pricing", label: t("landing.navPlans") },
+            { href: "#faq", label: t("landing.navResources") },
+          ].map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              onClick={() => setMobileMenu(false)}
+              className="block rounded-xl px-4 py-3 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-50 active:bg-ink-100"
+            >
+              {link.label}
+            </a>
+          ))}
+
+          {/* Scan menu — opens the QR scanner */}
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenu(false);
+              setScannerOpen(true);
+            }}
+            className="mt-2 flex w-full items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-100 active:bg-brand-100"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+              <path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /><line x1="7" y1="12" x2="17" y2="12" />
+            </svg>
+            {t("landing.scanMenu")}
+          </button>
+        </nav>
+
+        {/* Sidebar footer actions */}
+        <div className="space-y-2 border-t border-ink-100 px-4 py-4">
+          <Link to="/login" className="btn-ghost w-full justify-center text-sm">{t("auth.login")}</Link>
+          <Link to="/register" className="btn-primary w-full justify-center text-sm">{t("landing.getStarted")}</Link>
+        </div>
+      </aside>
 
       <main>
         {/* 2 ══ HERO — title, subtitle, CTA, image ══ */}

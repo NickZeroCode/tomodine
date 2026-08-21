@@ -69,7 +69,10 @@ def create_order_from_cart(session: CustomerSession, customer_note: str = "", or
                 order=order,
                 dish_name_en=item.dish.name_en,
                 dish_name_bn=item.dish.name_bn,
-                dish_image=item.dish.image.url if item.dish.image else "",
+                # Store the storage-relative name (not a full URL) so the
+                # serializer can resolve it against whatever storage is
+                # active later (S3, local, etc.) without dead links.
+                dish_image=item.dish.image.name if item.dish.image else "",
                 min_prep_time=item.dish.min_prep_time,
                 max_prep_time=item.dish.max_prep_time,
                 variant_name=item.variant.name_en if item.variant else "",

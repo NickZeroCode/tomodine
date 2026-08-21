@@ -109,9 +109,35 @@ class AddCartItemSerializer(serializers.Serializer):
 
 
 class CustomerOrderItemSerializer(serializers.ModelSerializer):
+    dish_image = serializers.SerializerMethodField()
+
     class Meta:
         model = OrderItem
         fields = ("dish_name_en", "dish_name_bn", "dish_image", "min_prep_time", "max_prep_time", "variant_name", "quantity", "unit_price")
+
+    def get_dish_image(self, obj: OrderItem) -> str:
+        """Resolve legacy local media paths against the active storage."""
+        url = (obj.dish_image or "").strip()
+        if not url:
+            return ""
+        if url.startswith(("http://", "https://", "data:")):
+            return url
+
+        from django.conf import settings
+
+        name = url
+        for prefix in ("/media/", "media/"):
+            if name.startswith(prefix):
+                name = name[len(prefix):]
+                break
+        name = name.lstrip("/")
+
+        media_url = settings.MEDIA_URL or "media/"
+        if not media_url.startswith(("http://", "https://")):
+            full = f"/{media_url.rstrip('/')}/{name}"
+            request = self.context.get("request")
+            return request.build_absolute_uri(full) if request else full
+        return f"{media_url.rstrip('/')}/{name}"
 
 
 class CustomerOrderSerializer(serializers.ModelSerializer):

@@ -229,6 +229,8 @@ class MenuSerializer(serializers.ModelSerializer):
 # Ordering
 # ---------------------------------------------------------------------------
 class OrderItemSerializer(serializers.ModelSerializer):
+    dish_image = serializers.SerializerMethodField()
+
     class Meta:
         model = OrderItem
         fields = (
@@ -236,6 +238,38 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "max_prep_time", "variant_name", "quantity", "unit_price", "special_instructions",
         )
         read_only_fields = ("id",)
+
+    def get_dish_image(self, obj: OrderItem) -> str:
+        """Resolve the snapshotted dish image URL against current storage.
+
+        Legacy orders stored local ``media/...`` paths back when files were
+        saved to the EC2 disk; those must be re-pointed at the active media
+        root (S3 in production) instead of returning dead links.
+        """
+        url = (obj.dish_image or "").strip()
+        if not url:
+            return ""
+        if url.startswith(("http://", "https://", "data:")):
+            return url
+
+        from django.conf import settings
+
+        # Strip any legacy local prefix ("media/", "/media/") before joining.
+        name = url
+        for prefix in ("/media/", "media/"):
+            if name.startswith(prefix):
+                name = name[len(prefix):]
+                break
+        name = name.lstrip("/")
+
+        media_url = settings.MEDIA_URL or "media/"
+        if not media_url.startswith(("http://", "https://")):
+            # Local/dev storage — build an absolute path for the client.
+            full = f"/{media_url.rstrip('/')}/{name}"
+            request = self.context.get("request")
+            return request.build_absolute_uri(full) if request else full
+
+        return f"{media_url.rstrip('/')}/{name}"
 
 
 class OrderSerializer(serializers.ModelSerializer):
