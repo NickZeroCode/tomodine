@@ -164,6 +164,7 @@ export function DashboardLayout() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem("sidebar_collapsed") === "true"; } catch { return false; }
   });
@@ -428,6 +429,17 @@ export function DashboardLayout() {
         {/* Top header */}
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-3 border-b border-ink-100 bg-white px-4 md:px-6">
           <div className="flex min-w-0 items-center gap-3">
+            {/* Mobile drawer toggle */}
+            <button
+              type="button"
+              onClick={() => setMobileDrawerOpen(true)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-600 transition-colors hover:bg-ink-50 md:hidden"
+              aria-label="Open menu"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5">
+                <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
             <Link to="/dashboard" className="flex items-center gap-2 md:hidden">
               <span className="flex h-8 w-8 items-center justify-center rounded-card bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white">ভ</span>
             </Link>
@@ -526,6 +538,101 @@ export function DashboardLayout() {
             </NavLink>
           ))}
         </nav>
+
+        {/* ── Mobile drawer — slide-in from left with all nav items ── */}
+        <div
+          className={`fixed inset-0 z-40 bg-ink-900/50 backdrop-blur-sm transition-opacity duration-300 md:hidden ${
+            mobileDrawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          onClick={() => setMobileDrawerOpen(false)}
+          aria-hidden="true"
+        />
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] flex-col border-r border-ink-800 bg-ink-900 shadow-lift transition-transform duration-300 ease-out md:hidden ${
+            mobileDrawerOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+        >
+          {/* Drawer header */}
+          <div className="flex items-center justify-between border-b border-ink-800 px-4 py-3">
+            <Link to="/dashboard" onClick={() => setMobileDrawerOpen(false)} className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-card bg-gradient-to-br from-brand-400 to-brand-600 text-sm font-bold text-white">ভ</span>
+              <div className="min-w-0">
+                <span className="block truncate text-sm font-semibold text-white">{t("common.appName")}</span>
+                <span className="block truncate text-[11px] text-ink-400">{restaurant?.name ?? ""}</span>
+              </div>
+            </Link>
+            <button
+              type="button"
+              onClick={() => setMobileDrawerOpen(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-ink-800 hover:text-white"
+              aria-label="Close menu"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Drawer nav — same sections as desktop sidebar */}
+          <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3" aria-label="Mobile navigation">
+            {SIDEBAR_SECTIONS.map((section) => (
+              <div key={section.labelKey}>
+                <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                  {t(section.labelKey)}
+                </p>
+                <div className="space-y-0.5">
+                  {section.items.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={"end" in item && item.end}
+                      onClick={() => setMobileDrawerOpen(false)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 rounded-card px-3 py-2.5 text-sm font-medium transition-colors ${
+                          isActive ? "bg-brand-600/20 text-brand-300" : "text-gray-300 hover:bg-ink-800 hover:text-white"
+                        }`
+                      }
+                    >
+                      {item.icon}
+                      <span className="min-w-0 flex-1 truncate">{t(item.key)}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {/* Settings link (not in SIDEBAR_SECTIONS) */}
+            <div>
+              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{t("nav.settings")}</p>
+              <NavLink
+                to="/dashboard/settings"
+                onClick={() => setMobileDrawerOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-card px-3 py-2.5 text-sm font-medium transition-colors ${
+                    isActive ? "bg-brand-600/20 text-brand-300" : "text-gray-300 hover:bg-ink-800 hover:text-white"
+                  }`
+                }
+              >
+                {IC.settings}
+                <span className="min-w-0 flex-1 truncate">{t("nav.settings")}</span>
+              </NavLink>
+            </div>
+          </nav>
+
+          {/* Drawer footer — logout */}
+          <div className="border-t border-ink-800 p-3">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 rounded-card px-3 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:bg-ink-800 hover:text-white"
+            >
+              {IC.logout}
+              {t("auth.logout")}
+            </button>
+          </div>
+        </aside>
       </div>
 
       {/* Toast notifications */}

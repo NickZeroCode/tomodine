@@ -20,6 +20,7 @@ export function StaffPage() {
   const [email, setEmail] = useState("");
   const [roleId, setRoleId] = useState("");
   const [errors, setErrors] = useState<Record<string, string[]>>({});
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
 
   const membersKey = ["staff", restaurant?.id];
   const rolesKey = ["roles", restaurant?.id];
@@ -47,16 +48,26 @@ export function StaffPage() {
 
   const invite = useMutation({
     mutationFn: async () =>
-      api.post(`/restaurants/${restaurant!.id}/members/`, {
+      (await api.post<{ invite_url?: string }>(`/restaurants/${restaurant!.id}/members/`, {
         email,
         role: roleId || null,
-      }),
-    onSuccess: () => {
-      setInviteOpen(false);
-      setEmail("");
-      setRoleId("");
+      })).data,
+    onSuccess: (data) => {
       setErrors({});
-      invalidate();
+      // If the invited person hasn't claimed an account yet, show the
+      // invite link so the owner can share it (WhatsApp/SMS).
+      if (data?.invite_url) {
+        setInviteUrl(data.invite_url);
+        setInviteOpen(false);
+        setEmail("");
+        setRoleId("");
+      } else {
+        // Existing user — they'll see the restaurant on next login.
+        setInviteOpen(false);
+        setEmail("");
+        setRoleId("");
+        invalidate();
+      }
     },
     onError: (err) => {
       const apiErr = err as unknown as ApiError;
@@ -110,6 +121,37 @@ export function StaffPage() {
           {t("staff.invite")}
         </button>
       </div>
+
+      {/* Invite link panel — shown after inviting a new user */}
+      {inviteUrl && (
+        <div className="mb-4 rounded-xl border border-brand-200 bg-brand-50 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-brand-800">{t("staff.inviteLinkTitle")}</p>
+              <p className="mt-1 text-xs text-brand-700">{t("staff.inviteLinkDesc")}</p>
+              <p className="mt-2 truncate rounded-lg bg-white px-3 py-2 font-mono text-xs text-ink-600">
+                {inviteUrl}
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-col gap-2">
+              <button
+                type="button"
+                className="btn-primary px-3 py-1.5 text-xs"
+                onClick={() => navigator.clipboard.writeText(inviteUrl)}
+              >
+                {t("common.copy")}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost px-3 py-1.5 text-xs"
+                onClick={() => setInviteUrl(null)}
+              >
+                {t("common.close")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {list.length === 0 ? (
         <EmptyState title={t("staff.noStaff")} />

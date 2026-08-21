@@ -15,9 +15,11 @@ from django.utils.translation import gettext as _
 from .models import CustomerSession, Order, OrderItem, OrderStatusHistory
 
 # Allowed status transitions for the staff workflow.
+# Simplified pipeline: NEW → PREPARING → READY → SERVED → PAID.
+# ACCEPTED is kept only so legacy orders in that state can still move forward.
 _ALLOWED_TRANSITIONS: dict[str, set[str]] = {
-    Order.Status.NEW: {Order.Status.ACCEPTED, Order.Status.PREPARING, Order.Status.REJECTED, Order.Status.CANCELLED},
-    Order.Status.ACCEPTED: {Order.Status.PREPARING, Order.Status.CANCELLED},
+    Order.Status.NEW: {Order.Status.PREPARING, Order.Status.REJECTED, Order.Status.CANCELLED},
+    Order.Status.ACCEPTED: {Order.Status.PREPARING, Order.Status.CANCELLED},  # legacy
     Order.Status.PREPARING: {Order.Status.READY, Order.Status.CANCELLED},
     Order.Status.READY: {Order.Status.SERVED, Order.Status.CANCELLED},
     Order.Status.SERVED: {Order.Status.PAID},

@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
+import { compressImage } from "@/lib/imageCompression";
 import { formatBDT, localized } from "@/lib/format";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
@@ -612,10 +613,16 @@ export function MenuPage() {
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0] ?? null;
-                          setDishImage(file);
-                          if (file) setRemoveDishImage(false);
+                          if (file) {
+                            // Compress in-browser so uploads stay fast.
+                            const compressed = await compressImage(file, { maxDimension: 1200, quality: 0.8 });
+                            setDishImage(compressed);
+                            setRemoveDishImage(false);
+                          } else {
+                            setDishImage(null);
+                          }
                         }}
                       />
                       <div className="flex flex-wrap gap-2">

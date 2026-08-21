@@ -17,6 +17,7 @@ import { CustomersPage } from "@/pages/dashboard/CustomersPage";
 import { ReportsPage } from "@/pages/dashboard/ReportsPage";
 import { MenuEngineeringPage } from "@/pages/dashboard/MenuEngineeringPage";
 import { CustomerOrderPage } from "@/pages/customer/CustomerOrderPage";
+import { InviteAcceptPage } from "@/pages/InviteAcceptPage";
 import type { ReactNode } from "react";
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -33,6 +34,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/order/:qrToken" element={<CustomerOrderPage />} />
+      <Route path="/invite/accept" element={<InviteAcceptPage />} />
       <Route
         path="/dashboard"
         element={

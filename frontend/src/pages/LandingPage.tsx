@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { formatBDT, localized } from "@/lib/format";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { QrScannerModal } from "@/components/QrScannerModal";
 import { Reveal } from "@/components/Reveal";
 import type { SubscriptionPlan } from "@/types";
 
@@ -21,6 +22,20 @@ const IMG = {
   step3: "/images/order-steps/step-3.png",
   step4: "/images/order-steps/step-4.png",
 } as const;
+
+/* ─── trusted restaurants (logo wall) ─────────────────────── */
+const TRUSTED_RESTAURANTS = [
+  { name: "Star Kabab & Restaurant", city: "Dhaka", monogram: "SK", bgClass: "bg-red-50", fgClass: "text-red-600" },
+  { name: "Sultan's Dine", city: "Dhaka", monogram: "SD", bgClass: "bg-amber-50", fgClass: "text-amber-700" },
+  { name: "Panshi Restaurant", city: "Sylhet", monogram: "PS", bgClass: "bg-emerald-50", fgClass: "text-emerald-700" },
+  { name: "Handi Restaurant", city: "Dhaka", monogram: "HR", bgClass: "bg-orange-50", fgClass: "text-orange-700" },
+  { name: "Khana's Pinewood", city: "Gazipur", monogram: "KP", bgClass: "bg-teal-50", fgClass: "text-teal-700" },
+  { name: "Corola Sea Food", city: "Cox's Bazar", monogram: "CS", bgClass: "bg-sky-50", fgClass: "text-sky-700" },
+  { name: "Mermaid Beach Resort", city: "Pechar Dwip", monogram: "MB", bgClass: "bg-cyan-50", fgClass: "text-cyan-700" },
+  { name: "Nirvana Restaurant", city: "Chattogram", monogram: "NR", bgClass: "bg-violet-50", fgClass: "text-violet-700" },
+  { name: "Al-Razzak Setu Restaurant", city: "Cumilla", monogram: "AR", bgClass: "bg-rose-50", fgClass: "text-rose-700" },
+  { name: "Green Lounge", city: "Rajshahi", monogram: "GL", bgClass: "bg-lime-50", fgClass: "text-lime-700" },
+] as const;
 
 /* ─── tiny icons ──────────────────────────────────────────── */
 
@@ -177,48 +192,63 @@ const TESTI_INTERVAL = 4500;
 
 function TestimonialSlider() {
   const { t } = useTranslation();
-  const [idx, setIdx] = useState(0);
+  const [startIdx, setStartIdx] = useState(0);
 
   const items = [
     { quote: t("landing.testimonial1Q"), author: t("landing.testimonial1A"), role: t("landing.testimonial1R") },
     { quote: t("landing.testimonial2Q"), author: t("landing.testimonial2A"), role: t("landing.testimonial2R") },
     { quote: t("landing.testimonial3Q"), author: t("landing.testimonial3A"), role: t("landing.testimonial3R") },
     { quote: t("landing.testimonial4Q"), author: t("landing.testimonial4A"), role: t("landing.testimonial4R") },
+    { quote: t("landing.testimonial5Q"), author: t("landing.testimonial5A"), role: t("landing.testimonial5R") },
+    { quote: t("landing.testimonial6Q"), author: t("landing.testimonial6A"), role: t("landing.testimonial6R") },
   ];
 
+  // Show 3 at a time on desktop, 1 on mobile
+  const [visibleCount, setVisibleCount] = useState(
+    typeof window !== "undefined" && window.innerWidth >= 1024 ? 3 : 1
+  );
+
   useEffect(() => {
-    const id = setInterval(() => setIdx((p) => (p + 1) % items.length), TESTI_INTERVAL);
+    const onResize = () => setVisibleCount(window.innerWidth >= 1024 ? 3 : 1);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => setStartIdx((p) => (p + visibleCount) % items.length), TESTI_INTERVAL);
     return () => clearInterval(id);
-  }, [items.length]);
+  }, [items.length, visibleCount]);
+
+  // Build the visible slice (wraps around)
+  const visible = Array.from({ length: Math.min(visibleCount, items.length) }, (_, i) =>
+    items[(startIdx + i) % items.length]
+  );
 
   return (
     <section className="py-16" style={{ background: "#f0faf7" }}>
-      <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
+      <div className="mx-auto max-w-7xl px-4 text-center sm:px-6">
         <Reveal>
           <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">{t("landing.testimonialsLabel")}</p>
         </Reveal>
 
-        {/* Fade-track: stacked, opacity crossfade */}
-        <div className="relative mx-auto mt-6 overflow-hidden" style={{ minHeight: "220px" }}>
-          {items.map((item, i) => (
+        {/* Grid of visible testimonials — 1 col mobile, 3 cols desktop */}
+        <div className="mx-auto mt-8 grid max-w-6xl gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {visible.map((item, i) => (
             <div
-              key={i}
-              className="absolute inset-0 flex flex-col items-center justify-center transition-all duration-700 ease-in-out"
-              style={{
-                opacity: i === idx ? 1 : 0,
-                transform: i === idx ? "translateY(0)" : "translateY(16px)",
-                pointerEvents: i === idx ? "auto" : "none",
-              }}
+              key={`${item.author}-${i}`}
+              className="flex flex-col items-center justify-between rounded-2xl border border-ink-100 bg-white p-6 shadow-sm transition-all duration-700 ease-in-out"
             >
-              {/* Stars */}
-              <div className="mb-3 flex gap-1" aria-hidden="true">
-                {[0, 1, 2, 3, 4].map((s) => (
-                  <StarIcon key={s} />
-                ))}
+              <div className="w-full">
+                {/* Stars */}
+                <div className="mb-3 flex justify-center gap-1" aria-hidden="true">
+                  {[0, 1, 2, 3, 4].map((s) => (
+                    <StarIcon key={s} />
+                  ))}
+                </div>
+                <p className="text-base font-medium italic leading-relaxed text-ink-700">"{item.quote}"</p>
               </div>
-              <p className="text-lg font-medium italic leading-relaxed text-ink-700 sm:text-xl">"{item.quote}"</p>
-              <div className="mt-4 flex items-center gap-2.5">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
+              <div className="mt-5 flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
                   {item.author.charAt(0)}
                 </span>
                 <div className="text-left">
@@ -230,16 +260,16 @@ function TestimonialSlider() {
           ))}
         </div>
 
-        {/* Dots */}
-        <div className="mt-6 flex justify-center gap-2">
-          {items.map((_, i) => (
+        {/* Dots — one page per dot */}
+        <div className="mt-8 flex justify-center gap-2">
+          {Array.from({ length: Math.ceil(items.length / visibleCount) }).map((_, i) => (
             <button
               key={i}
               type="button"
-              onClick={() => setIdx(i)}
-              aria-label={`Testimonial ${i + 1}`}
+              onClick={() => setStartIdx(i * visibleCount)}
+              aria-label={`Testimonials page ${i + 1}`}
               className={`h-2 rounded-full transition-all duration-300 ${
-                i === idx ? "w-7 bg-brand-600" : "w-2 bg-ink-200 hover:bg-ink-300"
+                startIdx === i * visibleCount ? "w-7 bg-brand-600" : "w-2 bg-ink-200 hover:bg-ink-300"
               }`}
             />
           ))}
@@ -367,6 +397,19 @@ function FeaturesSection() {
 const STEP_PAUSE = 3500; // ms to linger on each step
 const STEP_SLIDE = 600;  // ms slide transition
 
+function StepText({ num, title, desc }: { num: string; title: string; desc: string }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <span className="inline-block rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-700">
+        {t("landing.howItWorks")} · {num}
+      </span>
+      <h3 className="mt-3 font-display text-2xl font-bold text-ink-900 sm:text-3xl">{title}</h3>
+      <p className="mt-3 text-base leading-relaxed text-ink-500">{desc}</p>
+    </>
+  );
+}
+
 function StepSlider() {
   const { t } = useTranslation();
   const [current, setCurrent] = useState(0);
@@ -402,9 +445,18 @@ function StepSlider() {
         }}
       >
         {steps.map((s, i) => (
-          <div key={i} className="flex w-full shrink-0 flex-col items-center gap-8 lg:flex-row lg:gap-14">
-            {/* Bare image — no card wrapper */}
-            <div className="relative w-full max-w-xl shrink-0 lg:w-1/2">
+          <div key={i} className="flex w-full shrink-0 flex-col items-center gap-8 lg:flex-row lg:items-center lg:gap-14">
+            {/* Left column: text for even steps, spacer for odd steps */}
+            {i % 2 === 0 ? (
+              <div className="max-w-md text-center lg:w-1/3 lg:text-right">
+                <StepText num={s.num} title={s.title} desc={s.desc} />
+              </div>
+            ) : (
+              <div className="hidden lg:block lg:w-1/3" aria-hidden="true" />
+            )}
+
+            {/* Image CENTER */}
+            <div className="relative w-full max-w-xl shrink-0 lg:w-1/3">
               <div className="flex h-80 items-center justify-center sm:h-96 lg:h-[28rem]">
                 <img
                   src={s.img}
@@ -420,14 +472,14 @@ function StepSlider() {
               </span>
             </div>
 
-            {/* Text beside / below image */}
-            <div className="max-w-md text-center lg:text-left">
-              <span className="inline-block rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-700">
-                {t("landing.howItWorks")} · {s.num}
-              </span>
-              <h3 className="mt-3 font-display text-2xl font-bold text-ink-900 sm:text-3xl">{s.title}</h3>
-              <p className="mt-3 text-base leading-relaxed text-ink-500">{s.desc}</p>
-            </div>
+            {/* Right column: text for odd steps, spacer for even steps */}
+            {i % 2 === 1 ? (
+              <div className="max-w-md text-center lg:w-1/3 lg:text-left">
+                <StepText num={s.num} title={s.title} desc={s.desc} />
+              </div>
+            ) : (
+              <div className="hidden lg:block lg:w-1/3" aria-hidden="true" />
+            )}
           </div>
         ))}
       </div>
@@ -469,11 +521,10 @@ export function LandingPage() {
 
   // Interactive state
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   /* ─── data (mirrors TheFork index copy, adapted to our brand) ─── */
-
-  const logoMarquee = ["Dhaka Diner", "Sylhet Spice", "Cox's Bazar Grill", "Chattogram Cha", "Rajshahi Royal", "Khulna Kitchen", "Rangpur Rasoi", "Barisal Bites", "Sundarban Sweets", "Padma Plates"];
 
   // Stats band (dark) — like TheFork's numbers grid.
   const stats = [
@@ -538,7 +589,6 @@ export function LandingPage() {
           <div className="flex items-center gap-2">
             <LanguageSwitcher compact />
             <Link to="/login" className="btn-ghost hidden text-sm sm:inline-flex">{t("auth.login")}</Link>
-            <Link to="/register" className="btn-secondary hidden text-sm sm:inline-flex">{t("landing.bookDemo")}</Link>
             <Link to="/register" className="btn-primary hidden text-sm sm:inline-flex">{t("landing.getStarted")}</Link>
             {/* Mobile donut menu */}
             <button
@@ -558,12 +608,46 @@ export function LandingPage() {
             </button>
           </div>
         </div>
-        {/* Mobile slide-down menu */}
+        {/* Mobile slide-in sidebar (from left, like a native mobile app) */}
+        {/* Backdrop */}
         <div
-          className="overflow-hidden transition-all duration-300 lg:hidden"
-          style={{ maxHeight: mobileMenu ? "400px" : "0", opacity: mobileMenu ? 1 : 0 }}
+          className={`fixed inset-0 z-40 bg-ink-900/50 backdrop-blur-sm transition-opacity duration-300 lg:hidden ${
+            mobileMenu ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          onClick={() => setMobileMenu(false)}
+          aria-hidden="true"
+        />
+        {/* Sidebar panel */}
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] flex-col bg-white shadow-lift transition-transform duration-300 ease-out lg:hidden ${
+            mobileMenu ? "translate-x-0" : "-translate-x-full"
+          }`}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu"
         >
-          <nav className="space-y-1 border-t border-ink-100 px-4 pb-5 pt-4">
+          {/* Sidebar header */}
+          <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3.5">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-sm font-bold text-white shadow-soft">
+                ভ
+              </span>
+              <span className="text-base font-semibold text-ink-900">{t("common.appName")}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMobileMenu(false)}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-ink-500 transition-colors hover:bg-ink-50"
+              aria-label="Close menu"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Sidebar links */}
+          <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
             {[{ href: "#solution", label: t("landing.navSolution") },
               { href: "#features", label: t("landing.navFeatures") },
               { href: "#pricing", label: t("landing.navPlans") },
@@ -573,17 +657,34 @@ export function LandingPage() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileMenu(false)}
-                className="block rounded-lg px-3 py-2.5 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-50"
+                className="block rounded-xl px-4 py-3 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-50 active:bg-ink-100"
               >
                 {link.label}
               </a>
             ))}
-            <div className="flex gap-2 pt-3">
-              <Link to="/login" className="btn-ghost flex-1 text-center text-sm">{t("auth.login")}</Link>
-              <Link to="/register" className="btn-primary flex-1 text-center text-sm">{t("landing.getStarted")}</Link>
-            </div>
+
+            {/* Scan menu — opens the QR scanner */}
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenu(false);
+                setScannerOpen(true);
+              }}
+              className="mt-2 flex w-full items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-100 active:bg-brand-100"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /><line x1="7" y1="12" x2="17" y2="12" />
+              </svg>
+              {t("landing.scanMenu")}
+            </button>
           </nav>
-        </div>
+
+          {/* Sidebar footer actions */}
+          <div className="space-y-2 border-t border-ink-100 px-4 py-4">
+            <Link to="/login" className="btn-ghost w-full justify-center text-sm">{t("auth.login")}</Link>
+            <Link to="/register" className="btn-primary w-full justify-center text-sm">{t("landing.getStarted")}</Link>
+          </div>
+        </aside>
       </header>
 
       <main>
@@ -624,15 +725,32 @@ export function LandingPage() {
           </Reveal>
         </section>
 
-        {/* 3 ══ LOGO MARQUEE (TheFork: heading + scrolling strip) ══ */}
-        <section className="border-y border-ink-100 bg-white py-10">
+        {/* 3 ══ TRUST LOGOS (restaurants that already trust us) ══ */}
+        <section className="border-y border-ink-100 bg-white py-12">
           <div className="mx-auto max-w-7xl px-6">
             <h2 className="text-center text-xl font-bold text-ink-900 sm:text-2xl">
-              {t("landing.marqueeTitle")}
+              {t("landing.trustTitle")}
             </h2>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:gap-x-12">
-              {logoMarquee.map((name) => (
-                <span key={name} className="text-base font-semibold text-ink-300">{name}</span>
+            <div className="mt-10 grid grid-cols-2 items-center justify-items-center gap-x-6 gap-y-8 sm:grid-cols-3 lg:grid-cols-5">
+              {TRUSTED_RESTAURANTS.map((r) => (
+                <div
+                  key={r.name}
+                  className="group flex flex-col items-center gap-3 opacity-70 transition-all duration-300 hover:opacity-100"
+                  title={r.name}
+                >
+                  {/* Logo mark — monogram in a styled frame, distinct per restaurant */}
+                  <span
+                    className={`flex h-16 w-16 items-center justify-center rounded-2xl shadow-sm ring-1 ring-ink-100 transition-transform duration-300 group-hover:scale-105 ${r.bgClass}`}
+                  >
+                    <span className={`font-display text-xl font-bold tracking-tight ${r.fgClass}`}>
+                      {r.monogram}
+                    </span>
+                  </span>
+                  <div className="text-center">
+                    <p className="font-display text-sm font-bold text-ink-700">{r.name}</p>
+                    <p className="mt-0.5 text-[11px] uppercase tracking-wider text-ink-400">{r.city}</p>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -784,6 +902,9 @@ export function LandingPage() {
           </div>
         </section>
       </main>
+
+      {/* QR scanner modal (opened from mobile sidebar) */}
+      <QrScannerModal open={scannerOpen} onClose={() => setScannerOpen(false)} />
 
       {/* 10 ══ FOOTER — dark (TheFork: footer.theme-dark, 4 columns + ratings + legal) ══ */}
       <footer className="bg-ink-900 text-white" style={{ background: "#0b3a33" }}>

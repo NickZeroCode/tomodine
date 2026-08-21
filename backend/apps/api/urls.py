@@ -5,7 +5,13 @@ from __future__ import annotations
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from apps.accounts.views import LoginView, MeView, RefreshView, RegisterView
+from apps.accounts.views import (
+    InviteClaimView,
+    LoginView,
+    MeView,
+    RefreshView,
+    RegisterView,
+)
 
 from .customer_views import CustomerOrderingViewSet
 from .views import (
@@ -45,5 +51,6 @@ urlpatterns = [
     path("auth/login/", LoginView.as_view(), name="auth-login"),
     path("auth/refresh/", RefreshView.as_view(), name="auth-refresh"),
     path("auth/me/", MeView.as_view(), name="auth-me"),
+    path("auth/invite/claim/", InviteClaimView.as_view(), name="auth-invite-claim"),
     path("", include(router.urls)),
 ]

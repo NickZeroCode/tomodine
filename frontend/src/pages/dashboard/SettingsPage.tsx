@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { compressImage } from "@/lib/imageCompression";
 import { useAuth } from "@/context/AuthContext";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { Icon } from "@/components/Icon";
@@ -199,8 +200,9 @@ export function SettingsPage() {
 
   async function uploadRestaurantImage(field: "logo" | "cover_image", file: File) {
     if (!restaurant) return;
+    const compressed = await compressImage(file, { maxDimension: 1600, quality: 0.82 });
     const fd = new FormData();
-    fd.append(field, file);
+    fd.append(field, compressed);
     await api.patch(`/restaurants/${restaurant.slug}/`, fd);
     await queryClient.invalidateQueries({ queryKey: ["restaurants"] });
   }
@@ -212,8 +214,9 @@ export function SettingsPage() {
   }
 
   async function uploadAvatar(file: File) {
+    const compressed = await compressImage(file, { maxDimension: 512, quality: 0.8 });
     const fd = new FormData();
-    fd.append("avatar", file);
+    fd.append("avatar", compressed);
     await api.patch("/auth/me/", fd);
     refreshUser?.();
   }

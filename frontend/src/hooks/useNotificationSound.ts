@@ -22,14 +22,27 @@ function getOrCreateContext(): AudioContext | null {
 }
 
 export function useNotificationSound() {
-  // On mount, register a one-time user-gesture listener to resume a
-  // suspended AudioContext.  Browsers block audio until a gesture.
+  // On mount, register a one-time user-gesture listener to unlock the
+  // AudioContext.  Browsers block audio until a gesture; playing a silent
+  // buffer inside the gesture handler fully unlocks it for later use.
   useEffect(() => {
     if (unlockAttempted) return;
     function unlock() {
       unlockAttempted = true;
       const ctx = getOrCreateContext();
-      if (ctx?.state === "suspended") void ctx.resume();
+      if (!ctx) return;
+      if (ctx.state === "suspended") void ctx.resume();
+      // Play a zero-length silent buffer — this is what actually unlocks
+      // audio playback on iOS Safari and strict Android browsers.
+      try {
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+      } catch {
+        /* ignore */
+      }
       document.removeEventListener("click", unlock);
       document.removeEventListener("touchstart", unlock);
       document.removeEventListener("keydown", unlock);
@@ -51,20 +64,34 @@ export function useNotificationSound() {
     if (!ctx) return;
     try {
       if (ctx.state === "suspended") void ctx.resume();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
-      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.2);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.4);
+      // Pleasant two-tone "ding-dong" chime (E6 → C6) — longer and more
+      // noticeable than a single beep so it cuts through restaurant noise.
+      const now = ctx.currentTime;
+      const notes: Array<[number, number]> = [
+        [1318.5, 0.0],   // E6
+        [1046.5, 0.18],  // C6
+      ];
+      for (const [freq, offset] of notes) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + offset);
+        gain.gain.setValueAtTime(0.0001, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.4, now + offset + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.5);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.55);
+      }
     } catch {
       // Silently ignore — audio not available.
+    }
+    // Haptic feedback on supporting devices (stronger cut-through).
+    try {
+      navigator.vibrate?.([120, 80, 120]);
+    } catch {
+      /* not supported */
     }
   }, []);
 

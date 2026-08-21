@@ -17,7 +17,8 @@
     "empty": "Nothing here yet",
     "error": "Something went wrong",
     "currency": "৳",
-    "language": "Language"
+    "language": "Language",
+    "copy": "Copy"
   },
   "auth": {
     "login": "Log in",
@@ -185,7 +186,7 @@
     "preparing": "Your food is being prepared",
     "ready": "Your order is ready",
     "estimatedTime": "Estimated time",
-    "prepTime": "{{min}} Ã¢â‚¬â€œ {{max}} min"
+    "prepTime": "{{min}} – {{max}} min"
   },
   "landing": {
     "navSolution": "Our solution",
@@ -224,6 +225,7 @@
     "featPromoDesc": "Create time-limited deals, link them to dishes, and drive traffic during slow hours.",
     "featAnalyticsTitle": "Analytics for better decisions",
     "featAnalyticsDesc": "Revenue trends, peak hours, top dishes. The data you need to grow.",
+    "trustTitle": "Restaurants that already trust us",
     "marqueeTitle": "The perfect restaurant management software to boost business performance",
     "solutionTitle": "Discover our solution",
     "solutionIntro": "A powerful restaurant management software built for real-world needs. From QR table ordering to staff and billing, it helps owners streamline daily tasks and control costs, all from one friendly platform.",
@@ -341,7 +343,18 @@
     "legalTerms": "Terms of use",
     "legalPrivacy": "Privacy",
     "legalCookies": "Cookie settings",
-    "rights": "All rights reserved."
+    "rights": "All rights reserved.",
+    "testimonial5Q": "The QR ordering cut our order errors to nearly zero. Waiters spend less time writing orders and more time serving guests.",
+    "testimonial5A": "Tanvir Ahmed",
+    "testimonial5R": "Owner, Star Kabab & Restaurant, Dhaka",
+    "testimonial6Q": "Live order tracking means guests never wave us down asking where their food is. The dashboard pays for itself every single day.",
+    "testimonial6A": "Farhana Rahman",
+    "testimonial6R": "Manager, Panshi Restaurant, Sylhet",
+    "scanMenu": "Scan menu",
+    "qrInvalid": "This QR code is not a TomoDine table menu.",
+    "qrCameraError": "Could not access the camera. Please allow camera permission and try again.",
+    "qrStartingCamera": "Starting camera…",
+    "qrHint": "Point your camera at the QR code on your table to open the menu."
   },
   "dashboard": {
     "todayOrders": "Orders today",
@@ -369,7 +382,7 @@
     "tomorrowForecast": "Forecast for {{weekday}}, {{date}}",
     "expectedOrders": "expected orders",
     "menuEngineering": "Menu Engineering",
-    "menuEngineeringIntro": "Classify items by popularity Ãƒâ€” profitability to make smarter decisions."
+    "menuEngineeringIntro": "Classify items by popularity × profitability to make smarter decisions."
   },
   "staff": {
     "title": "Staff",
@@ -514,5 +527,21 @@
   "planGate": {
     "title": "Upgrade your plan",
     "upgrade": "View plans"
+  },
+  "invite": {
+    "title": "Join your restaurant team",
+    "subtitle": "Set up your account to access the dashboard.",
+    "fullName": "Full name",
+    "phone": "Phone number",
+    "password": "Create password",
+    "passwordConfirm": "Confirm password",
+    "accept": "Accept invitation",
+    "invalidTitle": "Invalid invitation",
+    "invalidDesc": "This invitation link is invalid or has expired. Please ask your restaurant owner to send a new one.",
+    "existingAccount": "Already have an account?"
+  },
+  "staff_invite": {
+    "inviteLinkTitle": "Invitation ready to share",
+    "inviteLinkDesc": "Share this link with your staff member via WhatsApp or SMS so they can set up their account."
   }
 }

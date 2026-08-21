@@ -223,8 +223,29 @@ class RestaurantViewSet(viewsets.ModelViewSet):
             membership.role = role
             membership.is_active = True
             membership.save(update_fields=["role", "is_active", "updated_at"])
+
+        data = api_serializers.MembershipSerializer(membership).data
+
+        # Generate a signed invite link for users who haven't claimed their
+        # account yet (placeholder users have an unusable password).
+        needs_claim = not user.has_usable_password() or (
+            user.password.startswith("!") or user.password == ""
+        )
+        if needs_claim:
+            from django.conf import settings
+            from django.core import signing
+
+            token = signing.dumps(
+                {"email": email, "restaurant": str(restaurant.pk)},
+                salt="staff-invite",
+            )
+            base = getattr(settings, "CUSTOMER_APP_BASE_URL", "")
+            # Invite links live on the dashboard origin (same site in prod).
+            invite_base = settings.CSRF_TRUSTED_ORIGINS[0] if settings.CSRF_TRUSTED_ORIGINS else base
+            data["invite_url"] = f"{invite_base}/invite/accept?token={token}"
+
         return Response(
-            api_serializers.MembershipSerializer(membership).data,
+            data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
 

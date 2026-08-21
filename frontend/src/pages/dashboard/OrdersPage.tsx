@@ -32,22 +32,21 @@ const STATUS_I18N: Record<OrderStatus, string> = {
   REJECTED: "orders.rejected", CANCELLED: "orders.cancelled",
 };
 
-/** Quick-action: the single most likely next step per status. */
+/** Quick-action: the single most likely next step per status.
+ *  Simplified pipeline: NEW → PREPARING → READY → SERVED → PAID
+ *  (one obvious primary button per state, like Toast/Square POS). */
 const QUICK_ACTION: Partial<Record<OrderStatus, { to: OrderStatus; label: string; style: string }>> = {
-  NEW:       { to: "ACCEPTED",  label: "orders.accept",       style: "bg-blue-600 hover:bg-blue-700 text-white" },
-  PREPARING: { to: "READY",     label: "orders.markReady",    style: "bg-amber-600 hover:bg-amber-700 text-white" },
-  READY:     { to: "SERVED",    label: "orders.markServed",   style: "bg-emerald-600 hover:bg-emerald-700 text-white" },
-  SERVED:    { to: "PAID",      label: "orders.markPaid",     style: "bg-teal-600 hover:bg-teal-700 text-white" },
+  NEW:       { to: "PREPARING", label: "orders.startPreparing", style: "bg-blue-600 hover:bg-blue-700 text-white shadow-sm" },
+  PREPARING: { to: "READY",     label: "orders.markReady",      style: "bg-amber-500 hover:bg-amber-600 text-white shadow-sm" },
+  READY:     { to: "SERVED",    label: "orders.markServed",     style: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" },
+  SERVED:    { to: "PAID",      label: "orders.markPaid",       style: "bg-teal-600 hover:bg-teal-700 text-white shadow-sm" },
 };
 
-/** Secondary actions — shown in kebab dropdown. */
+/** Secondary actions — shown in kebab dropdown (rare paths only). */
 const SECONDARY_ACTIONS: Partial<Record<OrderStatus, Array<{ to: OrderStatus; label: string }>>> = {
-  NEW: [
-    { to: "PREPARING", label: "orders.startPreparing" },
-    { to: "REJECTED", label: "orders.reject" },
-  ],
-  ACCEPTED: [{ to: "PREPARING", label: "orders.startPreparing" }],
+  NEW: [{ to: "REJECTED", label: "orders.reject" }],
   PREPARING: [{ to: "CANCELLED", label: "orders.cancelOrder" }],
+  READY: [{ to: "CANCELLED", label: "orders.cancelOrder" }],
 };
 
 function timeAgo(iso: string, lang: "en" | "bn"): string {
@@ -283,13 +282,13 @@ export function OrdersPage() {
                     </span>
 
                     {/* Actions */}
-                    <div className="relative flex w-24 items-center justify-end gap-1">
+                    <div className="relative flex w-28 items-center justify-end gap-1">
                       {quick && (
                         <button
                           type="button"
                           disabled={transition.isPending}
                           onClick={() => transition.mutate({ id: order.id, status: quick.to })}
-                          className={`rounded-lg px-2 py-1 text-[0.65rem] font-semibold transition-colors ${quick.style}`}
+                          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all active:scale-95 ${quick.style}`}
                         >
                           {t(quick.label)}
                         </button>
