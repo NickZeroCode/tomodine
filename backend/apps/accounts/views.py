@@ -40,10 +40,36 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     class OutputSerializer(RegisterSerializer):
         avatar = serializers.ImageField(required=False, allow_null=True)
+        # Password is optional on profile updates — only validate when provided.
+        password = serializers.CharField(write_only=True, required=False, allow_blank=True, trim_whitespace=False)
+        password_confirm = serializers.CharField(write_only=True, required=False, allow_blank=True, trim_whitespace=False)
 
         class Meta(RegisterSerializer.Meta):
             fields = ("id", "email", "full_name", "phone", "preferred_language", "avatar")
             read_only_fields = ("id", "email")
+
+        def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+            pw = attrs.get("password")
+            if pw:
+                # Only validate password when the user is changing it.
+                from django.contrib.auth.password_validation import validate_password
+                pw_confirm = attrs.pop("password_confirm", "")
+                if pw != pw_confirm:
+                    from django.utils.translation import gettext_lazy as _
+                    raise serializers.ValidationError(
+                        {"password_confirm": _("Passwords do not match.")}
+                    )
+                validate_password(pw)
+            else:
+                attrs.pop("password", None)
+                attrs.pop("password_confirm", None)
+            return attrs
+
+        def validate_email(self, value: str) -> str:
+            # Allow keeping the same email on profile update.
+            if self.instance and self.instance.email.lower() == value.strip().lower():
+                return value.strip().lower()
+            return super().validate_email(value)
 
     serializer_class = OutputSerializer
 
