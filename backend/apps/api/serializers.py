@@ -6,7 +6,11 @@ restaurant is injected from the request's resolved tenant context.
 
 from __future__ import annotations
 
+import logging
+
 from rest_framework import serializers
+
+logger = logging.getLogger(__name__)
 
 from apps.billing.models import BillingRecord, Offer, Subscription, SubscriptionPlan
 from apps.menus.models import Dish, DishModifier, DishVariant, Menu, MenuCategory
@@ -30,6 +34,13 @@ class RestaurantSerializer(serializers.ModelSerializer):
             "opening_time", "closing_time", "status", "created_at",
         )
         read_only_fields = ("id", "slug", "status", "created_at")
+
+    def save(self, **kwargs):
+        request = self.context.get("request")
+        if request:
+            files = {k: (v.name, v.size) for k, v in request.FILES.items()} if request.FILES else {}
+            logger.info("RestaurantSerializer.save: data_keys=%s files=%s", list(request.data.keys()), files)
+        return super().save(**kwargs)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -161,6 +172,13 @@ class DishSerializer(serializers.ModelSerializer):
             self.fields["category"].queryset = MenuCategory.objects.filter(
                 menu__restaurant=restaurant
             )
+
+    def save(self, **kwargs):
+        request = self.context.get("request")
+        if request:
+            files = {k: (v.name, v.size) for k, v in request.FILES.items()} if request.FILES else {}
+            logger.info("DishSerializer.save: data_keys=%s files=%s", list(request.data.keys()), files)
+        return super().save(**kwargs)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

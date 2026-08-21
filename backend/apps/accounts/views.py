@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
+
 from django.contrib.auth import get_user_model
 from rest_framework import generics, permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .serializers import RegisterSerializer, RestaurantTokenObtainPairSerializer
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -71,3 +75,9 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+    def perform_update(self, serializer):
+        request = self.request
+        files = {k: (v.name, v.size) for k, v in request.FILES.items()} if request.FILES else {}
+        logger.info("MeView.perform_update: data_keys=%s files=%s", list(request.data.keys()), files)
+        return serializer.save()
