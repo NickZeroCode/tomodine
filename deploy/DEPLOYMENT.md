@@ -104,7 +104,7 @@ Go to **S3 → your bucket → Permissions → Cross-origin resource sharing (CO
   {
     "AllowedHeaders": ["*"],
     "AllowedMethods": ["GET", "PUT", "POST"],
-    "AllowedOrigins": ["https://YOUR_DOMAIN"],
+    "AllowedOrigins": ["https://www.tomodine.com"],
     "ExposeHeaders": ["ETag"]
   }
 ]
@@ -127,7 +127,7 @@ Click **Save changes**.
 
 ```bash
 # SSH into your instance
-ssh -i your-key.pem ubuntu@YOUR_EC2_PUBLIC_IP
+ssh -i your-key.pem ubuntu@13.212.121.201
 
 # Update system
 sudo apt update && sudo apt upgrade -y
@@ -181,7 +181,7 @@ git push -u origin aws-deploy
 **SSH into the server:**
 
 ```bash
-ssh -i your-key.pem ubuntu@YOUR_EC2_PUBLIC_IP
+ssh -i your-key.pem ubuntu@13.212.121.201
 
 # Remove the empty directory created by the setup script (if it exists)
 sudo rm -rf /opt/tomodine
@@ -226,15 +226,15 @@ Paste and fill in (see `deploy/env.production` for template):
 ```env
 DJANGO_SECRET_KEY='your-random-50-char-secret-key-here'
 DJANGO_DEBUG=false
-DJANGO_ALLOWED_HOSTS=YOUR_EC2_PUBLIC_IP,YOUR_DOMAIN
+DJANGO_ALLOWED_HOSTS=13.212.121.201,www.tomodine.com
 
 DATABASE_URL='postgresql://neondb_owner:YOUR_PASSWORD@YOUR_NEON_HOST/neondb?sslmode=require'
 
 REDIS_URL=redis://localhost:6379/0
 USE_REDIS_CHANNEL_LAYER=true
 
-CORS_ALLOWED_ORIGINS=https://YOUR_DOMAIN
-CSRF_TRUSTED_ORIGINS=https://YOUR_DOMAIN
+CORS_ALLOWED_ORIGINS=https://www.tomodine.com
+CSRF_TRUSTED_ORIGINS=https://www.tomodine.com
 
 AWS_ACCESS_KEY_ID=YOUR_S3_ACCESS_KEY
 AWS_SECRET_ACCESS_KEY='YOUR_S3_SECRET_KEY'
@@ -243,7 +243,7 @@ AWS_S3_REGION_NAME=YOUR_REGION
 
 JWT_ACCESS_MINUTES=30
 JWT_REFRESH_DAYS=7
-CUSTOMER_APP_BASE_URL=https://YOUR_DOMAIN/order
+CUSTOMER_APP_BASE_URL=https://www.tomodine.com/order
 ```
 
 > ⚠️ Wrap values containing special characters (`)`, `(`, `$`, `!`, `*`, `#`) in single quotes `'like this'` to prevent bash interpretation errors.
@@ -355,9 +355,9 @@ ss -tlnp | grep -E '8000|8001'
 # Copy Nginx config
 sudo cp /opt/tomodine/deploy/nginx-tomodine.conf /etc/nginx/sites-available/tomodine
 
-# Replace placeholder domain
-sudo sed -i "s/YOUR_DOMAIN/YOUR_DOMAIN/g" /etc/nginx/sites-available/tomodine
-sudo sed -i "s/YOUR_EC2_PUBLIC_IP/YOUR_EC2_PUBLIC_IP/g" /etc/nginx/sites-available/tomodine
+# Replace placeholders with your actual domain and IP
+sudo sed -i "s/YOUR_DOMAIN/www.tomodine.com/g" /etc/nginx/sites-available/tomodine
+sudo sed -i "s/YOUR_EC2_PUBLIC_IP/13.212.121.201/g" /etc/nginx/sites-available/tomodine
 
 # Enable site
 sudo ln -sf /etc/nginx/sites-available/tomodine /etc/nginx/sites-enabled/tomodine
@@ -373,8 +373,8 @@ sudo systemctl reload nginx
 ## Step 12 — SSL Certificate (Let's Encrypt)
 
 ```bash
-# Get certificate (replace YOUR_DOMAIN)
-sudo certbot --nginx -d YOUR_DOMAIN
+# Get certificate (replace www.tomodine.com)
+sudo certbot --nginx -d www.tomodine.com
 
 # Auto-renew is set up automatically, verify:
 sudo certbot renew --dry-run
@@ -388,10 +388,10 @@ After certbot runs, the Nginx config will have SSL configured automatically.
 
 ```bash
 # Test API
-curl https://YOUR_DOMAIN/api/v1/subscription-plans/
+curl https://www.tomodine.com/api/v1/subscription-plans/
 
 # Test WebSocket (install wscat: npm i -g wscat)
-wscat -c "wss://YOUR_DOMAIN/api/ws/restaurants/SLUG/events/?token=JWT"
+wscat -c "wss://www.tomodine.com/api/ws/restaurants/SLUG/events/?token=JWT"
 
 # Check logs
 sudo journalctl -u tomodine-gunicorn -f
@@ -410,8 +410,8 @@ sudo tail -f /var/log/nginx/error.log
 Update `frontend/.env.production` (or set in CI):
 
 ```env
-VITE_API_BASE_URL=https://YOUR_DOMAIN
-VITE_WS_BASE_URL=wss://YOUR_DOMAIN
+VITE_API_BASE_URL=https://www.tomodine.com
+VITE_WS_BASE_URL=wss://www.tomodine.com
 ```
 
 Then rebuild the frontend:
