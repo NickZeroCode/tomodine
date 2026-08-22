@@ -94,7 +94,7 @@
 /* Thin scrollbar for horizontal overflow areas */
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: theme('colors.ink.200') transparent;
+  scrollbar-color: #cdd2d6 transparent;
 }
 .scrollbar-thin::-webkit-scrollbar {
   height: 4px;
@@ -103,6 +103,6 @@
   background: transparent;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: theme('colors.ink.200');
+  background: #cdd2d6;
   border-radius: 2px;
 }
