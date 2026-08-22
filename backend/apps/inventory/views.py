@@ -5,9 +5,8 @@ from __future__ import annotations
 from datetime import date
 
 from django.utils.translation import gettext as _
-from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from apps.api.views import TenantScopedViewSet
@@ -28,9 +27,6 @@ class InventoryItemViewSet(TenantScopedViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         return qs
-
-
-class RecipeItemViewSet(TenantScopedViewSet):
 
     @action(detail=True, methods=["post"], url_path="receive")
     def receive(self, request, pk=None):

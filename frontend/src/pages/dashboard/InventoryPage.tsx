@@ -718,8 +718,10 @@ function RecipeEditorModal({ dishId, dishName, onClose }: { dishId: string; dish
   const recipesKey = ["recipe-lines", dishId];
   const recipesQuery = useQuery({
     queryKey: recipesKey,
-    queryFn: async () =>
-      (await api.get<RecipeLine[]>("/recipe-items/", { params: { dish: dishId } })).data,
+    queryFn: async () => {
+      const res = await api.get("/recipe-items/", { params: { dish: dishId } });
+      return (Array.isArray(res.data) ? res.data : res.data.results) as RecipeLine[];
+    },
   });
 
   const [lines, setLines] = useState<RecipeLine[] | null>(null);
