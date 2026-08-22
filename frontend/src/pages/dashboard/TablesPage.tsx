@@ -547,12 +547,12 @@ export function TablesPage() {
             </div>
           </div>
 
-          {/* ── Management card list (edit / QR / delete) ── */}
-          <details className="group rounded-lg border border-ink-100 bg-white">
-            <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ink-700 transition-colors hover:bg-ink-25">
+          {/* ── Table management list (always visible) ── */}
+          <div className="mt-4">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-400">
               {t("tables.manageTables")} ({tables.length})
-            </summary>
-            <ul className="grid grid-cols-1 gap-3 border-t border-ink-100 p-4 sm:grid-cols-2 lg:grid-cols-3">
+            </h3>
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {scored.map(({ table }) => {
                 const isNew = table.has_new_orders > 0;
                 const isActive = table.active_orders > 0;
@@ -628,7 +628,7 @@ export function TablesPage() {
                 );
               })}
             </ul>
-          </details>
+          </div>
         </>
       )}
 

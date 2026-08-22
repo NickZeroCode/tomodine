@@ -94,7 +94,15 @@
     "total": "মোট",
     "noOrders": "এখনও কোনো অর্ডার নেই",
     "orderPlaced": "অর্ডার সফলভাবে সম্পন্ন হয়েছে",
-    "statusUpdated": "অর্ডারের অবস্থা হালনাগাদ হয়েছে"
+    "statusUpdated": "অর্ডারের অবস্থা হালনাগাদ হয়েছে",
+    "todayOrders": "আজ",
+    "revenue": "আয়",
+    "avgOrder": "গড়ের অর্ডার",
+    "activeOrders": "সক্রিয়",
+    "status": "অবস্থা",
+    "details": "বিস্তারিত",
+    "note": "নোট",
+    "createdAt": "সময়"
   },
   "tables": {
     "title": "টেবিলসমূহ",

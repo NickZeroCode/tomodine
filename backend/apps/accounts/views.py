@@ -83,7 +83,9 @@ class InviteClaimView(generics.CreateAPIView):
             logger.warning(
                 "Invite claim rejected: errors=%s", serializer.errors
             )
-        serializer.is_valid(raise_exception=True)
+            # Return the raw DRF error dict so the frontend can display
+            # per-field errors (e.g. {"password": ["Too short..."]}).
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         user, membership = serializer.save()
         logger.info(
             "Invite claimed: email=%s restaurant=%s", user.email, membership.restaurant_id

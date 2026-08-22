@@ -90,11 +90,19 @@
     "cancelOrder": "Cancel order",
     "cancelConfirm": "Cancel this order? This cannot be undone.",
     "table": "Table",
-    "items": "items",
+    "items": "Items",
     "total": "Total",
     "noOrders": "No orders yet",
     "orderPlaced": "Order placed successfully",
-    "statusUpdated": "Order status updated"
+    "statusUpdated": "Order status updated",
+    "todayOrders": "Today",
+    "revenue": "Revenue",
+    "avgOrder": "Avg order",
+    "activeOrders": "Active",
+    "status": "Status",
+    "details": "Details",
+    "note": "Note",
+    "createdAt": "Time"
   },
   "tables": {
     "title": "Tables",

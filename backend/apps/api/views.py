@@ -483,7 +483,7 @@ class TableViewSet(TenantScopedViewSet):
             "orders__total",
             filter=Q(orders__status__in=["NEW", "ACCEPTED", "PREPARING", "READY", "SERVED"]),
         ),
-    )
+    ).order_by("number")
     required_permission = "tables.manage"
 
     def perform_create(self, serializer):
