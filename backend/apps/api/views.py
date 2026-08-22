@@ -168,12 +168,31 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         If no account exists for the email, a placeholder user is created and
         the email is recorded on the membership for future claiming.
         """
+        import logging as _logging
+        _log = _logging.getLogger("apps")
+
         # ALWAYS use the URL's restaurant (get_object), NOT the middleware-
         # resolved request.restaurant.  The middleware resolves the active
         # branch from X-Branch-ID, but the invite target is in the URL.
         restaurant = self.get_object()
         actor = self._get_actor_membership(request, restaurant)
+
+        _log.info(
+            "add_member: url_restaurant=%s actor_found=%s actor_is_owner=%s "
+            "actor_role=%s user=%s",
+            str(restaurant.pk)[:8],
+            actor is not None,
+            getattr(actor, "is_owner", None),
+            getattr(getattr(actor, "role", None), "name_en", None),
+            request.user.email if request.user.is_authenticated else "anonymous",
+        )
+
         if not self._actor_can_manage_staff(actor):
+            _log.warning(
+                "add_member DENIED: actor=%s can_manage=%s",
+                str(actor.pk)[:8] if actor else "None",
+                self._actor_can_manage_staff(actor),
+            )
             return Response(
                 {"detail": "You do not have permission to manage staff."},
                 status=status.HTTP_403_FORBIDDEN,
