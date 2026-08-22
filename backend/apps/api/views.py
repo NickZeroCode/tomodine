@@ -234,7 +234,13 @@ class RestaurantViewSet(viewsets.ModelViewSet):
                     str(exc), str(restaurant.pk)[:8],
                 )
                 return Response(
-                    {"detail": str(exc)},
+                    {
+                        "code": "plan_limit_reached",
+                        "detail": _(
+                            "You've reached the maximum number of staff for your current plan. "
+                            "Upgrade your subscription to invite more team members."
+                        ),
+                    },
                     status=status.HTTP_403_FORBIDDEN,
                 )
 

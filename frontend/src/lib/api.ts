@@ -88,9 +88,20 @@ api.interceptors.response.use(
 );
 
 function normalizeError(error: AxiosError<ApiError>): ApiError {
-  const data = error.response?.data;
+  const data = error.response?.data as Record<string, unknown> | undefined;
   if (data && typeof data === "object" && "code" in data) {
-    return { ...data, errors: flattenErrors(data.errors) };
+    const result = { ...data } as Record<string, unknown>;
+    // Surface "detail" as the primary message so callers can display it.
+    const detail = typeof data.detail === "string" ? data.detail : undefined;
+    const message = detail ?? (data.message as string | undefined) ?? error.message;
+    delete result.detail;
+    delete result.message;
+    return {
+      ...(result as object),
+      code: data.code as string,
+      message,
+      errors: flattenErrors(data.errors as Record<string, unknown> | undefined),
+    } as ApiError;
   }
   return {
     code: "network_error",
