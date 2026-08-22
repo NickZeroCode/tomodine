@@ -55,6 +55,7 @@ export function TablesPage() {
   const [ordersForTable, setOrdersForTable] = useState<Table | null>(null);
   const [criticalOnly, setCriticalOnly] = useState(false);
   const [pulseId, setPulseId] = useState<string | null>(null);
+  const [orderStatusFilter, setOrderStatusFilter] = useState<OrderStatus | "ALL">("ALL");
 
   const tablesKey = ["tables", restaurant?.slug];
 
@@ -460,14 +461,20 @@ export function TablesPage() {
             </div>
           </div>
 
-          {/* ── Wait List — tables awaiting service/payment in queue order ── */}
+          {/* ── Wait List — all active tables sorted oldest-first ── */}
           {(() => {
-            const waiting = scored.filter(
-              ({ table }) =>
-                table.status === "awaiting_payment" ||
-                table.status === "ready" ||
-                table.status === "awaiting_service"
-            );
+            const waiting = scored
+              .filter(
+                ({ table }) =>
+                  table.active_orders > 0 ||
+                  table.has_new_orders > 0 ||
+                  table.status === "awaiting_payment" ||
+                  table.status === "ready" ||
+                  table.status === "awaiting_service" ||
+                  table.status === "preparing" ||
+                  table.status === "order_received"
+              )
+              .sort((a, b) => (b.table.dining_minutes ?? 0) - (a.table.dining_minutes ?? 0));
             if (waiting.length === 0) return null;
             return (
               <div className="mb-4 rounded-xl border border-ink-100 bg-white p-4">
@@ -482,10 +489,33 @@ export function TablesPage() {
                     {waiting.length}
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
                   {waiting.map(({ table }) => {
                     const mins = table.dining_minutes ?? 0;
                     const isBill = table.status === "awaiting_payment";
+                    const isNew = table.has_new_orders > 0;
+                    const isReady = table.status === "ready" || table.status === "awaiting_service";
+                    const accent = isBill
+                      ? "border-red-200 bg-red-50"
+                      : isNew
+                        ? "border-blue-200 bg-blue-50"
+                        : isReady
+                          ? "border-violet-200 bg-violet-50"
+                          : "border-amber-200 bg-amber-50";
+                    const badgeColor = isBill
+                      ? "bg-red-500"
+                      : isNew
+                        ? "bg-blue-500"
+                        : isReady
+                          ? "bg-violet-500"
+                          : "bg-amber-500";
+                    const statusLabel = isBill
+                      ? t("tables.wantsBill")
+                      : isNew
+                        ? t("orders.new")
+                        : isReady
+                          ? t("tables.laneReady")
+                          : t("tables.laneCooking");
                     return (
                       <button
                         key={table.id}
@@ -493,25 +523,19 @@ export function TablesPage() {
                         onClick={() => setOrdersForTable(table)}
                         onMouseEnter={() => setPulseId(table.id)}
                         onMouseLeave={() => setPulseId(null)}
-                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition-all hover:shadow-sm ${
-                          isBill
-                            ? "border-red-200 bg-red-50"
-                            : "border-amber-200 bg-amber-50"
-                        }`}
+                        className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-all hover:shadow-sm ${accent}`}
                       >
-                        <span className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-white ${
-                          isBill ? "bg-red-500" : "bg-amber-500"
-                        }`}>
+                        <span className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-white ${badgeColor}`}>
                           {table.number}
                         </span>
-                        <div>
+                        <div className="whitespace-nowrap">
                           <p className="text-xs font-semibold text-ink-900">
                             T-{table.number}
                             {table.label && <span className="ml-1 font-normal text-ink-400">· {table.label}</span>}
                           </p>
                           <p className="text-[0.65rem] text-ink-500">
-                            {isBill ? t("tables.wantsBill") : t("tables.laneReady")}
-                            {mins > 0 && ` · ${t("tables.waitTime", { time: `${mins}m` })}`}
+                            {statusLabel}
+                            {mins > 0 && ` · ${mins}m`}
                           </p>
                         </div>
                       </button>
@@ -735,15 +759,47 @@ export function TablesPage() {
       {ordersForTable && (
         <Modal
           title={`${t("tables.tableOrders")} — ${ordersForTable.label || `${t("tables.tableNumber")} ${ordersForTable.number}`}`}
-          onClose={() => setOrdersForTable(null)}
+          onClose={() => { setOrdersForTable(null); setOrderStatusFilter("ALL"); }}
         >
           {tableOrdersQuery.isLoading ? (
             <LoadingState />
           ) : (tableOrdersQuery.data ?? []).length === 0 ? (
             <p className="py-6 text-center text-sm text-ink-500">{t("tables.noActiveOrdersToday")}</p>
           ) : (
-            <ul className="max-h-96 space-y-3 overflow-y-auto">
-              {(tableOrdersQuery.data ?? []).map((order) => {
+            <>
+              {/* Status filter tabs */}
+              {(() => {
+                const allOrders = tableOrdersQuery.data ?? [];
+                const statuses = ["ALL", ...new Set(allOrders.map((o) => o.status))] as Array<OrderStatus | "ALL">;
+                return (
+                  <div className="mb-3 flex flex-wrap gap-1.5 border-b border-ink-100 pb-3">
+                    {statuses.map((s) => {
+                      const count = s === "ALL" ? allOrders.length : allOrders.filter((o) => o.status === s).length;
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setOrderStatusFilter(s)}
+                          className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                            orderStatusFilter === s
+                              ? "bg-ink-900 text-white"
+                              : "bg-ink-50 text-ink-600 hover:bg-ink-100"
+                          }`}
+                        >
+                          {s === "ALL" ? t("common.all") : t(`orders.${s.toLowerCase()}`, s)}
+                          <span className={`rounded-full px-1.5 text-[0.6rem] font-bold ${
+                            orderStatusFilter === s ? "bg-white/20" : "bg-ink-200 text-ink-500"
+                          }`}>{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+              <ul className="max-h-96 space-y-3 overflow-y-auto">
+                {(tableOrdersQuery.data ?? [])
+                  .filter((o) => orderStatusFilter === "ALL" || o.status === orderStatusFilter)
+                  .map((order) => {
                 const orderAge = order.created_at ? Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60_000) : 0;
                 const maxPrep = order.items.reduce((max, item) => Math.max(max, item.max_prep_time ?? 30), 0);
                 const isOverdue = orderAge > maxPrep && !["PAID", "SERVED", "REJECTED", "CANCELLED"].includes(order.status);
@@ -842,6 +898,7 @@ export function TablesPage() {
                 );
               })}
             </ul>
+            </>
           )}
         </Modal>
       )}

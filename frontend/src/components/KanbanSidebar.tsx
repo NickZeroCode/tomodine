@@ -93,6 +93,8 @@ const Card = memo(
     const { t } = useTranslation();
     const { table, score } = item;
     const critical = score >= 70;
+    const isNew = table.has_new_orders > 0;
+    const isBill = table.status === "awaiting_payment";
     return (
       <button
         type="button"
@@ -102,7 +104,13 @@ const Card = memo(
         onFocus={() => onHover(table.id)}
         onBlur={() => onHover(null)}
         className={`w-full rounded-lg border bg-white px-2.5 py-2 text-left transition-all hover:shadow-sm ${
-          critical ? "border-red-300" : "border-ink-100"
+          critical
+            ? "border-red-400 shadow-[0_0_8px_rgba(239,68,68,0.15)]"
+            : isNew
+              ? "border-blue-300"
+              : isBill
+                ? "border-red-300"
+                : "border-ink-100"
         } ${selected ? "ring-2 ring-brand-400" : ""}`}
       >
         <div className="flex items-center justify-between gap-2">
@@ -140,6 +148,7 @@ const Card = memo(
     p.item.table.has_new_orders === n.item.table.has_new_orders &&
     p.item.table.dining_minutes === n.item.table.dining_minutes &&
     p.item.table.guests === n.item.table.guests &&
+    p.item.table.status === n.item.table.status &&
     p.item.score === n.item.score &&
     p.selected === n.selected
 );

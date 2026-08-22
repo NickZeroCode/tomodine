@@ -32,20 +32,40 @@ interface Props {
   ) => void;
 }
 
-/** Deterministic auto-placement for tables without stored coordinates. */
+/** Deterministic auto-placement for tables without stored coordinates.
+ *  Uses a greedy first-fit scan to avoid stacking tables on top of each other. */
 function autoPlace(tables: PositionedTable[]): Map<string, { x: number; y: number }> {
   const placed = new Map<string, { x: number; y: number }>();
-  let col = 0;
-  let row = 0;
+  const occupied = new Set<string>();
+  const key = (x: number, y: number) => `${x},${y}`;
+
   for (const { table } of tables) {
     if (table.grid_x != null && table.grid_y != null) continue;
-    const w = Math.min(table.grid_w || 2, 4);
-    if (col + w > COLS) {
-      col = 0;
-      row += 3;
+    const w = Math.min(table.grid_w || 1, 4);
+    const h = table.grid_h || 1;
+    let placed_flag = false;
+    // Scan rows top-to-bottom, left-to-right for a free slot.
+    for (let row = 0; row < 200 && !placed_flag; row++) {
+      for (let col = 0; col <= COLS - w && !placed_flag; col++) {
+        let fits = true;
+        for (let dx = 0; dx < w && fits; dx++) {
+          for (let dy = 0; dy < h && fits; dy++) {
+            if (occupied.has(key(col + dx, row + dy))) fits = false;
+          }
+        }
+        if (fits) {
+          placed.set(table.id, { x: col, y: row });
+          for (let dx = 0; dx < w; dx++) {
+            for (let dy = 0; dy < h; dy++) {
+              occupied.add(key(col + dx, row + dy));
+            }
+          }
+          placed_flag = true;
+        }
+      }
     }
-    placed.set(table.id, { x: col, y: row });
-    col += w + 1;
+    // Fallback — shouldn't happen but avoids a crash.
+    if (!placed_flag) placed.set(table.id, { x: 0, y: 0 });
   }
   return placed;
 }
@@ -100,38 +120,46 @@ const Tile = memo(
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") onSelect(table);
         }}
-        className={`absolute cursor-grab touch-none select-none rounded-lg border p-2 shadow-sm transition-[opacity,box-shadow,border-color] duration-300 active:cursor-grabbing ${
-          critical ? "border-red-400 ring-2 ring-red-300" : `border-transparent ${v.ring} ring-1`
+        className={`absolute cursor-grab touch-none select-none rounded-lg border-2 p-1.5 shadow-sm transition-[opacity,box-shadow,border-color] duration-300 active:cursor-grabbing ${
+          critical
+            ? "border-red-500 ring-2 ring-red-400/50 shadow-[0_0_12px_rgba(239,68,68,0.25)]"
+            : pulsing && table.has_new_orders > 0
+              ? "border-blue-400 ring-2 ring-blue-300/50 shadow-[0_0_10px_rgba(59,130,246,0.2)]"
+              : `border-transparent ${v.ring} ring-1`
         } ${v.bg} ${dimmed ? "opacity-20" : ""} ${selected ? "!border-brand-500 shadow-lift" : ""}`}
         style={{
           left: `${(x / COLS) * 100}%`,
           top: `${y * 44}px`,
-          width: `${((table.grid_w || 2) / COLS) * 100}%`,
-          height: `${(table.grid_h || 2) * 44 - 8}px`,
+          width: `${((table.grid_w || 1) / COLS) * 100}%`,
+          height: `${(table.grid_h || 1) * 44 - 8}px`,
           contain: "layout style paint",
-          animation: pulsing ? "pulse 1.6s cubic-bezier(.4,0,.6,1) infinite" : undefined,
+          animation: critical
+            ? "critical-pulse 1.2s ease-in-out infinite"
+            : pulsing
+              ? "pulse 1.6s cubic-bezier(.4,0,.6,1) infinite"
+              : undefined,
         }}
       >
         {/* Top row: status dot · number · timer */}
         <div className="flex items-center justify-between gap-1">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className={`h-2 w-2 shrink-0 rounded-full ${v.dot}`} aria-hidden="true" />
-            <span className="truncate text-sm font-bold text-ink-900">{table.number}</span>
+          <div className="flex min-w-0 items-center gap-1">
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${v.dot}`} aria-hidden="true" />
+            <span className="truncate text-xs font-bold text-ink-900">{table.number}</span>
           </div>
           {table.dining_minutes != null && (
-            <span className={`shrink-0 text-[0.6rem] font-semibold tabular-nums ${
+            <span className={`shrink-0 text-[0.55rem] font-semibold tabular-nums ${
               table.dining_minutes >= 90 ? "text-red-600" : "text-ink-400"
             }`}>
               {table.dining_minutes}m
             </span>
           )}
         </div>
-        {/* Middle: chair occupancy — occupied of total */}
-        <div className="mt-0.5 flex items-center gap-1" title={t("tables.occupancy")}>
-          {Array.from({ length: Math.min(table.seats, 8) }).map((_, i) => (
+        {/* Chair occupancy — compact dots */}
+        <div className="mt-0.5 flex items-center gap-0.5" title={t("tables.occupancy")}>
+          {Array.from({ length: Math.min(table.seats, 6) }).map((_, i) => (
             <span
               key={i}
-              className={`h-1.5 w-3 rounded-sm ${
+              className={`h-1 w-2 rounded-sm ${
                 i < (table.guests ?? 0)
                   ? table.has_new_orders > 0 ? "bg-blue-500"
                     : (table.status === "awaiting_payment") ? "bg-red-400"
@@ -141,18 +169,15 @@ const Tile = memo(
               aria-hidden="true"
             />
           ))}
-          {table.seats > 8 && (
-            <span className="text-[0.55rem] font-semibold text-ink-400">+{table.seats - 8}</span>
+          {table.seats > 6 && (
+            <span className="text-[0.5rem] font-semibold text-ink-400">+{table.seats - 6}</span>
           )}
-          <span className="ml-auto text-[0.6rem] font-medium tabular-nums text-ink-400">
-            {table.guests ?? 0}/{table.seats}
-          </span>
         </div>
         {/* Bottom: state hint */}
         {table.status === "awaiting_payment" ? (
-          <p className="truncate text-[0.6rem] font-semibold text-red-600">{t("tables.wantsBill")}</p>
+          <p className="truncate text-[0.55rem] font-bold text-red-600">{t("tables.wantsBill")}</p>
         ) : table.has_new_orders > 0 ? (
-          <p className="truncate text-[0.6rem] font-semibold text-blue-600">{t("orders.new")}</p>
+          <p className="truncate text-[0.55rem] font-bold text-blue-600">{t("orders.new")}</p>
         ) : null}
       </div>
     );

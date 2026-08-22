@@ -74,6 +74,11 @@
   100% { transform: translateX(-50%); }
 }
 
+@keyframes critical-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.12); }
+}
+
 /* Infinite logo marquee — duplicated track + -50% loop.
    Respects reduced-motion preferences. */
 .marquee-track {
@@ -84,4 +89,20 @@
   .marquee-track {
     animation: none;
   }
+}
+
+/* Thin scrollbar for horizontal overflow areas */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: theme('colors.ink.200') transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  height: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: theme('colors.ink.200');
+  border-radius: 2px;
 }
