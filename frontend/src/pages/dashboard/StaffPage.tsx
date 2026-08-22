@@ -89,6 +89,14 @@ export function StaffPage() {
     onSuccess: invalidate,
   });
 
+  const transfer = useMutation({
+    mutationFn: async (input: { memberId: string; targetBranchId: string }) =>
+      api.post(`/restaurants/${restaurant!.id}/members/${input.memberId}/transfer/`, {
+        target_branch_id: input.targetBranchId,
+      }),
+    onSuccess: invalidate,
+  });
+
   function onInvite(e: FormEvent) {
     e.preventDefault();
     invite.mutate();
@@ -188,7 +196,7 @@ export function StaffPage() {
                 </div>
               </div>
               {!m.is_owner && (
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
                   <select
                     className="input w-auto px-2 py-1 text-xs"
                     value={m.role ?? ""}
@@ -204,6 +212,37 @@ export function StaffPage() {
                         {roleLabel(r)}
                       </option>
                     ))}
+                  </select>
+                  {/* Transfer to another branch */}
+                  <select
+                    className="input w-auto px-2 py-1 text-xs"
+                    value=""
+                    disabled={transfer.isPending}
+                    onChange={(e) => {
+                      const targetId = e.target.value;
+                      if (!targetId) return;
+                      if (window.confirm(t("staff.transferConfirm")))
+                        transfer.mutate({ memberId: m.id, targetBranchId: targetId });
+                    }}
+                    aria-label={t("staff.transfer")}
+                  >
+                    <option value="">{t("staff.transfer")}</option>
+                    {/* Show other branches from JWT (excluding current) */}
+                    {(() => {
+                      try {
+                        const token = localStorage.getItem("auth.access");
+                        if (!token) return null;
+                        const payload = JSON.parse(atob(token.split(".")[1]));
+                        const branches = payload.branches as Array<{ id: string; display_name: string }> | undefined;
+                        return (branches ?? [])
+                          .filter((b) => b.id !== restaurant?.id)
+                          .map((b) => (
+                            <option key={b.id} value={b.id}>{b.display_name}</option>
+                          ));
+                      } catch {
+                        return null;
+                      }
+                    })()}
                   </select>
                   <button
                     type="button"

@@ -62,19 +62,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await api.post("/auth/login/", { email, password });
     tokenStore.set(data.access, data.refresh);
 
-    // Auto-set active branch from JWT claims (the backend encodes
-    // the user's branches + a default active_branch_id into the token).
+    // Parse JWT claims to determine branch routing.
+    let canSwitch = false;
+    let branchCount = 0;
+    let activeBranchId: string | null = null;
     try {
       const payload = JSON.parse(atob(data.access.split(".")[1]));
       const branches = payload.branches as Array<{ id: string }> | undefined;
-      const defaultBranchId = payload.active_branch_id as string | undefined;
-      if (branches?.length) {
-        const stored = getActiveBranchId();
-        const valid = stored && branches.some((b) => b.id === stored);
-        setActiveBranchId(valid ? stored : defaultBranchId ?? branches[0].id);
-      }
+      canSwitch = payload.can_switch_branches === true;
+      branchCount = branches?.length ?? 0;
+      activeBranchId = payload.active_branch_id as string | undefined ?? null;
     } catch {
-      /* JWT decode failed — non-fatal */
+      /* non-fatal */
+    }
+
+    if (canSwitch && branchCount > 1) {
+      // Owner/manager with multiple branches — check if they have a stored choice.
+      const stored = getActiveBranchId();
+      const valid = stored && (JSON.parse(atob(data.access.split(".")[1])).branches as Array<{ id: string }>)?.some((b) => b.id === stored);
+      if (!valid && activeBranchId) {
+        // First login or stale choice — set default and let them switch later.
+        setActiveBranchId(activeBranchId);
+      }
+      // If still no valid choice, the BranchSelectionPage will handle it.
+    } else if (branchCount === 1) {
+      // Single branch — lock to it.
+      const branches = (JSON.parse(atob(data.access.split(".")[1])).branches as Array<{ id: string }>) ?? [];
+      if (branches[0]) setActiveBranchId(branches[0].id);
     }
 
     const me = await api.get<User>("/auth/me/");

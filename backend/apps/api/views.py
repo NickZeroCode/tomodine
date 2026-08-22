@@ -295,6 +295,167 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         membership.save()
         return Response(api_serializers.MembershipSerializer(membership).data)
 
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path=r"members/(?P<member_id>[^/.]+)/transfer",
+    )
+    def transfer_member(self, request, slug=None, member_id=None):
+        """Transfer a staff member to another branch within the same org.
+
+        Payload: ``{"target_branch_id": "<uuid>"}``
+        Only owners/managers can transfer.  The target branch must belong
+        to the same organization.
+        """
+        restaurant = self.get_object()
+        actor = self._get_actor_membership(request, restaurant)
+        if not self._actor_can_manage_staff(actor):
+            return Response(
+                {"detail": "You do not have permission to manage staff."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        membership = get_object_or_404(
+            RestaurantMembership.objects.select_related("role", "user", "restaurant__organization"),
+            restaurant=restaurant,
+            pk=member_id,
+        )
+        if membership.is_owner:
+            return Response(
+                {"detail": "The owner cannot be transferred."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        target_branch_id = request.data.get("target_branch_id")
+        if not target_branch_id:
+            return Response(
+                {"target_branch_id": ["This field is required."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from apps.restaurants.models import Restaurant
+
+        target = Restaurant.objects.filter(pk=target_branch_id).first()
+        if target is None:
+            return Response(
+                {"target_branch_id": ["Branch not found."]},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Enforce same organization.
+        source_org = restaurant.organization_id
+        if source_org and target.organization_id != source_org:
+            return Response(
+                {"target_branch_id": ["Target branch must be in the same organization."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if user already has a membership at the target branch.
+        existing = RestaurantMembership.objects.filter(
+            restaurant=target, user=membership.user
+        ).first()
+        if existing:
+            if existing.is_active:
+                return Response(
+                    {"detail": "This staff member is already assigned to that branch."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            # Reactivate existing membership.
+            existing.is_active = True
+            existing.role = membership.role
+            existing.save(update_fields=["is_active", "role", "updated_at"])
+        else:
+            # Create new membership at target branch.
+            RestaurantMembership.objects.create(
+                restaurant=target,
+                user=membership.user,
+                role=membership.role,
+                is_owner=False,
+                invited_email=membership.user.email,
+            )
+
+        # Deactivate at current branch.
+        membership.is_active = False
+        membership.save(update_fields=["is_active", "updated_at"])
+
+        return Response(
+            {"detail": f"Transferred to {target.name}."},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path=r"members/(?P<member_id>[^/.]+)/assign",
+    )
+    def assign_member(self, request, slug=None, member_id=None):
+        """Assign a staff member to an additional branch (without removing from current).
+
+        Payload: ``{"branch_id": "<uuid>"}``
+        """
+        restaurant = self.get_object()
+        actor = self._get_actor_membership(request, restaurant)
+        if not self._actor_can_manage_staff(actor):
+            return Response(
+                {"detail": "You do not have permission to manage staff."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        membership = get_object_or_404(
+            RestaurantMembership.objects.select_related("role", "user"),
+            restaurant=restaurant,
+            pk=member_id,
+        )
+
+        branch_id = request.data.get("branch_id")
+        if not branch_id:
+            return Response(
+                {"branch_id": ["This field is required."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from apps.restaurants.models import Restaurant
+
+        target = Restaurant.objects.filter(pk=branch_id).first()
+        if target is None:
+            return Response(
+                {"branch_id": ["Branch not found."]},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        source_org = restaurant.organization_id
+        if source_org and target.organization_id != source_org:
+            return Response(
+                {"branch_id": ["Target branch must be in the same organization."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        existing = RestaurantMembership.objects.filter(
+            restaurant=target, user=membership.user
+        ).first()
+        if existing:
+            if existing.is_active:
+                return Response(
+                    {"detail": "Already assigned to that branch."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            existing.is_active = True
+            existing.role = membership.role
+            existing.save(update_fields=["is_active", "role", "updated_at"])
+        else:
+            RestaurantMembership.objects.create(
+                restaurant=target,
+                user=membership.user,
+                role=membership.role,
+                is_owner=False,
+                invited_email=membership.user.email,
+            )
+
+        return Response(
+            {"detail": f"Assigned to {target.name}."},
+            status=status.HTTP_200_OK,
+        )
+
 
 # ---------------------------------------------------------------------------
 # Tables / QR

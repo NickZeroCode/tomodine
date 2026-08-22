@@ -168,14 +168,18 @@ export function DashboardLayout() {
   const navigate = useNavigate();
 
   // Parse branch list from JWT for the branch switcher.
-  const branches: BranchInfo[] = (() => {
+  // can_switch_branches is true for owners/managers only.
+  const { branches, canSwitch } = (() => {
     try {
       const token = tokenStore.access;
-      if (!token) return [];
+      if (!token) return { branches: [] as BranchInfo[], canSwitch: false };
       const payload = JSON.parse(atob(token.split(".")[1]));
-      return (payload.branches as BranchInfo[] | undefined) ?? [];
+      return {
+        branches: (payload.branches as BranchInfo[] | undefined) ?? [],
+        canSwitch: payload.can_switch_branches === true,
+      };
     } catch {
-      return [];
+      return { branches: [] as BranchInfo[], canSwitch: false };
     }
   })();
 
@@ -469,11 +473,11 @@ export function DashboardLayout() {
             </Link>
             {isLoading ? (
               <LoadingState />
-            ) : branches.length > 1 ? (
+            ) : canSwitch && branches.length > 1 ? (
               <BranchSwitcher branches={branches} />
             ) : (
               <h1 className="truncate text-sm font-semibold text-ink-900">
-                {restaurant?.name ?? t("common.appName")}
+                {branches[0]?.display_name ?? restaurant?.name ?? t("common.appName")}
               </h1>
             )}
           </div>

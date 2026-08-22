@@ -15,8 +15,11 @@ export interface BranchInfo {
   name: string;
   slug: string;
   is_owner: boolean;
+  is_manager: boolean;
+  role_name: string | null;
   organization_id: string | null;
   organization_name: string | null;
+  display_name: string;
 }
 
 export function BranchSwitcher({ branches }: { branches: BranchInfo[] }) {
@@ -38,13 +41,10 @@ export function BranchSwitcher({ branches }: { branches: BranchInfo[] }) {
   }, [open]);
 
   if (branches.length <= 1) {
-    // Single branch — just show the name, no dropdown.
+    // Single branch — just show the display name, no dropdown.
     return (
       <span className="flex items-center gap-2 text-sm font-semibold text-ink-900">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white shadow-sm">
-          {active?.name?.charAt(0).toUpperCase() ?? "B"}
-        </span>
-        <span className="hidden truncate sm:inline">{active?.name ?? t("common.appName")}</span>
+        <span className="hidden truncate sm:inline">{active?.display_name ?? t("common.appName")}</span>
       </span>
     );
   }
@@ -58,10 +58,7 @@ export function BranchSwitcher({ branches }: { branches: BranchInfo[] }) {
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white shadow-sm">
-          {active?.name?.charAt(0).toUpperCase() ?? "B"}
-        </span>
-        <span className="hidden max-w-[140px] truncate sm:inline">{active?.name}</span>
+        <span className="hidden max-w-[220px] truncate sm:inline">{active?.display_name}</span>
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={`h-4 w-4 shrink-0 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`}>
           <path d="M5 8l5 5 5-5" />
         </svg>
@@ -96,11 +93,11 @@ export function BranchSwitcher({ branches }: { branches: BranchInfo[] }) {
                   }`}
                 >
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ink-100 text-xs font-bold text-ink-600">
-                    {branch.name.charAt(0).toUpperCase()}
+                    {branch.display_name.charAt(0).toUpperCase()}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{branch.name}</p>
-                    <p className="truncate text-[0.65rem] text-ink-400">{branch.slug}</p>
+                    <p className="truncate font-medium">{branch.display_name}</p>
+                    <p className="truncate text-[0.65rem] text-ink-400">{branch.role_name ?? branch.slug}</p>
                   </div>
                   {branch.id === activeId && (
                     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0 text-brand-600">

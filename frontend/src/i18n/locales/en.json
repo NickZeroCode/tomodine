@@ -435,7 +435,9 @@
     "removeConfirm": "Remove this staff member?",
     "noStaff": "No staff yet",
     "inviteLinkTitle": "Invitation ready to share",
-    "inviteLinkDesc": "Share this link with your staff member via WhatsApp or SMS so they can set up their account."
+    "inviteLinkDesc": "Share this link with your staff member via WhatsApp or SMS so they can set up their account.",
+    "transfer": "Transfer",
+    "transferConfirm": "Transfer this staff member to the selected branch? They will be removed from the current branch."
   },
   "notifications": {
     "title": "Notifications",
@@ -682,6 +684,8 @@
     "current": "Current",
     "switch": "Switch",
     "deactivate": "Deactivate",
-    "deactivateConfirm": "All orders and inventory for this branch will be archived. Continue?"
+    "deactivateConfirm": "All orders and inventory for this branch will be archived. Continue?",
+    "selectTitle": "Choose your location",
+    "selectSubtitle": "Select which branch you want to manage today."
   }
 }

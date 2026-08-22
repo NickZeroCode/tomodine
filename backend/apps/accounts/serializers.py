@@ -179,7 +179,13 @@ class InviteClaimSerializer(serializers.Serializer):
 
 
 class RestaurantTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """JWT with lightweight, non-sensitive claims including org/branch context."""
+    """JWT with branch context, role flags, and org naming.
+
+    Claims:
+      branches[]          — list of accessible branches with role info
+      active_branch_id    — default branch (first owned, then first accessible)
+      can_switch_branches — true if user is owner or has staff.manage at any branch
+    """
 
     @classmethod
     def get_token(cls, user: User):
@@ -187,29 +193,47 @@ class RestaurantTokenObtainPairSerializer(TokenObtainPairSerializer):
         token["email"] = user.email
         token["preferred_language"] = user.preferred_language
 
-        # Attach the user's accessible branches for the frontend branch
-        # switcher.  The client stores these and sends X-Branch-ID with
-        # every request.
         from apps.restaurants.models import Restaurant, RestaurantMembership
 
         memberships = (
             RestaurantMembership.objects.filter(user=user, is_active=True)
-            .select_related("restaurant", "restaurant__organization")
+            .select_related("restaurant", "restaurant__organization", "role")
         )
         branches = []
+        can_switch = False
+
         for m in memberships:
             r = m.restaurant
+            org = r.organization
+            is_manager = bool(
+                m.is_owner
+                or (m.role and m.role.permissions.filter(codename="staff.manage").exists())
+            )
+            if is_manager:
+                can_switch = True
+
             branches.append({
                 "id": str(r.id),
                 "name": r.name,
                 "slug": r.slug,
                 "is_owner": m.is_owner,
-                "organization_id": str(r.organization_id) if r.organization_id else None,
-                "organization_name": r.organization.name if r.organization else None,
+                "is_manager": is_manager,
+                "role_name": m.role.name_en if m.role else ("Owner" if m.is_owner else None),
+                "organization_id": str(org.id) if org else None,
+                "organization_name": org.name if org else None,
+                # Display name: "Organization — Branch"
+                "display_name": f"{org.name} — {r.name}" if org else r.name,
             })
+
         token["branches"] = branches
-        # Default active branch: first owned, then first accessible.
-        active = next((b for b in branches if b["is_owner"]), branches[0] if branches else None)
+        token["can_switch_branches"] = can_switch
+
+        # Default branch: first owned → first manager → first accessible.
+        active = (
+            next((b for b in branches if b["is_owner"]), None)
+            or next((b for b in branches if b["is_manager"]), None)
+            or (branches[0] if branches else None)
+        )
         token["active_branch_id"] = active["id"] if active else None
 
         return token

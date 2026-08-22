@@ -20,12 +20,31 @@ import { InventoryPage } from "@/pages/dashboard/InventoryPage";
 import { CustomerOrderPage } from "@/pages/customer/CustomerOrderPage";
 import { InviteAcceptPage } from "@/pages/InviteAcceptPage";
 import { BranchesPage } from "@/pages/dashboard/BranchesPage";
+import { BranchSelectionPage } from "@/pages/BranchSelectionPage";
 import type { ReactNode } from "react";
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <LoadingState />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  // If the user is an owner/manager with multiple branches and no active
+  // branch stored, redirect to the branch selection page.
+  try {
+    const token = localStorage.getItem("auth.access");
+    if (token) {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      const canSwitch = payload.can_switch_branches === true;
+      const branchCount = (payload.branches as unknown[])?.length ?? 0;
+      const activeId = localStorage.getItem("active.branch.id");
+      if (canSwitch && branchCount > 1 && !activeId) {
+        return <Navigate to="/select-branch" replace />;
+      }
+    }
+  } catch {
+    /* token decode failed — allow through */
+  }
+
   return <>{children}</>;
 }
 
@@ -37,6 +56,7 @@ export default function App() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/order/:qrToken" element={<CustomerOrderPage />} />
       <Route path="/invite/accept" element={<InviteAcceptPage />} />
+      <Route path="/select-branch" element={<BranchSelectionPage />} />
       <Route
         path="/dashboard"
         element={
