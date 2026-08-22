@@ -141,10 +141,14 @@ def set_out_of_stock(item: InventoryItem, flag: bool) -> InventoryItem:
 # Order-time deduction
 # ---------------------------------------------------------------------------
 @transaction.atomic
-def deduct_for_order(restaurant, order) -> None:
+def deduct_for_order(restaurant, order, cart_items) -> None:
     """Deduct recipe ingredients for a placed order.
 
-    Called from ``create_order_from_cart`` inside the same DB transaction.
+    Called from ``create_order_from_cart`` inside the same DB transaction,
+    BEFORE the cart is cleared — ``cart_items`` are ``Cart.items`` rows which
+    carry the live ``dish`` FK (``OrderItem`` only stores name/price
+    snapshots and has no dish relation).
+
     Deductions are best-effort per ingredient: an item without sufficient
     stock is still deducted down to zero and flagged — blocking a paid
     customer's order on a counting discrepancy would be worse than an audit
@@ -153,7 +157,7 @@ def deduct_for_order(restaurant, order) -> None:
     movements: list[StockMovement] = []
     affected: dict[str, InventoryItem] = {}
 
-    for line in order.items.select_related("dish"):
+    for line in cart_items:
         recipes = RecipeItem.objects.filter(dish=line.dish).select_related("inventory_item")
         for recipe in recipes:
             item = recipe.inventory_item

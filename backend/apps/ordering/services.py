@@ -92,11 +92,13 @@ def create_order_from_cart(session: CustomerSession, customer_note: str = "", or
     )
 
     # Deduct recipe ingredients from inventory (same transaction — atomic
-    # with the order itself). Best-effort: never blocks a placed order.
+    # with the order itself). Cart items carry the live dish FK; they are
+    # captured BEFORE the cart is cleared below. Best-effort: never blocks
+    # a placed order.
     try:
         from apps.inventory.services import deduct_for_order
 
-        deduct_for_order(session.restaurant, order)
+        deduct_for_order(session.restaurant, order, items)
     except Exception:  # pragma: no cover — inventory must never break ordering
         import logging
 
