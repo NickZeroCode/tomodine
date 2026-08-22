@@ -4,8 +4,9 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useRestaurant } from "@/context/RestaurantContext";
-import { api, tokenStore, getActiveBranchId } from "@/lib/api";
-import { BranchSwitcher, type BranchInfo } from "@/components/BranchSwitcher";
+import { api } from "@/lib/api";
+import { getAuthContext, PERM } from "@/lib/permissions";
+import { BranchSwitcher } from "@/components/BranchSwitcher";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
 import { LoadingState } from "@/components/States";
@@ -113,58 +114,57 @@ const IC = {
   ),
 };
 
-/* ── Desktop sidebar sections ───────────────────────────────── */
-type SidebarItem = { to: string; key: string; icon: React.ReactNode; end?: boolean };
-type SidebarSection = { labelKey: string; items: SidebarItem[]; requires?: "manager" | "owner" };
+/* ── Desktop sidebar sections ─────────────────────────────────
+   Each item declares the permission it needs (from permissions.ts).
+   Items are hidden when the active branch's role lacks the permission. */
+type SidebarItem = { to: string; key: string; icon: React.ReactNode; end?: boolean; perm?: string };
+type SidebarSection = { labelKey: string; items: SidebarItem[] };
 
 const SIDEBAR_SECTIONS: SidebarSection[] = [
   {
     labelKey: "nav.operations",
     items: [
       { to: "/dashboard", key: "nav.overview", icon: IC.grid, end: true },
-      { to: "/dashboard/orders", key: "nav.orders", icon: IC.orders },
-      { to: "/dashboard/tables", key: "nav.tables", icon: IC.tables },
+      { to: "/dashboard/orders", key: "nav.orders", icon: IC.orders, perm: PERM.ordersView },
+      { to: "/dashboard/tables", key: "nav.tables", icon: IC.tables, perm: PERM.tablesManage },
     ],
   },
   {
     labelKey: "nav.menuAndOffers",
     items: [
-      { to: "/dashboard/menu", key: "nav.menu", icon: IC.menu },
-      { to: "/dashboard/inventory", key: "nav.inventory", icon: IC.inventory },
-      { to: "/dashboard/offers", key: "nav.offers", icon: IC.offers },
+      { to: "/dashboard/menu", key: "nav.menu", icon: IC.menu, perm: PERM.menuManage },
+      { to: "/dashboard/inventory", key: "nav.inventory", icon: IC.inventory, perm: PERM.inventoryManage },
+      { to: "/dashboard/offers", key: "nav.offers", icon: IC.offers, perm: PERM.billingManage },
     ],
   },
   {
     labelKey: "nav.customerSection",
-    items: [{ to: "/dashboard/customers", key: "nav.customers", icon: IC.customers }],
-    requires: "manager",
+    items: [{ to: "/dashboard/customers", key: "nav.customers", icon: IC.customers, perm: PERM.analyticsView }],
   },
   {
     labelKey: "nav.financeAndInsights",
     items: [
-      { to: "/dashboard/reports", key: "nav.reports", icon: IC.reports },
-      { to: "/dashboard/menu-engineering", key: "nav.menuEngineering", icon: IC.menu },
-      { to: "/dashboard/subscription", key: "nav.billing", icon: IC.billing },
+      { to: "/dashboard/reports", key: "nav.reports", icon: IC.reports, perm: PERM.analyticsView },
+      { to: "/dashboard/menu-engineering", key: "nav.menuEngineering", icon: IC.menu, perm: PERM.analyticsView },
+      { to: "/dashboard/subscription", key: "nav.billing", icon: IC.billing, perm: PERM.billingView },
     ],
-    requires: "manager",
   },
   {
     labelKey: "nav.teamSection",
     items: [
-      { to: "/dashboard/staff", key: "nav.staff", icon: IC.staff },
-      { to: "/dashboard/branches", key: "nav.branches", icon: IC.tables },
+      { to: "/dashboard/staff", key: "nav.staff", icon: IC.staff, perm: PERM.staffManage },
+      { to: "/dashboard/branches", key: "nav.branches", icon: IC.tables, perm: PERM.staffManage },
     ],
-    requires: "manager",
   },
 ];
 
-/* ── Mobile bottom nav — top 5 items only ───────────────────── */
-const MOBILE_NAV = [
-  { to: "/dashboard", key: "nav.overview", icon: IC.grid, end: true, requires: null as string | null },
-  { to: "/dashboard/orders", key: "nav.orders", icon: IC.orders, requires: null },
-  { to: "/dashboard/tables", key: "nav.tables", icon: IC.tables, requires: null },
-  { to: "/dashboard/menu", key: "nav.menu", icon: IC.menu, requires: null },
-  { to: "/dashboard/inventory", key: "nav.inventory", icon: IC.inventory, requires: "manager" },
+/* ── Mobile bottom nav — top items only ─────────────────────── */
+const MOBILE_NAV: SidebarItem[] = [
+  { to: "/dashboard", key: "nav.overview", icon: IC.grid, end: true },
+  { to: "/dashboard/orders", key: "nav.orders", icon: IC.orders, perm: PERM.ordersView },
+  { to: "/dashboard/tables", key: "nav.tables", icon: IC.tables, perm: PERM.tablesManage },
+  { to: "/dashboard/menu", key: "nav.menu", icon: IC.menu, perm: PERM.menuManage },
+  { to: "/dashboard/inventory", key: "nav.inventory", icon: IC.inventory, perm: PERM.inventoryManage },
 ];
 
 export function DashboardLayout() {
@@ -173,34 +173,25 @@ export function DashboardLayout() {
   const { restaurant, restaurants, selectRestaurant, isLoading, refetch } = useRestaurant();
   const navigate = useNavigate();
 
-  // Parse branch list from JWT for the branch switcher.
-  // can_switch_branches is true for owners/managers only.
-  const { branches, canSwitch, isManager, isOwner } = (() => {
-    try {
-      const token = tokenStore.access;
-      if (!token) return { branches: [] as BranchInfo[], canSwitch: false, isManager: false, isOwner: false };
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      const branchList = (payload.branches as BranchInfo[] | undefined) ?? [];
-      const activeId = getActiveBranchId();
-      const activeBranch = branchList.find((b) => b.id === activeId) ?? branchList[0];
-      return {
-        branches: branchList,
-        canSwitch: payload.can_switch_branches === true,
-        isManager: activeBranch?.is_manager === true,
-        isOwner: activeBranch?.is_owner === true,
-      };
-    } catch {
-      return { branches: [] as BranchInfo[], canSwitch: false, isManager: false, isOwner: false };
-    }
+  // Resolve auth context (branches, permissions) from the JWT.
+  const { branches, canSwitch, permissions } = (() => {
+    const ctx = getAuthContext();
+    return {
+      branches: ctx.branches,
+      canSwitch: ctx.canSwitchBranches,
+      permissions: ctx.permissions,
+    };
   })();
 
-  // Filter sidebar sections based on the user's role in the active branch.
-  const visibleSections = SIDEBAR_SECTIONS.filter((section) => {
-    if (!section.requires) return true;
-    if (section.requires === "manager") return isManager;
-    if (section.requires === "owner") return isOwner;
-    return true;
-  });
+  const hasPerm = (perm?: string) => !perm || permissions.has(perm);
+
+  // Filter sidebar sections by permission.
+  const visibleSections = SIDEBAR_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => hasPerm(item.perm)),
+  })).filter((section) => section.items.length > 0);
+
+  const visibleMobileNav = MOBILE_NAV.filter((item) => hasPerm(item.perm));
 
   const handleLogout = () => {
     logout();
@@ -405,7 +396,7 @@ export function DashboardLayout() {
         {/* Bottom: settings / help / collapse toggle / user */}
         <div className="border-t border-ink-800 px-2 pb-3 pt-2">
           <div className="space-y-0.5">
-            {isManager && (
+            {hasPerm(PERM.staffManage) || hasPerm(PERM.settingsManage) ? (
             <NavLink
               to="/dashboard/settings"
               title={sidebarCollapsed ? t("nav.settings") : undefined}
@@ -424,7 +415,7 @@ export function DashboardLayout() {
               {IC.settings}
               {!sidebarCollapsed && <span className="text-sm font-medium">{t("nav.settings")}</span>}
             </NavLink>
-            )}
+            ) : null}
             <a
               href="#"
               title={sidebarCollapsed ? t("nav.help") : undefined}
@@ -562,9 +553,7 @@ export function DashboardLayout() {
           className="fixed inset-x-0 bottom-0 z-10 flex border-t border-ink-100 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
           aria-label="Main"
         >
-          {MOBILE_NAV
-            .filter((item) => !item.requires || (item.requires === "manager" && isManager) || (item.requires === "owner" && isOwner))
-            .map((item) => (
+          {visibleMobileNav.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -646,7 +635,7 @@ export function DashboardLayout() {
               </div>
             ))}
             {/* Settings link — only for managers/owners */}
-            {isManager && (
+            {permissions.has(PERM.staffManage) || permissions.has(PERM.settingsManage) ? (
             <div>
               <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{t("nav.settings")}</p>
               <NavLink
@@ -662,7 +651,7 @@ export function DashboardLayout() {
                 <span className="min-w-0 flex-1 truncate">{t("nav.settings")}</span>
               </NavLink>
             </div>
-            )}
+            ) : null}
           </nav>
 
           {/* Drawer footer — logout */}

@@ -206,6 +206,7 @@ class RestaurantTokenObtainPairSerializer(TokenObtainPairSerializer):
         memberships = (
             RestaurantMembership.objects.filter(user=user, is_active=True)
             .select_related("restaurant", "restaurant__organization", "role")
+            .prefetch_related("role__permissions")
         )
         branches = []
         can_switch = False
@@ -213,10 +214,17 @@ class RestaurantTokenObtainPairSerializer(TokenObtainPairSerializer):
         for m in memberships:
             r = m.restaurant
             org = r.organization
-            is_manager = bool(
-                m.is_owner
-                or (m.role and m.role.permissions.filter(codename="staff.manage").exists())
-            )
+            perms: set[str] = set()
+            if m.is_owner:
+                # Owners implicitly hold every permission.
+                from apps.rbac.models import Permission
+
+                perms = set(Permission.objects.values_list("codename", flat=True))
+                is_manager = True
+            else:
+                if m.role:
+                    perms = set(m.role.permissions.values_list("codename", flat=True))
+                is_manager = "staff.manage" in perms
             if is_manager:
                 can_switch = True
 
@@ -231,6 +239,9 @@ class RestaurantTokenObtainPairSerializer(TokenObtainPairSerializer):
                 "organization_name": org.name if org else None,
                 # Display name: "Organization — Branch"
                 "display_name": f"{org.name} — {r.name}" if org else r.name,
+                # Explicit permission list — the frontend derives ALL UI
+                # visibility and query behavior from this. No guessing.
+                "permissions": sorted(perms),
             })
 
         token["branches"] = branches
