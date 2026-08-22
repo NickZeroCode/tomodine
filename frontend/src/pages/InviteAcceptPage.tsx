@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
-import { tokenStore } from "@/lib/api";
+import { tokenStore, setActiveBranchId } from "@/lib/api";
 
 /**
  * Staff invitation acceptance page.
@@ -111,6 +111,11 @@ export function InviteAcceptPage() {
         return;
       }
 
+      // Clear any stale auth state from a previous session (e.g. the owner
+      // who generated the invite link might still be logged in).
+      tokenStore.clear();
+      setActiveBranchId(null);
+
       // Auto-login with the freshly claimed credentials.
       const loginResp = await axios.post<{ access: string; refresh: string }>(
         "/api/v1/auth/login/",
@@ -120,7 +125,25 @@ export function InviteAcceptPage() {
 
       if (loginResp.status === 200 && loginResp.data?.access) {
         tokenStore.set(loginResp.data.access, loginResp.data.refresh);
-        navigate("/dashboard");
+
+        // Set the active branch from the JWT so X-Branch-ID is sent with
+        // every subsequent request — without this, all tenant-scoped
+        // endpoints return 403.
+        try {
+          const payload = JSON.parse(atob(loginResp.data.access.split(".")[1]));
+          const branches = payload.branches as Array<{ id: string; slug?: string }> | undefined;
+          const activeId = payload.active_branch_id as string | undefined;
+          if (branches?.length) {
+            setActiveBranchId(activeId ?? branches[0].id);
+            if (branches[0].slug) localStorage.setItem("tenant.slug", branches[0].slug);
+          }
+        } catch {
+          /* non-fatal */
+        }
+
+        // Force a full page reload so the auth context bootstraps with
+        // the new token (the SPA state is stale with the old user).
+        window.location.href = "/dashboard";
       } else {
         // Claim succeeded but auto-login failed — send to manual login.
         navigate("/login");

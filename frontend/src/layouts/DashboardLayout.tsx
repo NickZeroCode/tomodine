@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useRestaurant } from "@/context/RestaurantContext";
-import { api, tokenStore } from "@/lib/api";
+import { api, tokenStore, getActiveBranchId } from "@/lib/api";
 import { BranchSwitcher, type BranchInfo } from "@/components/BranchSwitcher";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -114,7 +114,10 @@ const IC = {
 };
 
 /* ── Desktop sidebar sections ───────────────────────────────── */
-const SIDEBAR_SECTIONS = [
+type SidebarItem = { to: string; key: string; icon: React.ReactNode; end?: boolean };
+type SidebarSection = { labelKey: string; items: SidebarItem[]; requires?: "manager" | "owner" };
+
+const SIDEBAR_SECTIONS: SidebarSection[] = [
   {
     labelKey: "nav.operations",
     items: [
@@ -134,6 +137,7 @@ const SIDEBAR_SECTIONS = [
   {
     labelKey: "nav.customerSection",
     items: [{ to: "/dashboard/customers", key: "nav.customers", icon: IC.customers }],
+    requires: "manager",
   },
   {
     labelKey: "nav.financeAndInsights",
@@ -142,6 +146,7 @@ const SIDEBAR_SECTIONS = [
       { to: "/dashboard/menu-engineering", key: "nav.menuEngineering", icon: IC.menu },
       { to: "/dashboard/subscription", key: "nav.billing", icon: IC.billing },
     ],
+    requires: "manager",
   },
   {
     labelKey: "nav.teamSection",
@@ -149,17 +154,18 @@ const SIDEBAR_SECTIONS = [
       { to: "/dashboard/staff", key: "nav.staff", icon: IC.staff },
       { to: "/dashboard/branches", key: "nav.branches", icon: IC.tables },
     ],
+    requires: "manager",
   },
-] as const;
+];
 
 /* ── Mobile bottom nav — top 5 items only ───────────────────── */
 const MOBILE_NAV = [
-  { to: "/dashboard", key: "nav.overview", icon: IC.grid, end: true },
-  { to: "/dashboard/orders", key: "nav.orders", icon: IC.orders },
-  { to: "/dashboard/tables", key: "nav.tables", icon: IC.tables },
-  { to: "/dashboard/menu", key: "nav.menu", icon: IC.menu },
-  { to: "/dashboard/staff", key: "nav.staff", icon: IC.staff },
-] as const;
+  { to: "/dashboard", key: "nav.overview", icon: IC.grid, end: true, requires: null as string | null },
+  { to: "/dashboard/orders", key: "nav.orders", icon: IC.orders, requires: null },
+  { to: "/dashboard/tables", key: "nav.tables", icon: IC.tables, requires: null },
+  { to: "/dashboard/menu", key: "nav.menu", icon: IC.menu, requires: null },
+  { to: "/dashboard/inventory", key: "nav.inventory", icon: IC.inventory, requires: "manager" },
+];
 
 export function DashboardLayout() {
   const { t } = useTranslation();
@@ -169,19 +175,32 @@ export function DashboardLayout() {
 
   // Parse branch list from JWT for the branch switcher.
   // can_switch_branches is true for owners/managers only.
-  const { branches, canSwitch } = (() => {
+  const { branches, canSwitch, isManager, isOwner } = (() => {
     try {
       const token = tokenStore.access;
-      if (!token) return { branches: [] as BranchInfo[], canSwitch: false };
+      if (!token) return { branches: [] as BranchInfo[], canSwitch: false, isManager: false, isOwner: false };
       const payload = JSON.parse(atob(token.split(".")[1]));
+      const branchList = (payload.branches as BranchInfo[] | undefined) ?? [];
+      const activeId = getActiveBranchId();
+      const activeBranch = branchList.find((b) => b.id === activeId) ?? branchList[0];
       return {
-        branches: (payload.branches as BranchInfo[] | undefined) ?? [],
+        branches: branchList,
         canSwitch: payload.can_switch_branches === true,
+        isManager: activeBranch?.is_manager === true,
+        isOwner: activeBranch?.is_owner === true,
       };
     } catch {
-      return { branches: [] as BranchInfo[], canSwitch: false };
+      return { branches: [] as BranchInfo[], canSwitch: false, isManager: false, isOwner: false };
     }
   })();
+
+  // Filter sidebar sections based on the user's role in the active branch.
+  const visibleSections = SIDEBAR_SECTIONS.filter((section) => {
+    if (!section.requires) return true;
+    if (section.requires === "manager") return isManager;
+    if (section.requires === "owner") return isOwner;
+    return true;
+  });
 
   const handleLogout = () => {
     logout();
@@ -340,7 +359,7 @@ export function DashboardLayout() {
 
         {/* Navigation sections */}
         <nav className="flex-1 space-y-5 overflow-y-auto px-2 pt-4 pb-3" aria-label="Main">
-          {SIDEBAR_SECTIONS.map((section) => (
+          {visibleSections.map((section) => (
             <div key={section.labelKey}>
               {!sidebarCollapsed && (
                 <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
@@ -386,6 +405,7 @@ export function DashboardLayout() {
         {/* Bottom: settings / help / collapse toggle / user */}
         <div className="border-t border-ink-800 px-2 pb-3 pt-2">
           <div className="space-y-0.5">
+            {isManager && (
             <NavLink
               to="/dashboard/settings"
               title={sidebarCollapsed ? t("nav.settings") : undefined}
@@ -404,6 +424,7 @@ export function DashboardLayout() {
               {IC.settings}
               {!sidebarCollapsed && <span className="text-sm font-medium">{t("nav.settings")}</span>}
             </NavLink>
+            )}
             <a
               href="#"
               title={sidebarCollapsed ? t("nav.help") : undefined}
@@ -541,7 +562,9 @@ export function DashboardLayout() {
           className="fixed inset-x-0 bottom-0 z-10 flex border-t border-ink-100 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
           aria-label="Main"
         >
-          {MOBILE_NAV.map((item) => (
+          {MOBILE_NAV
+            .filter((item) => !item.requires || (item.requires === "manager" && isManager) || (item.requires === "owner" && isOwner))
+            .map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -597,7 +620,7 @@ export function DashboardLayout() {
 
           {/* Drawer nav — same sections as desktop sidebar */}
           <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3" aria-label="Mobile navigation">
-            {SIDEBAR_SECTIONS.map((section) => (
+            {visibleSections.map((section) => (
               <div key={section.labelKey}>
                 <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
                   {t(section.labelKey)}
@@ -622,7 +645,8 @@ export function DashboardLayout() {
                 </div>
               </div>
             ))}
-            {/* Settings link (not in SIDEBAR_SECTIONS) */}
+            {/* Settings link — only for managers/owners */}
+            {isManager && (
             <div>
               <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{t("nav.settings")}</p>
               <NavLink
@@ -638,6 +662,7 @@ export function DashboardLayout() {
                 <span className="min-w-0 flex-1 truncate">{t("nav.settings")}</span>
               </NavLink>
             </div>
+            )}
           </nav>
 
           {/* Drawer footer — logout */}
