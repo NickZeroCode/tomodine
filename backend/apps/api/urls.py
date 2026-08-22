@@ -37,6 +37,9 @@ from apps.inventory.views import (  # noqa: E402
     StockMovementViewSet,
 )
 
+# Chatbot URLs.
+from apps.chatbot.urls import urlpatterns as chatbot_urls  # noqa: E402
+
 router = DefaultRouter()
 router.register("restaurants", RestaurantViewSet, basename="restaurant")
 router.register("tables", TableViewSet, basename="table")
@@ -63,4 +66,5 @@ urlpatterns = [
     path("auth/me/", MeView.as_view(), name="auth-me"),
     path("auth/invite/claim/", InviteClaimView.as_view(), name="auth-invite-claim"),
     path("", include(router.urls)),
+    *chatbot_urls,
 ]

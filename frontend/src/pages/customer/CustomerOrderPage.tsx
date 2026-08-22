@@ -11,6 +11,7 @@ import { Icon } from "@/components/Icon";
 import { DishDetailModal } from "@/components/DishDetailModal";
 import { OfferBanner } from "@/components/OfferBanner";
 import { MiniGames } from "@/components/games/MiniGames";
+import { ChatWidget } from "@/components/ChatWidget";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
 import type { Dish, DishVariant, Offer, Order } from "@/types";
 
@@ -1137,6 +1138,11 @@ export function CustomerOrderPage() {
           </div>
         </div>
       )}
+
+      {/* ── AI Concierge ── */}
+      <ChatWidget tableId={qrToken} restaurantSlug={menuQuery.data?.restaurant.slug} />
     </div>
   );
 }
+
+export default CustomerOrderPage;

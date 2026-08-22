@@ -106,6 +106,7 @@ LOCAL_APPS = [
     "apps.billing",
     "apps.notifications",
     "apps.analytics",
+    "apps.chatbot",
     "apps.api",
 ]
 
@@ -372,6 +373,12 @@ CUSTOMER_APP_BASE_URL = env("CUSTOMER_APP_BASE_URL", "http://localhost:5173/orde
 
 # Trial length for new restaurant subscriptions.
 TRIAL_PERIOD_DAYS = int(env("TRIAL_PERIOD_DAYS", "14"))
+
+# ---------------------------------------------------------------------------
+# AI Concierge (Chatbot)
+# ---------------------------------------------------------------------------
+OPENAI_API_KEY = env("OPENAI_API_KEY", "")
+OPENAI_MODEL = env("OPENAI_MODEL", "gpt-4o-mini")  # gpt-4o for higher quality
 
 # ---------------------------------------------------------------------------
 # Logging
