@@ -299,10 +299,8 @@ export function TablesPage() {
     }
   }
 
-  if (!restaurant) return <EmptyState />;
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={() => void refetch()} />;
-
+  // NOTE: All hooks must run unconditionally — the derived/scored memo and
+  // any other hooks live ABOVE the early returns below.
   const tables = data ?? [];
 
   // Derived: sorted by urgency (most urgent first).
@@ -314,6 +312,10 @@ export function TablesPage() {
     [tables]
   );
   const criticalCount = scored.filter((s) => s.score >= CRITICAL_THRESHOLD).length;
+
+  if (!restaurant) return <EmptyState />;
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={() => void refetch()} />;
 
   return (
     <section aria-labelledby="tables-heading">
