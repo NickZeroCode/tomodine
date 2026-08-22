@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useRestaurant } from "@/context/RestaurantContext";
-import { api } from "@/lib/api";
+import { api, tokenStore } from "@/lib/api";
+import { BranchSwitcher, type BranchInfo } from "@/components/BranchSwitcher";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
 import { LoadingState } from "@/components/States";
@@ -162,6 +163,18 @@ export function DashboardLayout() {
   const { user, logout } = useAuth();
   const { restaurant, restaurants, selectRestaurant, isLoading, refetch } = useRestaurant();
   const navigate = useNavigate();
+
+  // Parse branch list from JWT for the branch switcher.
+  const branches: BranchInfo[] = (() => {
+    try {
+      const token = tokenStore.access;
+      if (!token) return [];
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      return (payload.branches as BranchInfo[] | undefined) ?? [];
+    } catch {
+      return [];
+    }
+  })();
 
   const handleLogout = () => {
     logout();
@@ -453,17 +466,8 @@ export function DashboardLayout() {
             </Link>
             {isLoading ? (
               <LoadingState />
-            ) : restaurants.length > 1 ? (
-              <select
-                className="input max-w-[14rem] truncate text-sm"
-                value={restaurant?.slug ?? ""}
-                onChange={(e) => selectRestaurant(e.target.value)}
-                aria-label={t("nav.overview")}
-              >
-                {restaurants.map((r) => (
-                  <option key={r.id} value={r.slug}>{r.name}</option>
-                ))}
-              </select>
+            ) : branches.length > 1 ? (
+              <BranchSwitcher branches={branches} />
             ) : (
               <h1 className="truncate text-sm font-semibold text-ink-900">
                 {restaurant?.name ?? t("common.appName")}

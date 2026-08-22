@@ -98,6 +98,7 @@ LOCAL_APPS = [
     "apps.tenancy",
     "apps.rbac",
     "apps.restaurants",
+    "apps.organizations",
     "apps.menus",
     "apps.tables",
     "apps.ordering",

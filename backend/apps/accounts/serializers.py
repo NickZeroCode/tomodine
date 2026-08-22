@@ -17,9 +17,23 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, trim_whitespace=False)
     password_confirm = serializers.CharField(write_only=True, trim_whitespace=False)
 
+    # Organization/branch setup fields (optional — backward compatible).
+    organization_name = serializers.CharField(
+        required=False, allow_blank=True, default="",
+        help_text="Business/organization name. Creates an Organization record.",
+    )
+    branch_name = serializers.CharField(
+        required=False, allow_blank=True, default="",
+        help_text="First branch name. Defaults to 'Main Location'.",
+    )
+
     class Meta:
         model = User
-        fields = ("email", "full_name", "phone", "preferred_language", "password", "password_confirm")
+        fields = (
+            "email", "full_name", "phone", "preferred_language",
+            "password", "password_confirm",
+            "organization_name", "branch_name",
+        )
 
     def validate_email(self, value: str) -> str:
         email = value.strip().lower()
@@ -42,9 +56,30 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data: dict[str, Any]) -> User:
         password = validated_data.pop("password")
+        org_name = validated_data.pop("organization_name", "") or ""
+        branch_name = validated_data.pop("branch_name", "") or ""
+
         user = User(**validated_data)
         user.set_password(password)
         user.save()
+
+        # Create Organization + default Branch (the old "restaurant" record).
+        from apps.organizations.models import Organization
+        from apps.restaurants.models import Restaurant, RestaurantMembership
+
+        org_name = org_name or (user.full_name or user.email.split("@")[0]).strip() or "My Restaurant"
+        org = Organization.objects.create(owner=user, name=org_name)
+
+        branch = Restaurant.objects.create(
+            organization=org,
+            owner=user,
+            name=branch_name or "Main Location",
+        )
+        RestaurantMembership.objects.create(
+            restaurant=branch,
+            user=user,
+            is_owner=True,
+        )
         return user
 
 
@@ -122,11 +157,37 @@ class InviteClaimSerializer(serializers.Serializer):
 
 
 class RestaurantTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """JWT with lightweight, non-sensitive claims."""
+    """JWT with lightweight, non-sensitive claims including org/branch context."""
 
     @classmethod
     def get_token(cls, user: User):
         token = super().get_token(user)
         token["email"] = user.email
         token["preferred_language"] = user.preferred_language
+
+        # Attach the user's accessible branches for the frontend branch
+        # switcher.  The client stores these and sends X-Branch-ID with
+        # every request.
+        from apps.restaurants.models import Restaurant, RestaurantMembership
+
+        memberships = (
+            RestaurantMembership.objects.filter(user=user, is_active=True)
+            .select_related("restaurant", "restaurant__organization")
+        )
+        branches = []
+        for m in memberships:
+            r = m.restaurant
+            branches.append({
+                "id": str(r.id),
+                "name": r.name,
+                "slug": r.slug,
+                "is_owner": m.is_owner,
+                "organization_id": str(r.organization_id) if r.organization_id else None,
+                "organization_name": r.organization.name if r.organization else None,
+            })
+        token["branches"] = branches
+        # Default active branch: first owned, then first accessible.
+        active = next((b for b in branches if b["is_owner"]), branches[0] if branches else None)
+        token["active_branch_id"] = active["id"] if active else None
+
         return token

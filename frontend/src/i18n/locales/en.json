@@ -40,7 +40,8 @@
     "forgotPassword": "Forgot password?",
     "rememberMe": "Remember me",
     "orContinueWith": "or continue with",
-    "agreeTerms": "By continuing, you agree to our Terms and Privacy Policy"
+    "agreeTerms": "By continuing, you agree to our Terms and Privacy Policy",
+    "organizationName": "Business name"
   },
   "restaurant": {
     "createTitle": "Create your restaurant",
@@ -66,7 +67,8 @@
     "customerSection": "Customers",
     "financeAndInsights": "Finance & Insights",
     "teamSection": "Team",
-    "inventory": "Inventory"
+    "inventory": "Inventory",
+    "switchBranch": "Switch branch"
   },
   "orders": {
     "title": "Orders",

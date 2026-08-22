@@ -4,6 +4,7 @@ import type { ApiError } from "@/types";
 const ACCESS_KEY = "auth.access";
 const REFRESH_KEY = "auth.refresh";
 const TENANT_KEY = "tenant.slug";
+const BRANCH_KEY = "active.branch.id";
 
 export const tokenStore = {
   get access() {
@@ -30,6 +31,15 @@ export function setTenantSlug(slug: string | null) {
   else localStorage.removeItem(TENANT_KEY);
 }
 
+/** The active branch UUID, sent as X-Branch-ID with every request. */
+export function getActiveBranchId(): string | null {
+  return localStorage.getItem(BRANCH_KEY);
+}
+export function setActiveBranchId(id: string | null) {
+  if (id) localStorage.setItem(BRANCH_KEY, id);
+  else localStorage.removeItem(BRANCH_KEY);
+}
+
 export const api: AxiosInstance = axios.create({ baseURL: "/api/v1" });
 
 api.interceptors.request.use((config) => {
@@ -37,6 +47,9 @@ api.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   const slug = getTenantSlug();
   if (slug) config.headers["X-Restaurant-Slug"] = slug;
+  // Branch isolation — every API call scoped to the active branch.
+  const branchId = getActiveBranchId();
+  if (branchId) config.headers["X-Branch-ID"] = branchId;
   return config;
 });
 

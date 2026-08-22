@@ -168,8 +168,10 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         If no account exists for the email, a placeholder user is created and
         the email is recorded on the membership for future claiming.
         """
-        restaurant = self.get_object()
-        actor = self._get_actor_membership(request, restaurant)
+        # Use the middleware-resolved restaurant + membership to avoid
+        # the get_object() UUID-vs-slug ambiguity that caused 403s.
+        restaurant = getattr(request, "restaurant", None) or self.get_object()
+        actor = getattr(request, "membership", None) or self._get_actor_membership(request, restaurant)
         if not self._actor_can_manage_staff(actor):
             return Response(
                 {"detail": "You do not have permission to manage staff."},

@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { FloatInput } from "@/components/ui/FloatInput";
 import type { ApiError } from "@/types";
@@ -17,7 +16,8 @@ export function RegisterPage() {
     full_name: "",
     email: "",
     phone: "",
-    restaurant_name: "",
+    organization_name: "",
+    branch_name: "",
     password: "",
     password_confirm: "",
   });
@@ -33,20 +33,13 @@ export function RegisterPage() {
         full_name: form.full_name,
         email: form.email,
         phone: form.phone,
+        organization_name: form.organization_name.trim() || form.full_name,
+        branch_name: form.branch_name.trim() || "",
         password: form.password,
         password_confirm: form.password_confirm,
       });
-      try {
-        await api.post("/restaurants/", {
-          name: form.restaurant_name.trim() || form.full_name,
-        });
-        await queryClient.invalidateQueries({ queryKey: ["restaurants"] });
-      } catch (restErr) {
-        const apiErr = restErr as ApiError;
-        setErrors(apiErr.errors ?? { non_field_errors: [apiErr.message] });
-        setIsSubmitting(false);
-        return;
-      }
+      // Backend auto-creates Organization + Branch + Membership.
+      await queryClient.invalidateQueries({ queryKey: ["restaurants"] });
       navigate("/dashboard");
     } catch (err) {
       const apiErr = err as ApiError;
@@ -59,7 +52,7 @@ export function RegisterPage() {
   const fields: Array<{ name: keyof typeof form; type: string; label: string; autoComplete?: string; icon: React.ReactNode }> = [
     { name: "full_name", type: "text", label: t("auth.fullName"), autoComplete: "name",
       icon: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5"><circle cx="10" cy="7" r="3.5" /><path d="M3 17v-1a4.5 4.5 0 0 1 9 0v1" /></svg> },
-    { name: "restaurant_name", type: "text", label: t("auth.restaurantName"), autoComplete: "organization",
+    { name: "organization_name", type: "text", label: t("auth.organizationName"), autoComplete: "organization",
       icon: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5"><path d="M3 8l1.5-5A1 1 0 0 1 5.46 2h9.08a1 1 0 0 1 .96.5L17 8" /><path d="M3 8h14v1.5a2.5 2.5 0 0 1-2.5 2.5h0a2.5 2.5 0 0 1-2.5-2.5h0a2.5 2.5 0 0 1-2.5 2.5h0a2.5 2.5 0 0 1-2.5-2.5h0A2.5 2.5 0 0 1 3 9.5Z" /><path d="M4.5 12v5a1.5 1.5 0 0 0 1.5 1.5h8a1.5 1.5 0 0 0 1.5-1.5v-5" /></svg> },
     { name: "email", type: "email", label: t("auth.email"), autoComplete: "email",
       icon: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5"><rect x="2" y="4" width="16" height="12" rx="2" /><path d="m2 6 8 5 8-5" /></svg> },

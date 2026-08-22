@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, tokenStore } from "@/lib/api";
+import { api, tokenStore, getActiveBranchId, setActiveBranchId } from "@/lib/api";
 import type { User } from "@/types";
 
 interface AuthContextValue {
@@ -26,6 +26,8 @@ export interface RegisterInput {
   password_confirm: string;
   full_name: string;
   phone?: string;
+  organization_name?: string;
+  branch_name?: string;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -59,6 +61,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const { data } = await api.post("/auth/login/", { email, password });
     tokenStore.set(data.access, data.refresh);
+
+    // Auto-set active branch from JWT claims (the backend encodes
+    // the user's branches + a default active_branch_id into the token).
+    try {
+      const payload = JSON.parse(atob(data.access.split(".")[1]));
+      const branches = payload.branches as Array<{ id: string }> | undefined;
+      const defaultBranchId = payload.active_branch_id as string | undefined;
+      if (branches?.length) {
+        const stored = getActiveBranchId();
+        const valid = stored && branches.some((b) => b.id === stored);
+        setActiveBranchId(valid ? stored : defaultBranchId ?? branches[0].id);
+      }
+    } catch {
+      /* JWT decode failed — non-fatal */
+    }
+
     const me = await api.get<User>("/auth/me/");
     setUser(me.data);
   }, []);
@@ -72,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     tokenStore.clear();
+    setActiveBranchId(null);
     setUser(null);
   }, []);
 

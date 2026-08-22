@@ -11,13 +11,27 @@ from apps.core.models import TimeStampedModel
 
 
 class Restaurant(TimeStampedModel):
-    """A tenant in the SaaS. Every piece of business data hangs off this."""
+    """A physical branch/location in the SaaS. Every piece of business data hangs off this.
+
+    Historically called "Restaurant" — now serves as a Branch in the
+    Organization → Branch hierarchy.  The DB table name is unchanged
+    to avoid a massive FK rename migration.
+    """
 
     class Status(models.TextChoices):
         ACTIVE = "active", _("Active")
         SUSPENDED = "suspended", _("Suspended")
         CLOSED = "closed", _("Closed")
 
+    # The parent organization.  Each Restaurant is one physical branch.
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.CASCADE,
+        related_name="branches",
+        null=True,
+        blank=True,
+        help_text=_("The owning organization. Null for legacy single-branch accounts."),
+    )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
