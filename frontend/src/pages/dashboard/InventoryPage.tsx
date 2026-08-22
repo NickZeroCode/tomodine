@@ -123,7 +123,7 @@ export function InventoryPage() {
   });
 
   /* ── Derived filter (client-side for instant response) ── */
-  const items = itemsQuery.data ?? [];
+  const items = Array.isArray(itemsQuery.data) ? itemsQuery.data : [];
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter((it) => {
@@ -731,7 +731,7 @@ function RecipeEditorModal({ dishId, dishName, onClose }: { dishId: string; dish
     if (lines === null && recipesQuery.data) setLines(recipesQuery.data);
   }, [recipesQuery.data, lines]);
 
-  const items = itemsQuery.data ?? [];
+  const items = Array.isArray(itemsQuery.data) ? itemsQuery.data : [];
   const current = lines ?? [];
 
   function addLine() {
