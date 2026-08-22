@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { useRestaurant } from "@/context/RestaurantContext";
-import { useAuth } from "@/context/AuthContext";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { Modal } from "@/components/Modal";
 import { Field, TextField } from "@/components/FormField";
@@ -13,7 +12,6 @@ export function StaffPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language.startsWith("bn") ? "bn" : "en";
   const { restaurant } = useRestaurant();
-  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -110,7 +108,7 @@ export function StaffPage() {
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState onRetry={() => void refetch()} />;
 
-  const list = members ?? [];
+  const list = (members ?? []).filter((m) => m.is_active);
 
   return (
     <section aria-labelledby="staff-heading">
@@ -183,16 +181,25 @@ export function StaffPage() {
                       </span>
                     )}
                   </p>
-                  <p className="text-xs text-ink-500">
-                    <span
-                      className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
-                        m.is_active ? "bg-emerald-500" : "bg-ink-300"
-                      }`}
-                      aria-hidden="true"
-                    />
-                    {m.is_active ? t("staff.active") : t("staff.inactive")}
-                    {m.user_email === user?.email && ` · ${t("staff.owner")}`}
-                  </p>
+                  {m.role_name && (
+                    <p className="text-xs text-ink-500">{m.role_name}</p>
+                  )}
+                  {m.branches.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {m.branches.map((b) => (
+                        <span
+                          key={b.id}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[0.6rem] font-medium ${
+                            b.id === restaurant?.id
+                              ? "bg-brand-50 text-brand-700 ring-1 ring-brand-200"
+                              : "bg-ink-50 text-ink-500"
+                          }`}
+                        >
+                          {b.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               {!m.is_owner && (

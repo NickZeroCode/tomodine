@@ -64,11 +64,25 @@ class RestaurantSerializer(serializers.ModelSerializer):
 class MembershipSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source="user.email", read_only=True)
     role_name = serializers.CharField(source="role.name_en", read_only=True)
+    branches = serializers.SerializerMethodField()
 
     class Meta:
         model = RestaurantMembership
-        fields = ("id", "user_email", "role", "role_name", "is_owner", "is_active", "created_at")
+        fields = ("id", "user_email", "role", "role_name", "is_owner", "is_active", "created_at", "branches")
         read_only_fields = ("id", "created_at")
+
+    def get_branches(self, obj):
+        """All active branch memberships for this user within the same org."""
+        org_id = obj.restaurant.organization_id
+        qs = RestaurantMembership.objects.filter(
+            user=obj.user, is_active=True
+        ).select_related("restaurant")
+        if org_id:
+            qs = qs.filter(restaurant__organization_id=org_id)
+        return [
+            {"id": str(m.restaurant_id), "name": m.restaurant.name}
+            for m in qs
+        ]
 
 
 class RoleSerializer(serializers.ModelSerializer):

@@ -363,4 +363,5 @@ export interface Membership {
   is_owner: boolean;
   is_active: boolean;
   created_at: string;
+  branches: Array<{ id: string; name: string }>;
 }

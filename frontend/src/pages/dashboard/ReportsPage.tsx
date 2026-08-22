@@ -69,65 +69,55 @@ export function ReportsPage() {
       label: t("reports.today"),
       value: formatBDT(overview.revenue_paid, lang),
       sub: `${overview.orders_total} ${t("dashboard.orders")}`,
-      gradient: "from-emerald-600 to-emerald-800",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-white/20">
-          <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M3 9h18" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M8 13h3M8 16h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          <circle cx="17" cy="15" r="2" fill="currentColor" />
-        </svg>
-      ),
+      tone: "brand" as const,
     },
     {
       label: t("reports.thisMonth"),
       value: formatBDT(String(trendRevenue), lang),
       sub: `${trend.reduce((s, p) => s + p.orders, 0)} ${t("dashboard.orders")}`,
-      gradient: "from-teal-600 to-teal-800",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-white/20">
-          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ),
+      tone: "brand" as const,
     },
     {
       label: t("reports.avgOrderValue"),
       value: formatBDT(avgOrder.toFixed(0), lang),
       sub: `${t("dashboard.orders")}: ${overview.orders_total}`,
-      gradient: "from-green-600 to-green-800",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-white/20">
-          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          <polyline points="16 7 22 7 22 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ),
+      tone: "ink" as const,
+    },
+    {
+      label: t("reports.totalOrders30d", "Total Orders (30d)"),
+      value: String(trend.reduce((s, p) => s + p.orders, 0)),
+      sub: t("reports.last30Days", "Last 30 days"),
+      tone: "ink" as const,
     },
   ];
 
   return (
     <section aria-labelledby="reports-heading" className="space-y-4">
-      <h2 id="reports-heading" className="text-lg font-semibold text-ink-900">
-        {t("reports.title")}
-      </h2>
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="reports-heading" className="text-lg font-semibold text-ink-900">
+            {t("reports.title")}
+          </h2>
+          <p className="text-xs text-ink-400">{t("reports.subtitle", "Performance analytics and insights")}</p>
+        </div>
+      </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {summaryCards.map((card) => (
-          <div
-            key={card.label}
-            className={`relative overflow-hidden bg-gradient-to-br ${card.gradient} p-5 text-white shadow-sm transition-shadow hover:shadow-md`}
-            style={{ borderRadius: "4px" }}
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-white/60">{card.label}</p>
-                <p className="mt-2 text-2xl font-bold tabular-nums">{card.value}</p>
-                <p className="mt-1 text-xs text-white/50">{card.sub}</p>
-              </div>
-              <span className="shrink-0">{card.icon}</span>
+      {/* KPI band */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {summaryCards.map((card) => {
+          const tones = {
+            brand: "border-brand-100 bg-brand-50/60",
+            ink: "border-ink-100 bg-white",
+          } as const;
+          return (
+            <div key={card.label} className={`rounded-lg border p-4 ${tones[card.tone]}`}>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-ink-400">{card.label}</p>
+              <p className="mt-1 font-display text-xl font-bold tabular-nums text-ink-900 sm:text-2xl">{card.value}</p>
+              <p className="mt-0.5 text-[0.6rem] text-ink-400">{card.sub}</p>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Revenue trend — stylish histogram */}
@@ -171,23 +161,23 @@ export function ReportsPage() {
           {dishes.length === 0 ? (
             <p className="mt-4 text-sm text-ink-500">{t("reports.noData")}</p>
           ) : (
-            <div className="mt-3 overflow-hidden rounded-xl border border-ink-100">
-              <table className="w-full text-sm">
+            <div className="mt-3 overflow-x-auto rounded-lg border border-ink-100 bg-white">
+              <table className="w-full min-w-[480px] text-sm">
                 <thead>
-                  <tr className="bg-ink-50 text-[0.7rem] font-semibold uppercase tracking-wider text-ink-400">
-                    <th className="px-4 py-2.5 text-left">#</th>
-                    <th className="px-4 py-2.5 text-left">{t("menu.title")}</th>
-                    <th className="px-4 py-2.5 text-right">{t("orders.items")}</th>
-                    <th className="px-4 py-2.5 text-right">{t("reports.revenue")}</th>
+                  <tr className="border-b border-ink-100 bg-ink-50/70 text-left text-[0.65rem] font-semibold uppercase tracking-wider text-ink-400">
+                    <th className="px-4 py-2.5">#</th>
+                    <th className="px-4 py-2.5">{t("menu.title")}</th>
+                    <th className="px-3 py-2.5 text-right">{t("orders.items")}</th>
+                    <th className="px-3 py-2.5 text-right">{t("reports.revenue")}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-ink-100">
+                <tbody className="divide-y divide-ink-50">
                   {dishes.map((d, i) => (
-                    <tr key={d.dish} className="transition-colors hover:bg-ink-50">
-                      <td className="px-4 py-2.5 tabular-nums text-ink-400">{i + 1}</td>
-                      <td className="px-4 py-2.5 font-medium text-ink-900">{d.dish}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-ink-600">×{d.quantity}</td>
-                      <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-ink-900">{formatBDT(d.revenue, lang)}</td>
+                    <tr key={d.dish} className="transition-colors hover:bg-ink-25">
+                      <td className="px-4 py-3 tabular-nums text-ink-400">{i + 1}</td>
+                      <td className="px-4 py-3 font-semibold text-ink-900">{d.dish}</td>
+                      <td className="px-3 py-3 text-right tabular-nums text-ink-600">×{d.quantity}</td>
+                      <td className="px-3 py-3 text-right font-semibold tabular-nums text-ink-900">{formatBDT(d.revenue, lang)}</td>
                     </tr>
                   ))}
                 </tbody>

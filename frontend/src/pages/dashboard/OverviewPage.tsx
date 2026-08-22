@@ -269,50 +269,41 @@ export function OverviewPage() {
   const stats = [
     {
       label: t("dashboard.todayOrders"),
-      render: <AnimatedNumber value={ordersTotal} />,
-      gradient: "from-emerald-600 to-emerald-800",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-white/25">
-          <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M3 9h18" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M8 13h3M8 16h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          <circle cx="17" cy="15" r="2" fill="currentColor" />
-        </svg>
-      ),
+      value: <AnimatedNumber value={ordersTotal} />,
+      tone: "brand" as const,
       delta: deltaPct,
     },
     {
       label: t("dashboard.revenue"),
-      render: <AnimatedNumber value={revenuePaid} format={(n) => formatBDT(n.toFixed(0), lang)} />,
-      gradient: "from-teal-600 to-teal-800",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-white/25">
-          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ),
+      value: <AnimatedNumber value={revenuePaid} format={(n) => formatBDT(n.toFixed(0), lang)} />,
+      tone: "brand" as const,
       delta: null,
     },
     {
       label: t("dashboard.activeTables"),
-      render: <AnimatedNumber value={activeTables} />,
-      gradient: "from-green-600 to-green-800",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-white/25">
-          <rect x="2" y="8" width="20" height="3" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M5 11v7M19 11v7M9 11v7M15 11v7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          <circle cx="7" cy="6" r="1.5" fill="currentColor" />
-          <circle cx="17" cy="6" r="1.5" fill="currentColor" />
-        </svg>
-      ),
+      value: <AnimatedNumber value={activeTables} />,
+      tone: "ink" as const,
+      delta: null,
+    },
+    {
+      label: t("dashboard.avgOrderValue"),
+      value: <AnimatedNumber value={avgOrder} format={(n) => formatBDT(n.toFixed(0), lang)} />,
+      tone: "ink" as const,
       delta: null,
     },
   ];
 
   return (
     <section aria-labelledby="overview-heading" className="space-y-4">
-      <h2 id="overview-heading" className="sr-only">
-        {t("nav.overview")}
-      </h2>
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="overview-heading" className="text-lg font-semibold text-ink-900">
+            {t("dashboard.title", "Dashboard")}
+          </h2>
+          <p className="text-xs text-ink-400">{t("dashboard.subtitle", "Real-time overview of your restaurant")}</p>
+        </div>
+      </div>
 
       {/* Needs-attention banner — blinking when orders wait on the team */}
       {needsAttention > 0 && (
@@ -342,29 +333,26 @@ export function OverviewPage() {
         </Link>
       )}
 
-      {/* Stat cards — full green gradient */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className={`group relative overflow-hidden bg-gradient-to-br ${stat.gradient} p-5 text-white shadow-sm transition-shadow hover:shadow-md`}
-            style={{ borderRadius: "4px" }}
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-white/60">{stat.label}</p>
-                <p className="mt-2 text-2xl font-bold text-white">{stat.render}</p>
-                {stat.delta !== null && (
-                  <p className={`mt-1 inline-flex items-center gap-1 text-xs font-semibold ${stat.delta >= 0 ? "text-white/80" : "text-red-200"}`}>
-                    <span aria-hidden="true">{stat.delta >= 0 ? "▲" : "▼"}</span>
-                    {Math.abs(stat.delta).toFixed(0)}% {t("dashboard.vsYesterday")}
-                  </p>
-                )}
-              </div>
-              <span className="shrink-0">{stat.icon}</span>
+      {/* KPI band */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {stats.map((stat) => {
+          const tones = {
+            brand: "border-brand-100 bg-brand-50/60",
+            ink: "border-ink-100 bg-white",
+          } as const;
+          return (
+            <div key={stat.label} className={`rounded-lg border p-4 ${tones[stat.tone]}`}>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-ink-400">{stat.label}</p>
+              <p className="mt-1 font-display text-xl font-bold tabular-nums text-ink-900 sm:text-2xl">{stat.value}</p>
+              {stat.delta !== null && (
+                <p className={`mt-1 inline-flex items-center gap-1 text-xs font-semibold ${stat.delta >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                  <span aria-hidden="true">{stat.delta >= 0 ? "▲" : "▼"}</span>
+                  {Math.abs(stat.delta).toFixed(0)}% {t("dashboard.vsYesterday")}
+                </p>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Enhanced metrics row */}
@@ -423,26 +411,15 @@ export function OverviewPage() {
       {/* Demand Forecast */}
       <DemandForecast />
 
-      {/* Composition + average order */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-        <div className="card p-5 lg:col-span-3">
-          <h3 className="text-sm font-semibold text-ink-900">{t("orders.title")}</h3>
-          <div className="mt-4">
-            {donutSlices.length === 0 ? (
-              <p className="text-sm text-ink-500">{t("dashboard.noAnalyticsData")}</p>
-            ) : (
-              <StatusDonut slices={donutSlices} />
-            )}
-          </div>
-        </div>
-        <div className="card flex flex-col justify-center bg-gradient-to-br from-brand-800 to-brand-900 p-6 text-white lg:col-span-2" style={{ borderRadius: "4px" }}>
-          <p className="text-sm text-white/70">{t("dashboard.avgOrderValue")}</p>
-          <p className="mt-2 text-3xl font-bold tabular-nums">
-            <AnimatedNumber value={avgOrder} format={(n) => formatBDT(n.toFixed(0), lang)} />
-          </p>
-          <p className="mt-3 text-xs text-white/60">
-            {ordersTotal} {t("dashboard.orders")} · {formatBDT(data.revenue_paid, lang)}
-          </p>
+      {/* Order composition */}
+      <div className="card p-5">
+        <h3 className="text-sm font-semibold text-ink-900">{t("orders.title")}</h3>
+        <div className="mt-4">
+          {donutSlices.length === 0 ? (
+            <p className="text-sm text-ink-500">{t("dashboard.noAnalyticsData")}</p>
+          ) : (
+            <StatusDonut slices={donutSlices} />
+          )}
         </div>
       </div>
 
