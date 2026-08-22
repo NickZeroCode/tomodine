@@ -58,6 +58,13 @@ export interface Table {
   status: TableStatus;
   active_orders: number;
   has_new_orders: number;
+  grid_x: number | null;
+  grid_y: number | null;
+  grid_w: number;
+  grid_h: number;
+  seated_at: string | null;
+  dining_minutes: number | null;
+  version: number;
   qr_code?: QRCodeInfo | null;
 }
 

@@ -134,7 +134,15 @@
     "noActiveOrdersToday": "No active orders today",
     "criticalOnly": "Critical only",
     "noCritical": "No critical tables",
-    "noCriticalHint": "Everything is running smoothly. Toggle off the filter to see all tables."
+    "noCriticalHint": "Everything is running smoothly. Toggle off the filter to see all tables.",
+    "floorMap": "Floor map",
+    "dragHint": "Drag tiles to arrange your floor",
+    "manageTables": "Manage tables",
+    "laneEmergency": "Emergency",
+    "laneReady": "Ready to serve",
+    "laneCooking": "In kitchen",
+    "laneOrdering": "Ordering",
+    "laneFree": "Available"
   },
   "menu": {
     "title": "Menu",

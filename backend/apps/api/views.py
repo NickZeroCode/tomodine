@@ -337,6 +337,91 @@ class TableViewSet(TenantScopedViewSet):
         qr.regenerate_token()
         return Response(api_serializers.QRCodeSerializer(qr).data)
 
+    @action(detail=False, methods=["post"], url_path="layout", required_permission="tables.manage")
+    def save_layout(self, request):
+        """Persist floor-map positions in one atomic batch.
+
+        Payload: ``{"layout": [{"id": "<uuid>", "x": 0, "y": 0, "w": 2, "h": 2}, …]}``
+        Invalid ids are ignored; coordinates are clamped to sane bounds.
+        """
+        from django.db import transaction
+
+        from apps.notifications.services import broadcast_to_restaurant
+
+        layout = request.data.get("layout")
+        if not isinstance(layout, list):
+            raise ValidationError({"layout": ["Expected a list of table positions."]})
+
+        restaurant = self.get_restaurant()
+        by_id = {}
+        for entry in layout:
+            if not isinstance(entry, dict) or "id" not in entry:
+                continue
+            by_id[str(entry["id"])] = entry
+
+        tables = list(
+            Table.objects.filter(restaurant=restaurant, pk__in=by_id.keys())
+        )
+        if not tables:
+            return Response({"updated": 0})
+
+        def clamp(v, lo, hi):
+            try:
+                return max(lo, min(hi, int(v)))
+            except (TypeError, ValueError):
+                return None
+
+        with transaction.atomic():
+            for table in tables:
+                entry = by_id[str(table.pk)]
+                x = clamp(entry.get("x"), 0, 11)
+                y = clamp(entry.get("y"), 0, 95)
+                w = clamp(entry.get("w", table.grid_w), 1, 12)
+                h = clamp(entry.get("h", table.grid_h), 1, 24)
+                if x is not None:
+                    table.grid_x = min(x, 12 - (w or 1))
+                if y is not None:
+                    table.grid_y = y
+                if w:
+                    table.grid_w = w
+                if h:
+                    table.grid_h = h
+                table.bump_version()
+            Table.objects.bulk_update(
+                tables, ["grid_x", "grid_y", "grid_w", "grid_h", "version", "updated_at"]
+            )
+
+        try:
+            broadcast_to_restaurant(
+                restaurant.slug,
+                "table.event",
+                {"event": "layout_changed", "table_ids": [str(t.pk) for t in tables]},
+            )
+        except Exception:  # pragma: no cover
+            pass
+        return Response({"updated": len(tables)})
+
+    @action(detail=False, methods=["get"], url_path="sync")
+    def sync(self, request):
+        """Version-based reconciliation endpoint.
+
+        Clients send ``?since=<min known version>`` (or nothing for a full
+        snapshot). Tables whose version is newer than ``since`` are returned;
+        the client merges them without a full reload. This is the replay
+        mechanism for dropped WebSocket connections.
+        """
+        restaurant = self.get_restaurant()
+        qs = self.filter_queryset(self.get_queryset()).filter(restaurant=restaurant)
+
+        since = request.query_params.get("since")
+        if since is not None:
+            try:
+                qs = qs.filter(version__gt=int(since))
+            except (TypeError, ValueError):
+                raise ValidationError({"since": ["Must be an integer."]})
+
+        return Response(api_serializers.TableSerializer(qs, many=True).data)
+
 
 class QRCodeViewSet(TenantScopedViewSet):
     serializer_class = api_serializers.QRCodeSerializer

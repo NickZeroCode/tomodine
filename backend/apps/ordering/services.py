@@ -138,6 +138,9 @@ def transition_order_status(order: Order, to_status: str, changed_by=None, note:
 
 
 def _sync_table_status(order: Order) -> None:
+    from django.utils import timezone
+
+    from apps.notifications.services import broadcast_to_restaurant
     from apps.tables.models import Table
 
     mapping = {
@@ -151,5 +154,41 @@ def _sync_table_status(order: Order) -> None:
         Order.Status.REJECTED: Table.Status.AVAILABLE,
     }
     new_status = mapping.get(order.status)
-    if new_status:
-        Table.objects.filter(pk=order.table_id).update(status=new_status)
+    if not new_status or not order.table_id:
+        return
+
+    table = Table.objects.filter(pk=order.table_id).first()
+    if table is None:
+        return
+
+    updates = {"status": new_status}
+    # Seating lifecycle: stamp on first activity, clear when the party leaves.
+    if new_status == Table.Status.ORDER_RECEIVED and table.seated_at is None:
+        updates["seated_at"] = timezone.now()
+    elif new_status == Table.Status.AVAILABLE and table.seated_at is not None:
+        updates["seated_at"] = None
+
+    for field, value in updates.items():
+        setattr(table, field, value)
+    table.bump_version()
+    table.save(update_fields=[*updates.keys(), "version", "updated_at"])
+
+    # Push a compact diff event (not full state) over the WS channel.
+    try:
+        broadcast_to_restaurant(
+            order.restaurant.slug,
+            "table.event",
+            {
+                "event": "status_changed",
+                "table_id": str(table.pk),
+                "status": table.status,
+                "seated_at": table.seated_at.isoformat() if table.seated_at else None,
+                "dining_minutes": (
+                    int((timezone.now() - table.seated_at).total_seconds() // 60)
+                    if table.seated_at else None
+                ),
+                "version": table.version,
+            },
+        )
+    except Exception:  # pragma: no cover — realtime must never block orders
+        pass

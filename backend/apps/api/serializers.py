@@ -85,20 +85,31 @@ class TableSerializer(serializers.ModelSerializer):
     qr_code = serializers.SerializerMethodField()
     active_orders = serializers.IntegerField(read_only=True, default=0)
     has_new_orders = serializers.IntegerField(read_only=True, default=0)
+    dining_minutes = serializers.SerializerMethodField()
 
     class Meta:
         model = Table
         fields = (
             "id", "number", "label", "seats", "floor", "status",
-            "is_active", "qr_code", "active_orders", "has_new_orders", "created_at",
+            "is_active", "qr_code", "active_orders", "has_new_orders",
+            "grid_x", "grid_y", "grid_w", "grid_h",
+            "seated_at", "dining_minutes", "version", "created_at",
         )
-        read_only_fields = ("id", "created_at")
+        read_only_fields = ("id", "created_at", "seated_at", "version")
 
     def get_qr_code(self, obj: Table):
         qr = getattr(obj, "qr_code", None)
         if qr is None or not qr.is_active:
             return None
         return QRCodeSerializer(qr, context=self.context).data
+
+    def get_dining_minutes(self, obj: Table) -> int | None:
+        """Minutes since the party was seated (None when free)."""
+        if obj.seated_at is None:
+            return None
+        from django.utils import timezone
+
+        return int((timezone.now() - obj.seated_at).total_seconds() // 60)
 
 
 class QRCodeSerializer(serializers.ModelSerializer):

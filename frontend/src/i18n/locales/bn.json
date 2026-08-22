@@ -134,7 +134,15 @@
     "noActiveOrdersToday": "আজ কোনো সক্রিয় অর্ডার নেই",
     "criticalOnly": "শুভ্র \u00009afা ক্রিটিক্যাল",
     "noCritical": "কোন ক্রিটিক্যাল টেবিল নেই",
-    "noCriticalHint": "সব ভালোভাবে \u00009a8চ্ছে। সব টেবিল \u00009a6েখতে \u00009abিল্টার বন্ধ করুন।"
+    "noCriticalHint": "সব ভালোভাবে \u00009a8চ্ছে। সব টেবিল \u00009a6েখতে \u00009abিল্টার বন্ধ করুন।",
+    "floorMap": "ফ্লোর ম্যাপ",
+    "dragHint": "টেবিল \u00009b8াজাতে টাইল টানুন",
+    "manageTables": "টেবিল ব্যবস্থাপনা",
+    "laneEmergency": "জর্রোয়ারি",
+    "laneReady": "\u00009aaরিবারতের জন্য প্রস্তুত",
+    "laneCooking": "কিচেনে",
+    "laneOrdering": "অর্ডার \u00009b9৚েয়াছে",
+    "laneFree": "খালি"
   },
   "menu": {
     "title": "মেনু",
