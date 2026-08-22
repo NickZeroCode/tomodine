@@ -135,7 +135,15 @@ class InviteClaimSerializer(serializers.Serializer):
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         if attrs["password"] != attrs["password_confirm"]:
             raise serializers.ValidationError({"password_confirm": _("Passwords do not match.")})
-        validate_password(attrs["password"])
+        try:
+            validate_password(attrs["password"])
+        except Exception as exc:
+            # Django's validate_password raises ValidationError with a
+            # list of messages. DRF wraps these as {"errors": [...]} by
+            # default — which the frontend can't display per-field.
+            # Re-raise under the "password" key so the UI shows it.
+            messages = exc.messages if hasattr(exc, "messages") else [str(exc)]
+            raise serializers.ValidationError({"password": messages})
         return attrs
 
     def create(self, validated_data: dict[str, Any]):

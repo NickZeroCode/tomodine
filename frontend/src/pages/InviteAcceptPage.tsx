@@ -87,9 +87,26 @@ export function InviteAcceptPage() {
         { validateStatus: () => true }
       );
       if (claimResp.status !== 200) {
-        const data = claimResp.data as unknown as Record<string, string[]>;
+        const data = claimResp.data as unknown as Record<string, unknown>;
+        // Normalize all possible error shapes into field-level strings.
+        const normalized: Record<string, string[]> = {};
+        if (data && typeof data === "object") {
+          for (const [key, val] of Object.entries(data)) {
+            if (Array.isArray(val)) {
+              normalized[key] = val.map(String);
+            } else if (typeof val === "string") {
+              normalized[key] = [val];
+            }
+          }
+        }
+        // DRF non-field errors land under "errors" or "detail" — display
+        // them under "detail" so the UI always shows something.
+        if (normalized.errors && !normalized.detail) {
+          normalized.detail = normalized.errors;
+          delete normalized.errors;
+        }
         setErrors(
-          data && Object.keys(data).length ? data : { detail: [t("invite.genericError")] }
+          Object.keys(normalized).length ? normalized : { detail: [t("invite.genericError")] }
         );
         return;
       }
