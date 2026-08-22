@@ -1,12 +1,12 @@
 /**
- * KanbanSidebar — workflow swimlanes sorted by urgency.
+ * KanbanSidebar — collapsed lane summaries that expand to show tables.
  *
- * Static swimlanes (waiters never drag tables); cards auto-sort within
- * lanes. Hovering a card pulses its floor-map tile (synchronized
- * highlighting) and clicking it selects/centers the table.
+ * Each lane is a single summary card showing count + table numbers.
+ * Clicking a lane expands it to reveal individual table cards with
+ * order/guest details. Hovering a table pulses its floor-map tile.
  */
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Table } from "@/types";
 
@@ -22,29 +22,32 @@ interface Props {
   selectedId: string | null;
 }
 
-interface Lane {
+interface LaneDef {
   key: string;
   labelKey: string;
-  dot: string;
-  header: string;
+  color: string;
+  borderColor: string;
+  bgWhenExpanded: string;
   match: (t: ScoredTable) => boolean;
   sort: (a: ScoredTable, b: ScoredTable) => number;
 }
 
-const LANES: Lane[] = [
+const LANES: LaneDef[] = [
   {
     key: "emergency",
     labelKey: "tables.laneEmergency",
-    dot: "bg-red-500",
-    header: "border-l-red-500",
+    color: "bg-red-500",
+    borderColor: "border-l-red-500",
+    bgWhenExpanded: "bg-red-50/60",
     match: ({ score }) => score >= 70,
     sort: (a, b) => b.score - a.score,
   },
   {
     key: "ready",
     labelKey: "tables.laneReady",
-    dot: "bg-violet-500",
-    header: "border-l-violet-500",
+    color: "bg-violet-500",
+    borderColor: "border-l-violet-500",
+    bgWhenExpanded: "bg-violet-50/60",
     match: ({ table }) =>
       table.status === "ready" || table.status === "awaiting_service",
     sort: (a, b) => (b.table.dining_minutes ?? 0) - (a.table.dining_minutes ?? 0),
@@ -52,8 +55,9 @@ const LANES: Lane[] = [
   {
     key: "cooking",
     labelKey: "tables.laneCooking",
-    dot: "bg-amber-500",
-    header: "border-l-amber-500",
+    color: "bg-amber-500",
+    borderColor: "border-l-amber-500",
+    bgWhenExpanded: "bg-amber-50/60",
     match: ({ table }) =>
       ["order_received", "preparing"].includes(table.status) && table.has_new_orders === 0,
     sort: (a, b) => (b.table.dining_minutes ?? 0) - (a.table.dining_minutes ?? 0),
@@ -61,16 +65,18 @@ const LANES: Lane[] = [
   {
     key: "ordering",
     labelKey: "tables.laneOrdering",
-    dot: "bg-blue-500",
-    header: "border-l-blue-500",
+    color: "bg-blue-500",
+    borderColor: "border-l-blue-500",
+    bgWhenExpanded: "bg-blue-50/60",
     match: ({ table }) => table.has_new_orders > 0,
     sort: (a, b) => b.score - a.score,
   },
   {
     key: "free",
     labelKey: "tables.laneFree",
-    dot: "bg-emerald-500",
-    header: "border-l-emerald-500",
+    color: "bg-emerald-500",
+    borderColor: "border-l-emerald-500",
+    bgWhenExpanded: "bg-emerald-50/60",
     match: ({ table }) =>
       ["available", "reserved", "offline"].includes(table.status) ||
       (table.active_orders === 0 && table.has_new_orders === 0 && !["ready", "awaiting_service", "order_received", "preparing"].includes(table.status)),
@@ -78,8 +84,10 @@ const LANES: Lane[] = [
   },
 ];
 
-const Card = memo(
-  function Card({
+/* ── Expanded table row ─────────────────────────────────────── */
+
+const TableRow = memo(
+  function TableRow({
     item,
     selected,
     onSelect,
@@ -91,10 +99,9 @@ const Card = memo(
     onHover: (id: string | null) => void;
   }) {
     const { t } = useTranslation();
-    const { table, score } = item;
-    const critical = score >= 70;
-    const isNew = table.has_new_orders > 0;
-    const isBill = table.status === "awaiting_payment";
+    const { table } = item;
+    const mins = table.dining_minutes ?? 0;
+    const isOverdue = mins >= 90;
     return (
       <button
         type="button"
@@ -103,39 +110,46 @@ const Card = memo(
         onMouseLeave={() => onHover(null)}
         onFocus={() => onHover(table.id)}
         onBlur={() => onHover(null)}
-        className={`w-full rounded-lg border bg-white px-2.5 py-2 text-left transition-all hover:shadow-sm ${
-          critical
-            ? "border-red-400 shadow-[0_0_8px_rgba(239,68,68,0.15)]"
-            : isNew
-              ? "border-blue-300"
-              : isBill
-                ? "border-red-300"
-                : "border-ink-100"
-        } ${selected ? "ring-2 ring-brand-400" : ""}`}
+        className={`flex w-full items-center gap-2 rounded-md border bg-white px-2.5 py-1.5 text-left transition-all hover:shadow-sm ${
+          selected ? "border-brand-400 ring-1 ring-brand-300" : "border-ink-100"
+        }`}
       >
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-bold text-ink-900">{table.number}</span>
-          {table.dining_minutes != null && (
-            <span className={`text-[0.6rem] font-semibold tabular-nums ${
-              (table.dining_minutes ?? 0) >= 90 ? "text-red-600" : "text-ink-400"
-            }`}>
-              {table.dining_minutes}m
-            </span>
-          )}
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-xs font-bold text-white ${
+          table.has_new_orders > 0 ? "bg-blue-500"
+            : table.status === "awaiting_payment" ? "bg-red-500"
+            : table.status === "ready" || table.status === "awaiting_service" ? "bg-violet-500"
+            : "bg-ink-400"
+        }`}>
+          {table.number}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-ink-900">T-{table.number}</span>
+            {table.label && <span className="truncate text-[0.6rem] text-ink-400">{table.label}</span>}
+          </div>
+          <div className="flex items-center gap-2 text-[0.6rem] text-ink-500">
+            <span className="tabular-nums">{table.guests ?? 0}/{table.seats} {t("tables.seats")}</span>
+            {mins > 0 && (
+              <span className={`tabular-nums ${isOverdue ? "font-bold text-red-600" : ""}`}>
+                {mins}m
+              </span>
+            )}
+          </div>
         </div>
-        <div className="mt-0.5 flex items-center gap-1.5 text-[0.6rem] text-ink-500">
-          {/* Chair occupancy */}
-          <span className="tabular-nums">
-            {table.guests ?? 0}/{table.seats}
-          </span>
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
           {table.status === "awaiting_payment" && (
-            <span className="rounded bg-red-100 px-1 font-bold text-red-700">
+            <span className="rounded bg-red-100 px-1 py-px text-[0.55rem] font-bold text-red-700">
               {t("tables.wantsBill")}
             </span>
           )}
           {table.has_new_orders > 0 && (
-            <span className="rounded bg-blue-100 px-1 font-bold text-blue-700">
+            <span className="rounded bg-blue-100 px-1 py-px text-[0.55rem] font-bold text-blue-700">
               {t("orders.new")}
+            </span>
+          )}
+          {table.active_orders > 0 && (
+            <span className="text-[0.55rem] font-medium tabular-nums text-ink-400">
+              {table.active_orders} {t("dashboard.orders")}
             </span>
           )}
         </div>
@@ -153,8 +167,90 @@ const Card = memo(
     p.selected === n.selected
 );
 
-export function KanbanSidebar({ tables, onSelect, onHover, selectedId }: Props) {
+/* ── Lane summary card ──────────────────────────────────────── */
+
+function LaneCard({
+  lane,
+  items,
+  expanded,
+  onToggle,
+  selectedId,
+  onSelect,
+  onHover,
+}: {
+  lane: LaneDef;
+  items: ScoredTable[];
+  expanded: boolean;
+  onToggle: () => void;
+  selectedId: string | null;
+  onSelect: (t: Table) => void;
+  onHover: (id: string | null) => void;
+}) {
   const { t } = useTranslation();
+
+  if (items.length === 0) return null;
+
+  const totalGuests = items.reduce((sum, { table }) => sum + (table.guests ?? 0), 0);
+  const totalSeats = items.reduce((sum, { table }) => sum + table.seats, 0);
+
+  return (
+    <div className={`overflow-hidden rounded-lg border-l-2 transition-all ${lane.borderColor} ${expanded ? lane.bgWhenExpanded : "bg-white"}`}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-ink-50/50"
+      >
+        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${lane.color}`} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-ink-900">
+              {t(lane.labelKey)}
+            </span>
+            <span className={`flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[0.6rem] font-bold ${
+              lane.key === "emergency" ? "bg-red-100 text-red-700" : "bg-ink-100 text-ink-500"
+            }`}>
+              {items.length}
+            </span>
+          </div>
+          {!expanded && (
+            <p className="mt-0.5 truncate text-[0.6rem] text-ink-400">
+              {items.length === 1
+                ? `T-${items[0].table.number}`
+                : `T-${items[0].table.number} – T-${items[items.length - 1].table.number}`}
+              {totalGuests > 0 && ` · ${totalGuests}/${totalSeats}`}
+            </p>
+          )}
+        </div>
+        <svg
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={`h-4 w-4 shrink-0 text-ink-300 transition-transform ${expanded ? "rotate-180" : ""}`}
+        >
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+
+      {expanded && (
+        <div className="space-y-1 border-t border-ink-100/60 px-2 pb-2 pt-1.5">
+          {items.map((item) => (
+            <TableRow
+              key={item.table.id}
+              item={item}
+              selected={selectedId === item.table.id}
+              onSelect={onSelect}
+              onHover={onHover}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Main component ─────────────────────────────────────────── */
+
+export function KanbanSidebar({ tables, onSelect, onHover, selectedId }: Props) {
+  const [expandedLane, setExpandedLane] = useState<string | null>(null);
 
   const lanes = useMemo(
     () =>
@@ -165,36 +261,26 @@ export function KanbanSidebar({ tables, onSelect, onHover, selectedId }: Props) 
     [tables]
   );
 
+  // Auto-expand the lane containing the selected table.
+  const activeLane = selectedId
+    ? lanes.find(({ items }) => items.some(({ table }) => table.id === selectedId))?.lane.key ?? expandedLane
+    : expandedLane;
+
   return (
-    <div className="flex h-full flex-col gap-2 overflow-y-auto pr-1">
+    <div className="flex h-full flex-col gap-1.5 overflow-y-auto pr-1">
       {lanes.map(({ lane, items }) => (
-        <section key={lane.key} aria-label={t(lane.labelKey)}>
-          <header
-            className={`mb-1 flex items-center gap-2 border-l-2 pl-2.5 ${lane.header}`}
-          >
-            <span className="text-[0.65rem] font-bold uppercase tracking-wider text-ink-600">
-              {t(lane.labelKey)}
-            </span>
-            <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-ink-100 px-1.5 text-[0.6rem] font-bold text-ink-500">
-              {items.length}
-            </span>
-          </header>
-          <div className="space-y-1 pl-1">
-            {items.length === 0 ? (
-              <p className="px-1 py-1 text-[0.65rem] text-ink-300">—</p>
-            ) : (
-              items.map((item) => (
-                <Card
-                  key={item.table.id}
-                  item={item}
-                  selected={selectedId === item.table.id}
-                  onSelect={onSelect}
-                  onHover={onHover}
-                />
-              ))
-            )}
-          </div>
-        </section>
+        <LaneCard
+          key={lane.key}
+          lane={lane}
+          items={items}
+          expanded={activeLane === lane.key}
+          onToggle={() =>
+            setExpandedLane((prev) => (prev === lane.key ? null : lane.key))
+          }
+          selectedId={selectedId}
+          onSelect={onSelect}
+          onHover={onHover}
+        />
       ))}
     </div>
   );
