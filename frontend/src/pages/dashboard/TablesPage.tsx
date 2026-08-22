@@ -393,64 +393,134 @@ export function TablesPage() {
         />
       ) : (
         <>
-          {/* ── Live KPI strip — compact, no borders-heavy cards ── */}
-          <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 rounded-lg bg-white px-4 py-2.5 text-xs shadow-sm ring-1 ring-ink-100/70">
-            <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-teal-500" aria-hidden="true" />
-              <span className="text-ink-400">{t("tables.kpiSeated")}</span>
-              <strong className="tabular-nums text-ink-900">{kpis.seatedCount}/{kpis.totalActive}</strong>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-sky-500" aria-hidden="true" />
-              <span className="text-ink-400">{t("tables.kpiChairs")}</span>
-              <strong className="tabular-nums text-ink-900">{kpis.occupiedSeats}/{kpis.totalSeats}</strong>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden="true" />
-              <span className="text-ink-400">{t("tables.kpiBills")}</span>
-              <strong className="tabular-nums text-ink-900">{kpis.billCount}</strong>
-            </span>
-            {criticalCount > 0 && (
-              <span className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-600" aria-hidden="true" />
-                <span className="text-red-600">{t("tables.criticalOnly")}</span>
-                <strong className="tabular-nums text-red-700">{criticalCount}</strong>
-              </span>
-            )}
+          {/* ── Live KPI cards — corporate dashboard style ── */}
+          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {/* Tables seated */}
+            <div className="rounded-xl border border-ink-100 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-ink-400">{t("tables.kpiTables")}</span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4 text-teal-600">
+                    <rect x="3" y="3" width="14" height="14" rx="2" /><path d="M3 8h14M8 3v14" />
+                  </svg>
+                </span>
+              </div>
+              <p className="mt-2 font-display text-2xl font-bold tabular-nums text-ink-900">
+                {kpis.seatedCount}<span className="text-sm font-normal text-ink-300">/{kpis.totalActive}</span>
+              </p>
+              <p className="mt-0.5 text-[0.65rem] text-ink-400">{t("tables.kpiSeated")}</p>
+            </div>
+
+            {/* Chairs occupied */}
+            <div className="rounded-xl border border-ink-100 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-ink-400">{t("tables.kpiChairs")}</span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4 text-sky-600">
+                    <circle cx="10" cy="6" r="3" /><path d="M4 18v-1a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v1" />
+                  </svg>
+                </span>
+              </div>
+              <p className="mt-2 font-display text-2xl font-bold tabular-nums text-ink-900">
+                {kpis.occupiedSeats}<span className="text-sm font-normal text-ink-300">/{kpis.totalSeats}</span>
+              </p>
+              <p className="mt-0.5 text-[0.65rem] text-ink-400">{t("tables.kpiChairs")}</p>
+            </div>
+
+            {/* Bill requests */}
+            <div className={`rounded-xl border p-4 ${kpis.billCount > 0 ? "border-red-200 bg-red-50/50" : "border-ink-100 bg-white"}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-ink-400">{t("tables.kpiBills")}</span>
+                <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${kpis.billCount > 0 ? "bg-red-100" : "bg-ink-50"}`}>
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className={`h-4 w-4 ${kpis.billCount > 0 ? "text-red-600" : "text-ink-400"}`}>
+                    <rect x="3" y="2" width="14" height="16" rx="2" /><path d="M7 6h6M7 10h4M7 14h2" />
+                  </svg>
+                </span>
+              </div>
+              <p className={`mt-2 font-display text-2xl font-bold tabular-nums ${kpis.billCount > 0 ? "text-red-700" : "text-ink-900"}`}>
+                {kpis.billCount}
+              </p>
+              <p className="mt-0.5 text-[0.65rem] text-ink-400">{kpis.billCount > 0 ? `${formatBDT(kpis.billTotal, lang)} ${t("tables.pending")}` : t("tables.kpiBills")}</p>
+            </div>
+
+            {/* Critical / alerts */}
+            <div className={`rounded-xl border p-4 ${criticalCount > 0 ? "border-orange-200 bg-orange-50/50" : "border-ink-100 bg-white"}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-ink-400">{t("tables.criticalOnly")}</span>
+                <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${criticalCount > 0 ? "bg-orange-100" : "bg-ink-50"}`}>
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className={`h-4 w-4 ${criticalCount > 0 ? "text-orange-600" : "text-ink-400"}`}>
+                    <path d="M10 2L2 18h16L10 2z" /><path d="M10 8v4M10 14.5v.5" />
+                  </svg>
+                </span>
+              </div>
+              <p className={`mt-2 font-display text-2xl font-bold tabular-nums ${criticalCount > 0 ? "text-orange-700" : "text-ink-900"}`}>
+                {criticalCount}
+              </p>
+              <p className="mt-0.5 text-[0.65rem] text-ink-400">{criticalCount > 0 ? t("tables.needsAttention") : t("tables.allClear")}</p>
+            </div>
           </div>
 
-          {/* ── Needs attention — horizontal action chips ── */}
-          {kpis.attention.length > 0 && (
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="text-[0.65rem] font-semibold uppercase tracking-wider text-ink-400">
-                {t("tables.needsAttention")}
-              </span>
-              {kpis.attention.map(({ table, kind }) => (
-                <button
-                  key={`${table.id}-${kind}`}
-                  type="button"
-                  onClick={() => setOrdersForTable(table)}
-                  onMouseEnter={() => setPulseId(table.id)}
-                  onMouseLeave={() => setPulseId(null)}
-                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.65rem] font-semibold transition-all hover:shadow-sm ${
-                    kind === "bill"
-                      ? "bg-red-50 text-red-700 ring-1 ring-red-200"
-                      : kind === "order"
-                      ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200"
-                      : "bg-violet-50 text-violet-700 ring-1 ring-violet-200"
-                  }`}
-                >
-                  <span className={`h-1.5 w-1.5 rounded-full ${
-                    kind === "bill" ? "bg-red-500" : kind === "order" ? "bg-blue-500" : "bg-violet-500"
-                  }`} />
-                  T-{table.number}
-                  <span className="text-ink-400">
-                    {kind === "bill" ? t("tables.wantsBill") : kind === "order" ? t("orders.new") : t("tables.laneReady")}
+          {/* ── Wait List — tables awaiting service/payment in queue order ── */}
+          {(() => {
+            const waiting = scored.filter(
+              ({ table }) =>
+                table.status === "awaiting_payment" ||
+                table.status === "ready" ||
+                table.status === "awaiting_service"
+            );
+            if (waiting.length === 0) return null;
+            return (
+              <div className="mb-4 rounded-xl border border-ink-100 bg-white p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3.5 w-3.5 text-amber-600">
+                      <circle cx="10" cy="10" r="8" /><path d="M10 6v4l3 2" />
+                    </svg>
                   </span>
-                </button>
-              ))}
-            </div>
-          )}
+                  <h3 className="text-sm font-semibold text-ink-800">{t("tables.waitList")}</h3>
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.6rem] font-bold text-amber-700">
+                    {waiting.length}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {waiting.map(({ table }) => {
+                    const mins = table.dining_minutes ?? 0;
+                    const isBill = table.status === "awaiting_payment";
+                    return (
+                      <button
+                        key={table.id}
+                        type="button"
+                        onClick={() => setOrdersForTable(table)}
+                        onMouseEnter={() => setPulseId(table.id)}
+                        onMouseLeave={() => setPulseId(null)}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition-all hover:shadow-sm ${
+                          isBill
+                            ? "border-red-200 bg-red-50"
+                            : "border-amber-200 bg-amber-50"
+                        }`}
+                      >
+                        <span className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-white ${
+                          isBill ? "bg-red-500" : "bg-amber-500"
+                        }`}>
+                          {table.number}
+                        </span>
+                        <div>
+                          <p className="text-xs font-semibold text-ink-900">
+                            T-{table.number}
+                            {table.label && <span className="ml-1 font-normal text-ink-400">· {table.label}</span>}
+                          </p>
+                          <p className="text-[0.65rem] text-ink-500">
+                            {isBill ? t("tables.wantsBill") : t("tables.laneReady")}
+                            {mins > 0 && ` · ${t("tables.waitTime", { time: `${mins}m` })}`}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── Split-screen: 2D floor map (left) + Kanban (right) ── */}
           <div className="flex flex-col gap-4 lg:flex-row">

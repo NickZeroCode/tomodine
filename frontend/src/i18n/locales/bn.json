@@ -149,8 +149,8 @@
     "occupancy": "আসন \u00009ac্যবহৃত",
     "wantsBill": "বিল চান",
     "kpiSeated": "বসাই",
-    "kpiChairs": "আসন \u00009ac্যবহৃত",
-    "kpiBills": "বিল অনুরোধ",
+    "kpiChairs": "কব্জা",
+    "kpiBills": "বিল",
     "needsAttention": "মনোয়োগ প্রয়োজন",
     "recipeFor": "রেসিপি",
     "recipeExplainer": "এই ডিশের \u00009b8াথে উপাদান \u00009afুক্ত করুন। প্রতি অর্ডারে নির্দিষ্ট পরিমাণ \u00009b8্টক \u00009a5েকে \u00009acায় \u00009b9বে, এবং খর৚ \u00009aa্রিভিউ \u00009a6েখাবে এক প্লেট \u00009a4ৈরি \u0000995রতে কত \u00009b2াগে।",
@@ -162,7 +162,13 @@
     "addIngredient": "উপাদান \u00009afোগ করুন",
     "costPreview": "প্রতি পরিবারের খর৚",
     "editRecipe": "রেসিপি সম্পাদন",
-    "addRecipe": "রেসিপি \u00009afোগ"
+    "addRecipe": "রেসিপি \u00009afোগ",
+    "kpiTables": "টেবিল",
+    "waitList": "অপেক্ষা তালিকা",
+    "noWaiting": "কোন টেবিল অপেক্ষা করছে না",
+    "waitTime": "অপেক্ষা {time}",
+    "pending": "বাকী",
+    "allClear": "সব ঠিক আছে"
   },
   "menu": {
     "title": "মেনু",
@@ -538,5 +544,25 @@
     "switch": "পরিবর্তন",
     "deactivate": "নিষ্ক্রিয়",
     "deactivateConfirm": "এই শাখার সমস্ত অর্ডার এবং ইনভেন্টরি আর্কাইভ হবে। চালুন কি?"
+  },
+  "settings": {
+    "title": "সেটিংস",
+    "restaurantProfile": "রেস্টুরেন্ট প্রোফাইল",
+    "restaurantName": "রেস্টুরেন্টের নাম",
+    "description": "বিবরণ",
+    "phone": "ফোন",
+    "email": "ইমেইল",
+    "address": "ঠিকানা",
+    "businessHours": "ব্যবসায়ের সময়",
+    "openingTime": "খোলার সময়",
+    "closingTime": "বন্ধ সময়",
+    "saved": "সেটিংস সংরক্ষিত",
+    "logo": "রেস্টুরেন্টের লোগো",
+    "coverImage": "কভর ছবি",
+    "uploadImage": "ছবি আপলোড",
+    "changeImage": "ছবি বদলান",
+    "removeImage": "সরান",
+    "profilePicture": "প্রোফাইল ছবি",
+    "changeProfilePicture": "ছবি বদলুন"
   }
 }

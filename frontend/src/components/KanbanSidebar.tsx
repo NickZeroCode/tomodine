@@ -36,7 +36,7 @@ const LANES: Lane[] = [
     key: "emergency",
     labelKey: "tables.laneEmergency",
     dot: "bg-red-500",
-    header: "bg-red-50 text-red-800 border-red-200",
+    header: "border-l-red-500",
     match: ({ score }) => score >= 70,
     sort: (a, b) => b.score - a.score,
   },
@@ -44,7 +44,7 @@ const LANES: Lane[] = [
     key: "ready",
     labelKey: "tables.laneReady",
     dot: "bg-violet-500",
-    header: "bg-violet-50 text-violet-800 border-violet-200",
+    header: "border-l-violet-500",
     match: ({ table }) =>
       table.status === "ready" || table.status === "awaiting_service",
     sort: (a, b) => (b.table.dining_minutes ?? 0) - (a.table.dining_minutes ?? 0),
@@ -53,7 +53,7 @@ const LANES: Lane[] = [
     key: "cooking",
     labelKey: "tables.laneCooking",
     dot: "bg-amber-500",
-    header: "bg-amber-50 text-amber-800 border-amber-200",
+    header: "border-l-amber-500",
     match: ({ table }) =>
       ["order_received", "preparing"].includes(table.status) && table.has_new_orders === 0,
     sort: (a, b) => (b.table.dining_minutes ?? 0) - (a.table.dining_minutes ?? 0),
@@ -62,7 +62,7 @@ const LANES: Lane[] = [
     key: "ordering",
     labelKey: "tables.laneOrdering",
     dot: "bg-blue-500",
-    header: "bg-blue-50 text-blue-800 border-blue-200",
+    header: "border-l-blue-500",
     match: ({ table }) => table.has_new_orders > 0,
     sort: (a, b) => b.score - a.score,
   },
@@ -70,7 +70,7 @@ const LANES: Lane[] = [
     key: "free",
     labelKey: "tables.laneFree",
     dot: "bg-emerald-500",
-    header: "bg-emerald-50 text-emerald-800 border-emerald-200",
+    header: "border-l-emerald-500",
     match: ({ table }) =>
       ["available", "reserved", "offline"].includes(table.status) ||
       (table.active_orders === 0 && table.has_new_orders === 0 && !["ready", "awaiting_service", "order_received", "preparing"].includes(table.status)),
@@ -157,23 +157,22 @@ export function KanbanSidebar({ tables, onSelect, onHover, selectedId }: Props) 
   );
 
   return (
-    <div className="flex h-full flex-col gap-3 overflow-y-auto pr-1">
+    <div className="flex h-full flex-col gap-2 overflow-y-auto pr-1">
       {lanes.map(({ lane, items }) => (
         <section key={lane.key} aria-label={t(lane.labelKey)}>
           <header
-            className={`mb-1.5 flex items-center gap-2 rounded-lg border px-2.5 py-1.5 ${lane.header}`}
+            className={`mb-1 flex items-center gap-2 border-l-2 pl-2.5 ${lane.header}`}
           >
-            <span className={`h-2 w-2 rounded-full ${lane.dot}`} aria-hidden="true" />
-            <span className="text-[0.65rem] font-bold uppercase tracking-wider">
+            <span className="text-[0.65rem] font-bold uppercase tracking-wider text-ink-600">
               {t(lane.labelKey)}
             </span>
-            <span className="ml-auto rounded-full bg-white/70 px-1.5 text-[0.6rem] font-bold">
+            <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-ink-100 px-1.5 text-[0.6rem] font-bold text-ink-500">
               {items.length}
             </span>
           </header>
-          <div className="space-y-1.5">
+          <div className="space-y-1 pl-1">
             {items.length === 0 ? (
-              <p className="px-1 text-[0.65rem] text-ink-300">—</p>
+              <p className="px-1 py-1 text-[0.65rem] text-ink-300">—</p>
             ) : (
               items.map((item) => (
                 <Card

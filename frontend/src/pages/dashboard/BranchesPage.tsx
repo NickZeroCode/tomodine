@@ -11,7 +11,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { useRestaurant } from "@/context/RestaurantContext";
-import { setActiveBranchId } from "@/lib/api";
+import { getActiveBranchId, setActiveBranchId } from "@/lib/api";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { Modal } from "@/components/Modal";
 import { TextField } from "@/components/FormField";
@@ -165,16 +165,15 @@ export function BranchesPage() {
           {/* Rows */}
           <ul className="divide-y divide-ink-100/80">
             {branches.map((branch) => {
-              const isActive = branch.is_active && branch.status === "active";
-              const isCurrent = branch.id === restaurant?.id;
+              const isCurrent = branch.id === getActiveBranchId();
               return (
                 <li
                   key={branch.id}
-                  className={`flex flex-col gap-2 px-4 py-3 transition-colors hover:bg-ink-25 md:grid md:grid-cols-[1.5fr_1fr_0.8fr_0.6fr_0.6fr_7rem] md:items-center ${!isActive ? "opacity-50" : ""}`}
+                  className="flex flex-col gap-2 px-4 py-3 transition-colors hover:bg-ink-25 md:grid md:grid-cols-[1.5fr_1fr_0.8fr_0.6fr_0.6fr_7rem] md:items-center"
                 >
                   {/* Name + status */}
                   <div className="flex items-center gap-2.5">
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${isActive ? "bg-emerald-500" : "bg-ink-300"}`} />
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${branch.is_active !== false ? "bg-emerald-500" : "bg-ink-300"}`} />
                     <div>
                       <p className="text-sm font-semibold text-ink-900">
                         {branch.name}
@@ -224,7 +223,7 @@ export function BranchesPage() {
                     >
                       {t("common.edit")}
                     </button>
-                    {!isCurrent && isActive && (
+                    {!isCurrent && branch.is_active !== false && (
                       <button
                         type="button"
                         className="rounded-md px-2 py-1 text-[0.65rem] font-semibold text-red-600 hover:bg-red-50"

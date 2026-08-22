@@ -149,8 +149,8 @@
     "occupancy": "Chairs occupied",
     "wantsBill": "Wants the bill",
     "kpiSeated": "Seated",
-    "kpiChairs": "Chairs occupied",
-    "kpiBills": "Bill requests",
+    "kpiChairs": "Occupied",
+    "kpiBills": "Bills",
     "needsAttention": "Needs attention",
     "recipeFor": "Recipe",
     "recipeExplainer": "Link inventory ingredients to this dish. Each serving deducts the listed quantities from stock, and the cost preview shows what one plate costs you to make.",
@@ -162,7 +162,13 @@
     "addIngredient": "Add ingredient",
     "costPreview": "Cost per serving",
     "editRecipe": "Edit recipe",
-    "addRecipe": "Add recipe"
+    "addRecipe": "Add recipe",
+    "kpiTables": "Tables",
+    "waitList": "Wait List",
+    "noWaiting": "No tables waiting",
+    "waitTime": "Waiting {time}",
+    "pending": "pending",
+    "allClear": "All clear"
   },
   "menu": {
     "title": "Menu",
@@ -477,7 +483,8 @@
     "changeImage": "Change image",
     "removeImage": "Remove",
     "profilePicture": "Profile picture",
-    "changeProfilePicture": "Change photo"
+    "changeProfilePicture": "Change photo",
+    "restaurantName": "Restaurant name"
   },
   "offers": {
     "title": "Offers & Promotions",
