@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { hasPermission, PERM } from "@/lib/permissions";
 import { LoadingState } from "@/components/States";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { LoginPage } from "@/pages/auth/LoginPage";
@@ -48,6 +49,12 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** Blocks direct-URL access to pages the active branch's role can't use. */
+function RequirePermission({ perm, children }: { perm: string; children: ReactNode }) {
+  if (!hasPermission(perm)) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -66,18 +73,18 @@ export default function App() {
         }
       >
         <Route index element={<OverviewPage />} />
-        <Route path="orders" element={<OrdersPage />} />
-        <Route path="tables" element={<TablesPage />} />
-        <Route path="menu" element={<MenuPage />} />
-        <Route path="inventory" element={<InventoryPage />} />
-        <Route path="offers" element={<OffersPage />} />
-        <Route path="customers" element={<CustomersPage />} />
-        <Route path="reports" element={<ReportsPage />} />
-        <Route path="menu-engineering" element={<MenuEngineeringPage />} />
-        <Route path="staff" element={<StaffPage />} />
-        <Route path="subscription" element={<SubscriptionPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="branches" element={<BranchesPage />} />
+        <Route path="orders" element={<RequirePermission perm={PERM.ordersView}><OrdersPage /></RequirePermission>} />
+        <Route path="tables" element={<RequirePermission perm={PERM.tablesManage}><TablesPage /></RequirePermission>} />
+        <Route path="menu" element={<RequirePermission perm={PERM.menuManage}><MenuPage /></RequirePermission>} />
+        <Route path="inventory" element={<RequirePermission perm={PERM.inventoryManage}><InventoryPage /></RequirePermission>} />
+        <Route path="offers" element={<RequirePermission perm={PERM.billingManage}><OffersPage /></RequirePermission>} />
+        <Route path="customers" element={<RequirePermission perm={PERM.analyticsView}><CustomersPage /></RequirePermission>} />
+        <Route path="reports" element={<RequirePermission perm={PERM.analyticsView}><ReportsPage /></RequirePermission>} />
+        <Route path="menu-engineering" element={<RequirePermission perm={PERM.analyticsView}><MenuEngineeringPage /></RequirePermission>} />
+        <Route path="staff" element={<RequirePermission perm={PERM.staffManage}><StaffPage /></RequirePermission>} />
+        <Route path="subscription" element={<RequirePermission perm={PERM.billingManage}><SubscriptionPage /></RequirePermission>} />
+        <Route path="settings" element={<RequirePermission perm={PERM.settingsManage}><SettingsPage /></RequirePermission>} />
+        <Route path="branches" element={<RequirePermission perm={PERM.staffManage}><BranchesPage /></RequirePermission>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

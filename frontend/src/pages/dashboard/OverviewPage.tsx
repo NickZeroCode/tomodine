@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
+import { hasPermission, PERM } from "@/lib/permissions";
 import { formatBDT } from "@/lib/format";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { useRestaurantSocket } from "@/hooks/useRestaurantSocket";
@@ -145,38 +146,39 @@ export function OverviewPage() {
   const { restaurant } = useRestaurant();
   const slug = restaurant?.slug;
   const queryClient = useQueryClient();
+  const canViewAnalytics = hasPermission(PERM.analyticsView);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["analytics", "overview", slug],
     queryFn: async () => (await api.get<AnalyticsOverview>("/analytics/overview/")).data,
-    enabled: !!restaurant,
+    enabled: !!restaurant && canViewAnalytics,
   });
 
   const enhancedQuery = useQuery({
     queryKey: ["analytics", "enhanced-overview", slug],
     queryFn: async () => (await api.get<EnhancedOverview>("/analytics/enhanced_overview/")).data,
-    enabled: !!restaurant,
+    enabled: !!restaurant && canViewAnalytics,
   });
 
   const trendQuery = useQuery({
     queryKey: ["analytics", "orders-over-time", slug],
     queryFn: async () =>
       (await api.get<OrdersOverTimePoint[]>("/analytics/orders_over_time/?days=14")).data,
-    enabled: !!restaurant,
+    enabled: !!restaurant && canViewAnalytics,
   });
 
   const dishesQuery = useQuery({
     queryKey: ["analytics", "popular-dishes", slug],
     queryFn: async () =>
       (await api.get<PopularDish[]>("/analytics/popular_dishes/")).data,
-    enabled: !!restaurant,
+    enabled: !!restaurant && canViewAnalytics,
   });
 
   const hoursQuery = useQuery({
     queryKey: ["analytics", "peak-hours", slug],
     queryFn: async () =>
       (await api.get<PeakHour[]>("/analytics/peak_hours/?days=30")).data,
-    enabled: !!restaurant,
+    enabled: !!restaurant && canViewAnalytics,
   });
 
   // Live updates — new orders refresh the overview in real time.
@@ -187,6 +189,41 @@ export function OverviewPage() {
   });
 
   if (!restaurant) return <EmptyState />;
+  // Roles without analytics.view (e.g. Kitchen Staff) get an operational
+  // landing view instead of firing analytics queries they can't access.
+  if (!canViewAnalytics)
+    return (
+      <div className="mx-auto max-w-2xl py-16 text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/40">
+          <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-emerald-600">
+            <path d="M4 6h16M4 12h10M4 18h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </div>
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+          {t("dashboard.opsHome", "Operations Dashboard")}
+        </h1>
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          {t(
+            "dashboard.noAnalyticsAccess",
+            "Your role doesn't include analytics access. Head to Orders or Kitchen to manage live service."
+          )}
+        </p>
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <Link
+            to="/dashboard/orders"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+          >
+            {t("nav.orders", "Orders")}
+          </Link>
+          <Link
+            to="/dashboard/kitchen"
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            {t("nav.kitchen", "Kitchen")}
+          </Link>
+        </div>
+      </div>
+    );
   if (isLoading) return <LoadingState />;
   if (isError && isPlanUpgradeRequired(error)) return <PlanGate error={error} />;
   if (isError || !data) return <ErrorState onRetry={() => void refetch()} />;
