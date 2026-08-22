@@ -16,6 +16,7 @@ import { OffersPage } from "@/pages/dashboard/OffersPage";
 import { CustomersPage } from "@/pages/dashboard/CustomersPage";
 import { ReportsPage } from "@/pages/dashboard/ReportsPage";
 import { MenuEngineeringPage } from "@/pages/dashboard/MenuEngineeringPage";
+import { InventoryPage } from "@/pages/dashboard/InventoryPage";
 import { CustomerOrderPage } from "@/pages/customer/CustomerOrderPage";
 import { InviteAcceptPage } from "@/pages/InviteAcceptPage";
 import type { ReactNode } from "react";
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="orders" element={<OrdersPage />} />
         <Route path="tables" element={<TablesPage />} />
         <Route path="menu" element={<MenuPage />} />
+        <Route path="inventory" element={<InventoryPage />} />
         <Route path="offers" element={<OffersPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="reports" element={<ReportsPage />} />

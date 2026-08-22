@@ -91,6 +91,17 @@ def create_order_from_cart(session: CustomerSession, customer_note: str = "", or
         order=order, from_status="", to_status=Order.Status.NEW, note=_("Order placed")
     )
 
+    # Deduct recipe ingredients from inventory (same transaction — atomic
+    # with the order itself). Best-effort: never blocks a placed order.
+    try:
+        from apps.inventory.services import deduct_for_order
+
+        deduct_for_order(session.restaurant, order)
+    except Exception:  # pragma: no cover — inventory must never break ordering
+        import logging
+
+        logging.getLogger(__name__).exception("Inventory deduction failed for order %s", order.pk)
+
     # Clear the cart after successful order creation.
     cart.items.all().delete()
     return order

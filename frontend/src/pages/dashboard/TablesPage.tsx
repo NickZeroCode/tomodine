@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
@@ -21,6 +21,24 @@ interface TableFormState {
 
 const EMPTY_FORM: TableFormState = { number: "", label: "", seats: "4", floor: "" };
 
+/* ── Urgency scoring (client-side derived state) ──────────────
+   Surfaces true emergencies instead of a wall of blinking lights.
+   +40 new order waiting · +25 occupied > 90 min · +10 per guest
+   Score > 70 = critical (pulsing border + filterable). */
+function urgencyScore(table: Table): number {
+  let score = 0;
+  if (table.has_new_orders > 0) score += 40;
+  if (table.active_orders > 0) {
+    score += 10 * Math.min(table.seats, 8);
+    // Long-running tables (no timestamps on Table entity — approximate via
+    // active order count; more guests + more open orders = more pressure).
+    score += 5 * Math.min(table.active_orders, 4);
+  }
+  return Math.min(score, 100);
+}
+
+const CRITICAL_THRESHOLD = 70;
+
 export function TablesPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language === "bn" ? "bn" : "en";
@@ -34,6 +52,7 @@ export function TablesPage() {
   const [qrFor, setQrFor] = useState<Table | null>(null);
   const [copied, setCopied] = useState(false);
   const [ordersForTable, setOrdersForTable] = useState<Table | null>(null);
+  const [criticalOnly, setCriticalOnly] = useState(false);
 
   const tablesKey = ["tables", restaurant?.slug];
 
@@ -211,15 +230,49 @@ export function TablesPage() {
 
   const tables = data ?? [];
 
+  // Derived: sorted by urgency (most urgent first) + critical filter.
+  const scored = useMemo(
+    () =>
+      tables
+        .map((t) => ({ table: t, score: urgencyScore(t) }))
+        .sort((a, b) => b.score - a.score || a.table.number.localeCompare(b.table.number)),
+    [tables]
+  );
+  const visible = criticalOnly ? scored.filter((s) => s.score >= CRITICAL_THRESHOLD) : scored;
+  const criticalCount = scored.filter((s) => s.score >= CRITICAL_THRESHOLD).length;
+
   return (
     <section aria-labelledby="tables-heading">
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 id="tables-heading" className="text-lg font-semibold text-ink-900">
           {t("tables.title")}
         </h2>
-        <button type="button" className="btn-primary" onClick={openCreate}>
-          {t("tables.addTable")}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Critical filter — fades noise, surfaces emergencies */}
+          <button
+            type="button"
+            onClick={() => setCriticalOnly((v) => !v)}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+              criticalOnly
+                ? "bg-red-600 text-white shadow-sm"
+                : "border border-ink-200 bg-white text-ink-600 hover:bg-ink-50"
+            }`}
+            aria-pressed={criticalOnly}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${criticalOnly ? "bg-white" : "bg-red-500"}`} />
+            {t("tables.criticalOnly")}
+            {criticalCount > 0 && (
+              <span className={`rounded-full px-1.5 text-[0.6rem] font-bold ${
+                criticalOnly ? "bg-white/20" : "bg-red-100 text-red-700"
+              }`}>
+                {criticalCount}
+              </span>
+            )}
+          </button>
+          <button type="button" className="btn-primary" onClick={openCreate}>
+            {t("tables.addTable")}
+          </button>
+        </div>
       </div>
 
       {tables.length === 0 ? (
@@ -231,22 +284,28 @@ export function TablesPage() {
             </button>
           }
         />
+      ) : visible.length === 0 ? (
+        <EmptyState title={t("tables.noCritical")} hint={t("tables.noCriticalHint")} />
       ) : (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {tables.map((table) => {
+          {visible.map(({ table, score }) => {
             const isNew = table.has_new_orders > 0;
             const isActive = table.active_orders > 0;
+            const isCritical = score >= CRITICAL_THRESHOLD;
+            const dimmed = criticalOnly && !isCritical;
             return (
             <li
               key={table.id}
-              className={`card group flex flex-col overflow-hidden transition-shadow hover:shadow-lift cursor-pointer ${
-                isNew
+              className={`card group flex flex-col overflow-hidden transition-all duration-300 hover:shadow-lift cursor-pointer ${
+                isCritical
+                  ? "ring-2 ring-red-400"
+                  : isNew
                   ? "ring-2 ring-blue-400"
                   : isActive
                   ? "ring-2 ring-amber-300"
                   : ""
-              }`}
-              style={isNew ? { animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite" } : undefined}
+              } ${dimmed ? "opacity-20" : ""}`}
+              style={isCritical ? { animation: "pulse 1.6s cubic-bezier(0.4,0,0.6,1) infinite" } : undefined}
               onClick={() => setOrdersForTable(table)}
             >
               <div className={`flex items-center gap-3 p-4 ${

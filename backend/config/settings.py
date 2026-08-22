@@ -101,6 +101,7 @@ LOCAL_APPS = [
     "apps.menus",
     "apps.tables",
     "apps.ordering",
+    "apps.inventory",
     "apps.billing",
     "apps.notifications",
     "apps.analytics",

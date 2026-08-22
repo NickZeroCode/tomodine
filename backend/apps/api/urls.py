@@ -30,6 +30,13 @@ from .views import (
     TableViewSet,
 )
 
+# Inventory viewsets live in their own app module.
+from apps.inventory.views import (  # noqa: E402
+    InventoryItemViewSet,
+    RecipeItemViewSet,
+    StockMovementViewSet,
+)
+
 router = DefaultRouter()
 router.register("restaurants", RestaurantViewSet, basename="restaurant")
 router.register("tables", TableViewSet, basename="table")
@@ -44,6 +51,9 @@ router.register("billing-records", BillingRecordViewSet, basename="billing-recor
 router.register("offers", OfferViewSet, basename="offer")
 router.register("notifications", NotificationViewSet, basename="notification")
 router.register("analytics", AnalyticsViewSet, basename="analytics")
+router.register("inventory-items", InventoryItemViewSet, basename="inventory-item")
+router.register("recipe-items", RecipeItemViewSet, basename="recipe-item")
+router.register("stock-movements", StockMovementViewSet, basename="stock-movement")
 router.register("public", CustomerOrderingViewSet, basename="public")
 
 urlpatterns = [

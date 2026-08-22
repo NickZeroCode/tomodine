@@ -26,6 +26,7 @@ PERMISSIONS: list[tuple[str, str, str, str]] = [
     ("billing.view", "View billing", "বিলিং দেখুন", "billing"),
     ("billing.manage", "Manage billing", "বিলিং পরিচালনা", "billing"),
     ("analytics.view", "View analytics", "অ্যানালিটিক্স দেখুন", "analytics"),
+    ("inventory.manage", "Manage inventory", "ইনভেন্টরি পরিচালনা", "inventory"),
     ("settings.manage", "Manage settings", "সেটিংস পরিচালনা", "settings"),
 ]
 

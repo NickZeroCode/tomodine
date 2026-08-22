@@ -56,6 +56,13 @@ const IC = {
       <path d="M2 3h6a4 4 0 0 1 4 4 4 4 0 0 1 4-4h6v14h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3H2z" />
     </Ic>
   ),
+  inventory: (
+    <Ic>
+      <rect x="2.5" y="6.5" width="6" height="11" rx="1" />
+      <rect x="11.5" y="2.5" width="6" height="15" rx="1" />
+      <path d="M4.5 9.5h2M4.5 12.5h2M13.5 5.5h2M13.5 8.5h2M13.5 11.5h2" />
+    </Ic>
+  ),
   offers: (
     <Ic>
       <path d="M2 3.5 11.5 2l8.5 8.5-7.5 7.5L2 11.5V3.5z" />
@@ -119,6 +126,7 @@ const SIDEBAR_SECTIONS = [
     labelKey: "nav.menuAndOffers",
     items: [
       { to: "/dashboard/menu", key: "nav.menu", icon: IC.menu },
+      { to: "/dashboard/inventory", key: "nav.inventory", icon: IC.inventory },
       { to: "/dashboard/offers", key: "nav.offers", icon: IC.offers },
     ],
   },
