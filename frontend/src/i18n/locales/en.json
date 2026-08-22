@@ -142,7 +142,24 @@
     "laneReady": "Ready to serve",
     "laneCooking": "In kitchen",
     "laneOrdering": "Ordering",
-    "laneFree": "Available"
+    "laneFree": "Available",
+    "occupancy": "Chairs occupied",
+    "wantsBill": "Wants the bill",
+    "kpiSeated": "Seated",
+    "kpiChairs": "Chairs occupied",
+    "kpiBills": "Bill requests",
+    "needsAttention": "Needs attention",
+    "recipeFor": "Recipe",
+    "recipeExplainer": "Link inventory ingredients to this dish. Each serving deducts the listed quantities from stock, and the cost preview shows what one plate costs you to make.",
+    "noLinesYet": "No ingredients linked yet — add one below.",
+    "ingredient": "Ingredient",
+    "selectIngredient": "Choose an ingredient…",
+    "qtyPerServing": "Qty / serving",
+    "wastePct": "Waste %",
+    "addIngredient": "Add ingredient",
+    "costPreview": "Cost per serving",
+    "editRecipe": "Edit recipe",
+    "addRecipe": "Add recipe"
   },
   "menu": {
     "title": "Menu",
@@ -552,7 +569,11 @@
     "accept": "Accept invitation",
     "invalidTitle": "Invalid invitation",
     "invalidDesc": "This invitation link is invalid or has expired. Please ask your restaurant owner to send a new one.",
-    "existingAccount": "Already have an account?"
+    "existingAccount": "Already have an account?",
+    "passwordMismatch": "Passwords do not match.",
+    "passwordHint": "At least 10 characters.",
+    "networkError": "Could not reach the server. Please check your connection and try again.",
+    "genericError": "Could not accept this invitation. Please try again."
   },
   "inv": {
     "title": "Inventory",

@@ -55,17 +55,20 @@ function statusVisual(table: Table): { bg: string; ring: string; dot: string } {
     return { bg: "bg-blue-50", ring: "ring-blue-400", dot: "bg-blue-500" };
   if (table.status === "ready" || table.status === "awaiting_service")
     return { bg: "bg-violet-50", ring: "ring-violet-400", dot: "bg-violet-500" };
+  if (table.status === "awaiting_payment")
+    return { bg: "bg-red-50", ring: "ring-red-300", dot: "bg-red-500" };
   if (table.active_orders > 0)
     return { bg: "bg-amber-50", ring: "ring-amber-300", dot: "bg-amber-500" };
   if (table.status === "reserved")
     return { bg: "bg-sky-50", ring: "ring-sky-300", dot: "bg-sky-500" };
-  return { bg: "bg-emerald-50", ring: "ring-emerald-200", dot: "bg-emerald-500" };
+  if ((table.guests ?? 0) > 0)
+    return { bg: "bg-teal-50", ring: "ring-teal-300", dot: "bg-teal-500" };
+  return { bg: "bg-white", ring: "ring-ink-200", dot: "bg-ink-300" };
 }
 
 const Tile = memo(
   function Tile({
     table,
-    score,
     x,
     y,
     critical,
@@ -76,7 +79,6 @@ const Tile = memo(
     onSelect,
   }: {
     table: Table;
-    score: number;
     x: number;
     y: number;
     critical: boolean;
@@ -86,6 +88,7 @@ const Tile = memo(
     onPointerDown: (e: React.PointerEvent, table: Table) => void;
     onSelect: (table: Table) => void;
   }) {
+    const { t } = useTranslation();
     const v = statusVisual(table);
     return (
       <div
@@ -123,21 +126,34 @@ const Tile = memo(
             </span>
           )}
         </div>
-        {/* Middle: occupancy */}
-        <div className="mt-0.5 flex items-center justify-between text-[0.65rem] text-ink-500">
-          <span>{table.seats}p</span>
-          {score >= 70 && (
-            <span className="rounded bg-red-100 px-1 text-[0.55rem] font-bold uppercase text-red-700">
-              !
-            </span>
+        {/* Middle: chair occupancy — occupied of total */}
+        <div className="mt-0.5 flex items-center gap-1" title={t("tables.occupancy")}>
+          {Array.from({ length: Math.min(table.seats, 8) }).map((_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 w-3 rounded-sm ${
+                i < (table.guests ?? 0)
+                  ? table.has_new_orders > 0 ? "bg-blue-500"
+                    : (table.status === "awaiting_payment") ? "bg-red-400"
+                    : "bg-teal-500"
+                  : "bg-ink-200"
+              }`}
+              aria-hidden="true"
+            />
+          ))}
+          {table.seats > 8 && (
+            <span className="text-[0.55rem] font-semibold text-ink-400">+{table.seats - 8}</span>
           )}
+          <span className="ml-auto text-[0.6rem] font-medium tabular-nums text-ink-400">
+            {table.guests ?? 0}/{table.seats}
+          </span>
         </div>
         {/* Bottom: state hint */}
-        {table.has_new_orders > 0 && (
-          <p className="truncate text-[0.6rem] font-semibold text-blue-600">
-            new order
-          </p>
-        )}
+        {table.status === "awaiting_payment" ? (
+          <p className="truncate text-[0.6rem] font-semibold text-red-600">{t("tables.wantsBill")}</p>
+        ) : table.has_new_orders > 0 ? (
+          <p className="truncate text-[0.6rem] font-semibold text-blue-600">{t("orders.new")}</p>
+        ) : null}
       </div>
     );
   },
@@ -146,7 +162,7 @@ const Tile = memo(
     prev.table.active_orders === next.table.active_orders &&
     prev.table.has_new_orders === next.table.has_new_orders &&
     prev.table.dining_minutes === next.table.dining_minutes &&
-    prev.score === next.score &&
+    prev.table.guests === next.table.guests &&
     prev.x === next.x &&
     prev.y === next.y &&
     prev.critical === next.critical &&
@@ -301,7 +317,6 @@ export function FloorMap({
           <Tile
             key={table.id}
             table={table}
-            score={score}
             x={p.x}
             y={p.y}
             critical={critical}

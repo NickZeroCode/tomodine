@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from django.contrib.auth import get_user_model
+from apps.restaurants.models import Restaurant
 from rest_framework import generics, permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -53,6 +54,28 @@ class InviteClaimView(generics.CreateAPIView):
 
     permission_classes = (permissions.AllowAny,)
     serializer_class = InviteClaimSerializer
+
+    def get(self, request, *args, **kwargs):
+        """Pre-flight token check so the form can fail fast with context."""
+        from django.core import signing
+
+        token = request.query_params.get("token", "")
+        try:
+            data = signing.loads(token, max_age=60 * 60 * 24 * 7, salt="staff-invite")
+            email = data["email"]
+            restaurant = Restaurant.objects.filter(pk=data["restaurant"]).first()
+            if restaurant is None:
+                raise KeyError("restaurant")
+        except Exception:
+            logger.warning("Invite pre-flight rejected: bad token")
+            return Response(
+                {"valid": False, "detail": "This invitation link is invalid or has expired."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            {"valid": True, "email": email, "restaurant": restaurant.name},
+            status=status.HTTP_200_OK,
+        )
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

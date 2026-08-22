@@ -313,6 +313,37 @@ export function TablesPage() {
   );
   const criticalCount = scored.filter((s) => s.score >= CRITICAL_THRESHOLD).length;
 
+  // Live-floor KPIs (derived, no extra requests).
+  const kpis = useMemo(() => {
+    const seated = tables.filter((t) => (t.guests ?? 0) > 0 || t.active_orders > 0);
+    const totalSeats = seated.reduce((sum, t) => sum + t.seats, 0);
+    const occupiedSeats = seated.reduce((sum, t) => sum + Math.min(t.guests ?? t.seats, t.seats), 0);
+    const billTables = tables.filter((t) => t.status === "awaiting_payment");
+    const serviceTables = scored.filter(
+      ({ table }) => table.status === "ready" || table.status === "awaiting_service" || table.has_new_orders > 0
+    );
+    return {
+      seatedCount: seated.length,
+      totalActive: tables.length,
+      occupiedSeats,
+      totalSeats,
+      billCount: billTables.length,
+      billTotal: billTables.reduce(
+        (sum, t) => sum + (parseFloat(String(t.total ?? "0")) || 0),
+        0
+      ),
+      attention: [
+        ...billTables.map((t) => ({ table: t, kind: "bill" as const })),
+        ...serviceTables
+          .filter(({ table }) => !billTables.includes(table))
+          .map(({ table }) => ({
+            table,
+            kind: (table.has_new_orders > 0 ? "order" : "service") as "order" | "service",
+          })),
+      ].slice(0, 6),
+    };
+  }, [tables, scored]);
+
   if (!restaurant) return <EmptyState />;
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState onRetry={() => void refetch()} />;
@@ -362,6 +393,65 @@ export function TablesPage() {
         />
       ) : (
         <>
+          {/* ── Live KPI strip — compact, no borders-heavy cards ── */}
+          <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 rounded-lg bg-white px-4 py-2.5 text-xs shadow-sm ring-1 ring-ink-100/70">
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-500" aria-hidden="true" />
+              <span className="text-ink-400">{t("tables.kpiSeated")}</span>
+              <strong className="tabular-nums text-ink-900">{kpis.seatedCount}/{kpis.totalActive}</strong>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-500" aria-hidden="true" />
+              <span className="text-ink-400">{t("tables.kpiChairs")}</span>
+              <strong className="tabular-nums text-ink-900">{kpis.occupiedSeats}/{kpis.totalSeats}</strong>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden="true" />
+              <span className="text-ink-400">{t("tables.kpiBills")}</span>
+              <strong className="tabular-nums text-ink-900">{kpis.billCount}</strong>
+            </span>
+            {criticalCount > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-600" aria-hidden="true" />
+                <span className="text-red-600">{t("tables.criticalOnly")}</span>
+                <strong className="tabular-nums text-red-700">{criticalCount}</strong>
+              </span>
+            )}
+          </div>
+
+          {/* ── Needs attention — horizontal action chips ── */}
+          {kpis.attention.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className="text-[0.65rem] font-semibold uppercase tracking-wider text-ink-400">
+                {t("tables.needsAttention")}
+              </span>
+              {kpis.attention.map(({ table, kind }) => (
+                <button
+                  key={`${table.id}-${kind}`}
+                  type="button"
+                  onClick={() => setOrdersForTable(table)}
+                  onMouseEnter={() => setPulseId(table.id)}
+                  onMouseLeave={() => setPulseId(null)}
+                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.65rem] font-semibold transition-all hover:shadow-sm ${
+                    kind === "bill"
+                      ? "bg-red-50 text-red-700 ring-1 ring-red-200"
+                      : kind === "order"
+                      ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200"
+                      : "bg-violet-50 text-violet-700 ring-1 ring-violet-200"
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${
+                    kind === "bill" ? "bg-red-500" : kind === "order" ? "bg-blue-500" : "bg-violet-500"
+                  }`} />
+                  T-{table.number}
+                  <span className="text-ink-400">
+                    {kind === "bill" ? t("tables.wantsBill") : kind === "order" ? t("orders.new") : t("tables.laneReady")}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* ── Split-screen: 2D floor map (left) + Kanban (right) ── */}
           <div className="flex flex-col gap-4 lg:flex-row">
             {/* Floor map — 70% on desktop */}

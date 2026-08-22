@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django.shortcuts import get_object_or_404
 from django.db import models
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -307,6 +307,18 @@ class TableViewSet(TenantScopedViewSet):
         has_new_orders=Count(
             "orders",
             filter=Q(orders__status="NEW"),
+        ),
+        # Distinct active diners across live sessions at this table —
+        # drives the "chairs occupied" indicator on the floor map.
+        guests=Count(
+            "sessions",
+            filter=Q(sessions__is_active=True),
+            distinct=True,
+        ),
+        # Live unpaid total across open orders (for "awaiting payment" KPIs).
+        total=Sum(
+            "orders__total",
+            filter=Q(orders__status__in=["NEW", "ACCEPTED", "PREPARING", "READY", "SERVED"]),
         ),
     )
     required_permission = "tables.manage"

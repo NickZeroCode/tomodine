@@ -6,7 +6,7 @@
  * Real-time updates arrive over the existing restaurant WebSocket.
  */
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
@@ -596,6 +596,7 @@ function RecipesTab() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language.startsWith("bn") ? "bn" : "en";
   const { restaurant } = useRestaurant();
+  const [recipeFor, setRecipeFor] = useState<CostRow | null>(null);
 
   const costsQuery = useQuery({
     queryKey: ["dish-costs", restaurant?.slug],
@@ -613,57 +614,266 @@ function RecipesTab() {
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-ink-100 bg-white">
-      <table className="w-full min-w-[680px] text-sm">
-        <thead>
-          <tr className="border-b border-ink-100 bg-ink-50/70 text-left text-[0.65rem] font-semibold uppercase tracking-wider text-ink-400">
-            <th className="px-4 py-2.5">{t("inv.dish")}</th>
-            <th className="px-3 py-2.5 text-right">{t("inv.costToMake")}</th>
-            <th className="px-3 py-2.5 text-right">{t("inv.sellingPrice")}</th>
-            <th className="px-3 py-2.5 text-right">{t("inv.grossProfit")}</th>
-            <th className="px-4 py-2.5">{t("inv.margin")}</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-ink-50">
-          {rows.map((r) => {
-            const marginTone =
-              r.margin_percent >= 65 ? "bg-emerald-500"
-              : r.margin_percent >= 40 ? "bg-amber-500"
-              : "bg-red-500";
-            return (
-              <tr key={r.dish_id} className="transition-colors hover:bg-ink-25">
-                <td className="px-4 py-3">
-                  <p className="font-semibold text-ink-900">{r.dish_name}</p>
-                  <p className="text-[0.65rem] text-ink-400">
-                    {r.ingredient_count > 0
-                      ? t("inv.ingredientsCount", { count: r.ingredient_count })
-                      : t("inv.noRecipeDefined")}
-                  </p>
-                </td>
-                <td className="px-3 py-3 text-right tabular-nums text-ink-600">{formatBDT(r.cogs, lang)}</td>
-                <td className="px-3 py-3 text-right tabular-nums font-semibold text-ink-900">{formatBDT(r.price, lang)}</td>
-                <td className={`px-3 py-3 text-right tabular-nums font-semibold ${
-                  parseFloat(r.gross_profit) >= 0 ? "text-emerald-700" : "text-red-600"
-                }`}>
-                  {formatBDT(r.gross_profit, lang)}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-20 overflow-hidden rounded-full bg-ink-100">
-                      <div
-                        className={`h-full rounded-full ${marginTone}`}
-                        style={{ width: `${Math.max(0, Math.min(100, r.margin_percent))}%` }}
-                      />
+    <>
+      <div className="overflow-x-auto rounded-lg border border-ink-100 bg-white">
+        <table className="w-full min-w-[680px] text-sm">
+          <thead>
+            <tr className="border-b border-ink-100 bg-ink-50/70 text-left text-[0.65rem] font-semibold uppercase tracking-wider text-ink-400">
+              <th className="px-4 py-2.5">{t("inv.dish")}</th>
+              <th className="px-3 py-2.5 text-right">{t("inv.costToMake")}</th>
+              <th className="px-3 py-2.5 text-right">{t("inv.sellingPrice")}</th>
+              <th className="px-3 py-2.5 text-right">{t("inv.grossProfit")}</th>
+              <th className="px-4 py-2.5">{t("inv.margin")}</th>
+              <th className="px-4 py-2.5" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-ink-50">
+            {rows.map((r) => {
+              const marginTone =
+                r.margin_percent >= 65 ? "bg-emerald-500"
+                : r.margin_percent >= 40 ? "bg-amber-500"
+                : "bg-red-500";
+              return (
+                <tr key={r.dish_id} className="transition-colors hover:bg-ink-25">
+                  <td className="px-4 py-3">
+                    <p className="font-semibold text-ink-900">{r.dish_name}</p>
+                    <p className="text-[0.65rem] text-ink-400">
+                      {r.ingredient_count > 0
+                        ? t("inv.ingredientsCount", { count: r.ingredient_count })
+                        : t("inv.noRecipeDefined")}
+                    </p>
+                  </td>
+                  <td className="px-3 py-3 text-right tabular-nums text-ink-600">{formatBDT(r.cogs, lang)}</td>
+                  <td className="px-3 py-3 text-right tabular-nums font-semibold text-ink-900">{formatBDT(r.price, lang)}</td>
+                  <td className={`px-3 py-3 text-right tabular-nums font-semibold ${
+                    parseFloat(r.gross_profit) >= 0 ? "text-emerald-700" : "text-red-600"
+                  }`}>
+                    {formatBDT(r.gross_profit, lang)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-ink-100">
+                        <div
+                          className={`h-full rounded-full ${marginTone}`}
+                          style={{ width: `${Math.max(0, Math.min(100, r.margin_percent))}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-bold tabular-nums text-ink-700">{r.margin_percent.toFixed(0)}%</span>
                     </div>
-                    <span className="text-xs font-bold tabular-nums text-ink-700">{r.margin_percent.toFixed(0)}%</span>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      className="rounded-md px-2 py-1 text-[0.65rem] font-semibold text-brand-700 hover:bg-brand-50"
+                      onClick={() => setRecipeFor(r)}
+                    >
+                      {r.ingredient_count > 0 ? t("inv.editRecipe") : t("inv.addRecipe")}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {recipeFor && (
+        <RecipeEditorModal
+          dishId={recipeFor.dish_id}
+          dishName={recipeFor.dish_name}
+          onClose={() => setRecipeFor(null)}
+        />
+      )}
+    </>
+  );
+}
+
+/* ── Recipe editor (BOM) modal ──────────────────────────────── */
+
+interface RecipeLine {
+  id?: string;
+  inventory_item: string;
+  inventory_item_name?: string;
+  quantity_required: string;
+  wastage_percentage: string;
+  unit?: string;
+  unit_cost?: string;
+}
+
+function RecipeEditorModal({ dishId, dishName, onClose }: { dishId: string; dishName: string; onClose: () => void }) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language.startsWith("bn") ? "bn" : "en";
+  const queryClient = useQueryClient();
+
+  const itemsQuery = useQuery({
+    queryKey: ["inventory-items", "for-recipes"],
+    queryFn: async () => {
+      const res = await api.get("/inventory-items/");
+      return (Array.isArray(res.data) ? res.data : res.data.results) as Array<{
+        id: string; name: string; unit: string; avg_cost_per_unit: string;
+      }>;
+    },
+  });
+
+  const recipesKey = ["recipe-lines", dishId];
+  const recipesQuery = useQuery({
+    queryKey: recipesKey,
+    queryFn: async () =>
+      (await api.get<RecipeLine[]>("/recipe-items/", { params: { dish: dishId } })).data,
+  });
+
+  const [lines, setLines] = useState<RecipeLine[] | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Seed local editing state once server data arrives.
+  useEffect(() => {
+    if (lines === null && recipesQuery.data) setLines(recipesQuery.data);
+  }, [recipesQuery.data, lines]);
+
+  const items = itemsQuery.data ?? [];
+  const current = lines ?? [];
+
+  function addLine() {
+    setLines([...current, { inventory_item: "", quantity_required: "", wastage_percentage: "0" }]);
+  }
+
+  function updateLine(idx: number, patch: Partial<RecipeLine>) {
+    setLines(current.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+  }
+
+  function removeLine(idx: number) {
+    setLines(current.filter((_, i) => i !== idx));
+  }
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      const valid = current.filter((l) => l.inventory_item && parseFloat(l.quantity_required) > 0);
+      const existingIds = new Set((recipesQuery.data ?? []).map((r) => r.id));
+      for (const line of valid) {
+        if (line.id && existingIds.has(line.id)) {
+          await api.patch(`/recipe-items/${line.id}/`, {
+            quantity_required: line.quantity_required,
+            wastage_percentage: line.wastage_percentage || "0",
+          });
+          existingIds.delete(line.id);
+        } else if (!line.id) {
+          await api.post("/recipe-items/", {
+            dish: dishId,
+            inventory_item: line.inventory_item,
+            quantity_required: line.quantity_required,
+            wastage_percentage: line.wastage_percentage || "0",
+          });
+        }
+      }
+      // Lines removed from the UI get deleted.
+      for (const staleId of existingIds) {
+        await api.delete(`/recipe-items/${staleId}/`);
+      }
+      void queryClient.invalidateQueries({ queryKey: ["dish-costs"] });
+      void queryClient.invalidateQueries({ queryKey: ["recipe-lines", dishId] });
+      onClose();
+    } catch (err) {
+      const apiErr = err as unknown as ApiError;
+      setError(apiErr.message ?? t("common.error"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Live COGS preview.
+  const cogsPreview = current.reduce((sum, l) => {
+    const item = items.find((it) => it.id === l.inventory_item);
+    if (!item) return sum;
+    const cost = parseFloat(item.avg_cost_per_unit) || 0;
+    const qty = parseFloat(l.quantity_required) || 0;
+    const waste = parseFloat(l.wastage_percentage) || 0;
+    return sum + qty * cost * (1 + waste / 100);
+  }, 0);
+
+  return (
+    <Modal title={`${t("inv.recipeFor")} — ${dishName}`} onClose={onClose}>
+      <div className="space-y-3">
+        <p className="text-xs leading-relaxed text-ink-500">{t("inv.recipeExplainer")}</p>
+
+        {lines === null ? (
+          <LoadingState />
+        ) : (
+          <>
+            {current.length === 0 && (
+              <p className="rounded-lg bg-ink-25 px-3 py-2.5 text-xs text-ink-400">{t("inv.noLinesYet")}</p>
+            )}
+            {current.map((line, idx) => (
+              <div key={idx} className="grid grid-cols-[1fr_5rem_4rem_auto] items-end gap-2">
+                <Field label={idx === 0 ? t("inv.ingredient") : ""}>
+                  {(id) => (
+                    <select
+                      id={id}
+                      className="input"
+                      value={line.inventory_item}
+                      onChange={(e) => updateLine(idx, { inventory_item: e.target.value })}
+                    >
+                      <option value="">{t("inv.selectIngredient")}</option>
+                      {items.map((it) => (
+                        <option key={it.id} value={it.id}>
+                          {it.name} ({t(`inv.unit_${it.unit}`)} · {parseFloat(it.avg_cost_per_unit).toFixed(0)}/{t(`inv.unit_${it.unit}`)})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </Field>
+                <TextField
+                  label={idx === 0 ? t("inv.qtyPerServing") : ""}
+                  value={line.quantity_required}
+                  onChange={(v) => updateLine(idx, { quantity_required: v })}
+                  type="number"
+                />
+                <TextField
+                  label={idx === 0 ? t("inv.wastePct") : ""}
+                  value={line.wastage_percentage}
+                  onChange={(v) => updateLine(idx, { wastage_percentage: v })}
+                  type="number"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeLine(idx)}
+                  className="mb-0.5 flex h-9 w-9 items-center justify-center rounded-md text-ink-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                  aria-label={t("common.delete")}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={addLine}
+              className="btn-secondary w-full justify-center py-2 text-xs"
+            >
+              + {t("inv.addIngredient")}
+            </button>
+
+            {current.some((l) => l.inventory_item && parseFloat(l.quantity_required) > 0) && (
+              <div className="flex items-center justify-between rounded-lg bg-brand-50/60 px-3.5 py-2.5 text-xs">
+                <span className="text-brand-800">{t("inv.costPreview")}</span>
+                <strong className="tabular-nums text-brand-900">{formatBDT(cogsPreview.toFixed(2), lang)}</strong>
+              </div>
+            )}
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" className="btn-secondary" onClick={onClose}>{t("common.cancel")}</button>
+              <button type="button" className="btn-primary" onClick={save} disabled={saving}>
+                {saving ? t("common.loading") : t("common.save")}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </Modal>
   );
 }
 

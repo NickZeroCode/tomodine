@@ -85,6 +85,10 @@ class TableSerializer(serializers.ModelSerializer):
     qr_code = serializers.SerializerMethodField()
     active_orders = serializers.IntegerField(read_only=True, default=0)
     has_new_orders = serializers.IntegerField(read_only=True, default=0)
+    guests = serializers.IntegerField(read_only=True, default=0)
+    total = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True, default=None
+    )
     dining_minutes = serializers.SerializerMethodField()
 
     class Meta:
@@ -92,7 +96,7 @@ class TableSerializer(serializers.ModelSerializer):
         fields = (
             "id", "number", "label", "seats", "floor", "status",
             "is_active", "qr_code", "active_orders", "has_new_orders",
-            "grid_x", "grid_y", "grid_w", "grid_h",
+            "guests", "total", "grid_x", "grid_y", "grid_w", "grid_h",
             "seated_at", "dining_minutes", "version", "created_at",
         )
         read_only_fields = ("id", "created_at", "seated_at", "version")

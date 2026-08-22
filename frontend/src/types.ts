@@ -58,6 +58,7 @@ export interface Table {
   status: TableStatus;
   active_orders: number;
   has_new_orders: number;
+  guests: number;
   grid_x: number | null;
   grid_y: number | null;
   grid_w: number;
@@ -65,6 +66,8 @@ export interface Table {
   seated_at: string | null;
   dining_minutes: number | null;
   version: number;
+  /** Live unpaid total across the table's open orders (optional). */
+  total?: string | number | null;
   qr_code?: QRCodeInfo | null;
 }
 

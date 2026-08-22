@@ -90,6 +90,7 @@ const Card = memo(
     onSelect: (t: Table) => void;
     onHover: (id: string | null) => void;
   }) {
+    const { t } = useTranslation();
     const { table, score } = item;
     const critical = score >= 70;
     return (
@@ -114,11 +115,20 @@ const Card = memo(
             </span>
           )}
         </div>
-        <div className="mt-0.5 flex items-center gap-2 text-[0.6rem] text-ink-500">
-          <span>{table.seats}p</span>
-          {table.active_orders > 0 && <span>· {table.active_orders} ord.</span>}
+        <div className="mt-0.5 flex items-center gap-1.5 text-[0.6rem] text-ink-500">
+          {/* Chair occupancy */}
+          <span className="tabular-nums">
+            {table.guests ?? 0}/{table.seats}
+          </span>
+          {table.status === "awaiting_payment" && (
+            <span className="rounded bg-red-100 px-1 font-bold text-red-700">
+              {t("tables.wantsBill")}
+            </span>
+          )}
           {table.has_new_orders > 0 && (
-            <span className="rounded bg-blue-100 px-1 font-bold text-blue-700">NEW</span>
+            <span className="rounded bg-blue-100 px-1 font-bold text-blue-700">
+              {t("orders.new")}
+            </span>
           )}
         </div>
       </button>
@@ -129,6 +139,7 @@ const Card = memo(
     p.item.table.active_orders === n.item.table.active_orders &&
     p.item.table.has_new_orders === n.item.table.has_new_orders &&
     p.item.table.dining_minutes === n.item.table.dining_minutes &&
+    p.item.table.guests === n.item.table.guests &&
     p.item.score === n.item.score &&
     p.selected === n.selected
 );
