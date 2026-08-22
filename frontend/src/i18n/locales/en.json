@@ -68,7 +68,8 @@
     "financeAndInsights": "Finance & Insights",
     "teamSection": "Team",
     "inventory": "Inventory",
-    "switchBranch": "Switch branch"
+    "switchBranch": "Switch branch",
+    "branches": "Branches"
   },
   "orders": {
     "title": "Orders",
@@ -657,5 +658,23 @@
     "mv_wastage": "Wastage",
     "mv_manual_adjust": "Adjust",
     "mv_return": "Return"
+  },
+  "branches": {
+    "title": "Branches",
+    "subtitle": "Manage your restaurant locations",
+    "addBranch": "Add branch",
+    "editBranch": "Edit branch",
+    "noBranches": "No branches yet",
+    "noBranchesHint": "Add your first location to get started.",
+    "name": "Name",
+    "address": "Address",
+    "area": "Area",
+    "phone": "Phone",
+    "tables": "Tables",
+    "staff": "Staff",
+    "current": "Current",
+    "switch": "Switch",
+    "deactivate": "Deactivate",
+    "deactivateConfirm": "All orders and inventory for this branch will be archived. Continue?"
   }
 }

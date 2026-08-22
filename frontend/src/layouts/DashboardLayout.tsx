@@ -145,7 +145,10 @@ const SIDEBAR_SECTIONS = [
   },
   {
     labelKey: "nav.teamSection",
-    items: [{ to: "/dashboard/staff", key: "nav.staff", icon: IC.staff }],
+    items: [
+      { to: "/dashboard/staff", key: "nav.staff", icon: IC.staff },
+      { to: "/dashboard/branches", key: "nav.branches", icon: IC.tables },
+    ],
   },
 ] as const;
 

@@ -55,6 +55,14 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data: dict[str, Any]) -> User:
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.billing.models import Subscription, SubscriptionPlan
+        from apps.organizations.models import Organization
+        from apps.restaurants.models import Restaurant, RestaurantMembership
+
         password = validated_data.pop("password")
         org_name = validated_data.pop("organization_name", "") or ""
         branch_name = validated_data.pop("branch_name", "") or ""
@@ -63,10 +71,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
 
-        # Create Organization + default Branch (the old "restaurant" record).
-        from apps.organizations.models import Organization
-        from apps.restaurants.models import Restaurant, RestaurantMembership
-
+        # Create Organization + default Branch.
         org_name = org_name or (user.full_name or user.email.split("@")[0]).strip() or "My Restaurant"
         org = Organization.objects.create(owner=user, name=org_name)
 
@@ -80,6 +85,23 @@ class RegisterSerializer(serializers.ModelSerializer):
             user=user,
             is_owner=True,
         )
+
+        # Assign trial subscription (same logic as RestaurantViewSet.perform_create).
+        plan = (
+            SubscriptionPlan.objects.filter(code="trial", is_active=True).first()
+            or SubscriptionPlan.objects.filter(is_active=True).order_by("display_order").first()
+        )
+        if plan is not None:
+            trial_days = plan.trial_days or 14
+            Subscription.objects.get_or_create(
+                restaurant=branch,
+                defaults={
+                    "plan": plan,
+                    "status": Subscription.Status.TRIALING,
+                    "trial_ends_at": timezone.now() + timedelta(days=trial_days),
+                },
+            )
+
         return user
 
 

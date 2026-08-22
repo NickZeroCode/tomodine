@@ -19,6 +19,7 @@ import { MenuEngineeringPage } from "@/pages/dashboard/MenuEngineeringPage";
 import { InventoryPage } from "@/pages/dashboard/InventoryPage";
 import { CustomerOrderPage } from "@/pages/customer/CustomerOrderPage";
 import { InviteAcceptPage } from "@/pages/InviteAcceptPage";
+import { BranchesPage } from "@/pages/dashboard/BranchesPage";
 import type { ReactNode } from "react";
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="staff" element={<StaffPage />} />
         <Route path="subscription" element={<SubscriptionPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="branches" element={<BranchesPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
