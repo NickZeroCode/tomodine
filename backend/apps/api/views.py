@@ -229,8 +229,13 @@ class RestaurantViewSet(viewsets.ModelViewSet):
             try:
                 entitlements.check_staff_limit(restaurant)
             except entitlements.PlanLimitExceeded as exc:
+                _log.warning(
+                    "add_member BLOCKED by plan limit: %s (restaurant=%s)",
+                    str(exc), str(restaurant.pk)[:8],
+                )
                 return Response(
-                    {"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN
+                    {"detail": str(exc)},
+                    status=status.HTTP_403_FORBIDDEN,
                 )
 
         if user is None:
