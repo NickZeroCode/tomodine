@@ -62,9 +62,7 @@ export function ChatWidget({ tableId, restaurantSlug }: Props) {
           className="fixed bottom-24 right-3 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg transition-all hover:bg-brand-700 hover:shadow-xl active:scale-95 sm:bottom-20 sm:right-5 sm:h-12 sm:w-12"
           aria-label={t("chat.open", "Open TomoDine AI")}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
-            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <img src="/images/logos/chatbot-logo.png" alt="TomoDine AI" className="h-full w-full rounded-full object-cover" />
           {messages.length > 0 && (
             <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[0.55rem] font-bold">
               {messages.filter((m) => m.role === "assistant").length}
@@ -79,9 +77,7 @@ export function ChatWidget({ tableId, restaurantSlug }: Props) {
           {/* Header */}
           <div className="flex items-center gap-3 bg-brand-600 px-4 py-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 text-white">
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <img src="/images/logos/chatbot-logo.png" alt="" className="h-5 w-5 rounded-full object-cover" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-white">{t("chat.title", "TomoDine AI")}</p>
@@ -114,10 +110,8 @@ export function ChatWidget({ tableId, restaurantSlug }: Props) {
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-3 py-3 sm:px-4">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-50">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-6 w-6 text-brand-600">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                  </svg>
+                <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-brand-50">
+                  <img src="/images/logos/chatbot-logo.png" alt="TomoDine AI" className="h-full w-full object-cover" />
                 </div>
                 <p className="text-sm font-semibold text-ink-700">{t("chat.welcome", "Welcome! How can I help?")}</p>
                 <p className="mt-1 text-xs text-ink-400">{t("chat.welcomeHint", "Ask about our menu, place an order, or call a waiter")}</p>
@@ -131,7 +125,7 @@ export function ChatWidget({ tableId, restaurantSlug }: Props) {
             {isLoading && (
               <div className="flex items-start gap-2">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-100">
-                  <span className="text-xs font-bold text-brand-600">AI</span>
+                  <img src="/images/logos/chatbot-logo.png" alt="" className="h-full w-full rounded-full object-cover" />
                 </div>
                 <div className="rounded-2xl rounded-tl-sm bg-ink-50 px-3.5 py-2.5">
                   <div className="flex gap-1">
@@ -215,8 +209,8 @@ function MessageBubble({
     <div className={`flex items-start gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
       {/* Avatar */}
       {!isUser && (
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-100">
-          <span className="text-xs font-bold text-brand-600">AI</span>
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-100">
+          <img src="/images/logos/chatbot-logo.png" alt="" className="h-full w-full object-cover" />
         </div>
       )}
 

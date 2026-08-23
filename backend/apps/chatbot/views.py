@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 
+from django.core.cache import cache
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -14,6 +16,19 @@ from apps.chatbot.serializers import ChatRequestSerializer, SessionResetSerializ
 from apps.chatbot.services import memory
 
 logger = logging.getLogger(__name__)
+
+RATE_LIMIT = 30  # requests per window
+RATE_WINDOW = 60  # seconds
+
+
+def _check_rate_limit(key: str) -> bool:
+    """Return True if the request is allowed, False if rate-limited."""
+    cache_key = f"chatbot:rl:{key}"
+    count = cache.get(cache_key, 0)
+    if count >= RATE_LIMIT:
+        return False
+    cache.set(cache_key, count + 1, RATE_WINDOW)
+    return True
 
 
 class ChatAPIView(APIView):
@@ -27,6 +42,14 @@ class ChatAPIView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        # Rate limit by IP + session.
+        rate_key = request.META.get("REMOTE_ADDR", "unknown")
+        if not _check_rate_limit(rate_key):
+            return Response(
+                {"error": "Too many requests. Please wait a moment."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         serializer = ChatRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 

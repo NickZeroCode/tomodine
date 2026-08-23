@@ -103,6 +103,10 @@ def sync_dish_embedding(dish_id: str) -> None:
         },
     )
 
+    # Invalidate the retrieval cache so next query picks up the new embedding.
+    from apps.chatbot.services.retrieval import invalidate_cache
+    invalidate_cache(str(dish.restaurant_id))
+
 
 def sync_all_embeddings(restaurant_id: str) -> int:
     """Re-generate embeddings for every available dish in a branch.
