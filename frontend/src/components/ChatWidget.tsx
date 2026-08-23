@@ -58,7 +58,7 @@ export function ChatWidget({ tableId, restaurantSlug }: Props) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg transition-all hover:bg-brand-700 hover:shadow-xl active:scale-95 sm:bottom-16 sm:right-5 sm:h-14 sm:w-14"
+          className="fixed bottom-24 right-3 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg transition-all hover:bg-brand-700 hover:shadow-xl active:scale-95 sm:bottom-20 sm:right-5 sm:h-13 sm:w-13"
           aria-label={t("chat.open", "Open TomoDine AI")}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
@@ -74,7 +74,7 @@ export function ChatWidget({ tableId, restaurantSlug }: Props) {
 
       {/* ── Chat window — full-screen on mobile, floating on desktop ── */}
       {open && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-white sm:inset-auto sm:bottom-20 sm:right-5 sm:h-[520px] sm:w-[400px] sm:rounded-2xl sm:border sm:border-ink-100 sm:shadow-2xl">
+        <div className="fixed inset-0 z-50 flex flex-col bg-white sm:inset-auto sm:bottom-20 sm:right-5 sm:h-[500px] sm:w-[380px] sm:rounded-2xl sm:border sm:border-ink-100 sm:shadow-2xl">
           {/* Header */}
           <div className="flex items-center gap-3 bg-brand-600 px-4 py-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">

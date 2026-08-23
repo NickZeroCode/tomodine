@@ -358,13 +358,13 @@ def make_add_to_cart(restaurant_id: str, table_id: str | None):
         session = CustomerSession.objects.filter(
             restaurant_id=restaurant_id,
             table=table,
-            status="active",
+            is_active=True,
         ).first()
         if not session:
             session = CustomerSession.objects.create(
                 restaurant_id=restaurant_id,
                 table=table,
-                status="active",
+                is_active=True,
             )
         # Find or create an open order for this table.
         order = (
