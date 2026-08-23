@@ -13,7 +13,7 @@ import type { SubscriptionPlan } from "@/types";
 
 /* ─── placeholder images (from TheFork — swap later) ─────── */
 const IMG = {
-  hero: "/images/dashboard-sophia-rms.png",
+  hero: "/images/dashbord-tomodine.png",
   software: "/images/TFM-EN-booking-service-management-floor-plan314d.png",
   community: "/images/TFM-attract-more-diner-international-audience-new9bf2.jpg",
   expertise: "/images/TFM-restaurant-groups-support-new5670.jpg",
