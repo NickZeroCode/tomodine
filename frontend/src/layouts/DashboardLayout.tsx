@@ -325,7 +325,7 @@ export function DashboardLayout() {
         ) : (
           <div className="flex h-16 items-center gap-2.5 border-b border-ink-800 px-4">
             <Link to="/" className="flex min-w-0 flex-1 items-center">
-              <img src="/images/logos/tomodine-logo-desk.jpg" alt="TomoDine" className="h-8 shrink-0 object-contain" />
+              <img src="/images/logos/tomodine-logo-desk-dashboard.png" alt="TomoDine" className="h-8 shrink-0 object-contain" />
             </Link>
             <button
               type="button"
@@ -581,7 +581,7 @@ export function DashboardLayout() {
           {/* Drawer header */}
           <div className="flex items-center justify-between border-b border-ink-800 px-4 py-3">
             <Link to="/dashboard" onClick={() => setMobileDrawerOpen(false)} className="flex min-w-0 items-center">
-              <img src="/images/logos/tomodine-logo-desk.jpg" alt="TomoDine" className="h-8 shrink-0 object-contain" />
+              <img src="/images/logos/tomodine-logo-desk-dashboard.png" alt="TomoDine" className="h-8 shrink-0 object-contain" />
             </Link>
             <button
               type="button"

@@ -396,12 +396,14 @@ def make_add_to_cart(restaurant_id: str, table_id: str | None):
         )
         is_new_order = False
         if not order:
+            from apps.ordering.services import generate_order_number
             order = Order.objects.create(
                 restaurant_id=restaurant_id,
                 table=table,
                 session=session,
                 order_type="dine_in",
                 status="new",
+                order_number=generate_order_number(restaurant_id),
                 subtotal=0,
                 total=0,
             )

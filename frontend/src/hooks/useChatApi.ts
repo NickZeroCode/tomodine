@@ -28,6 +28,10 @@ export interface StructuredActions {
     category?: string;
     badge?: string;
     image_url?: string;
+    is_vegetarian?: boolean;
+    is_spicy?: boolean;
+    min_prep_time?: number;
+    max_prep_time?: number;
   }>;
   message?: string;
   order_total?: string;

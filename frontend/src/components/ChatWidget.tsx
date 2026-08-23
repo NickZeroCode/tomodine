@@ -254,51 +254,107 @@ function StructuredActionsRenderer({
   lang: "en" | "bn";
 }) {
   const { t } = useTranslation();
+  const [detailItem, setDetailItem] = useState<NonNullable<StructuredActions["items"]>[number] | null>(null);
 
   switch (actions.type) {
     case "dish_carousel":
       return (
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
-          {(actions.items ?? []).map((item, idx) => (
-            <div
-              key={item.id ?? idx}
-              className="flex w-44 shrink-0 flex-col overflow-hidden rounded-xl border border-ink-100 bg-white"
-            >
-              {item.image_url ? (
-                <img src={item.image_url} alt={item.name} className="h-24 w-full object-cover" />
-              ) : (
-                <div className="flex h-24 items-center justify-center bg-ink-50">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="h-8 w-8 text-ink-200">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
-                  </svg>
-                </div>
-              )}
-              <div className="flex flex-1 flex-col p-2.5">
-                <p className="text-xs font-semibold text-ink-900">{item.name}</p>
-                {item.description && (
-                  <p className="mt-0.5 line-clamp-2 text-[0.6rem] text-ink-400">{item.description}</p>
+        <>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin snap-x snap-mandatory">
+            {(actions.items ?? []).map((item, idx) => (
+              <button
+                key={item.id ?? idx}
+                type="button"
+                onClick={() => setDetailItem(item)}
+                className="flex w-40 shrink-0 snap-start cursor-pointer flex-col overflow-hidden rounded-xl border border-ink-100 bg-white text-left transition-all hover:shadow-md active:scale-[0.98]"
+              >
+                {item.image_url ? (
+                  <img src={item.image_url} alt={item.name} className="h-28 w-full object-cover" />
+                ) : (
+                  <div className="flex h-28 items-center justify-center bg-gradient-to-br from-ink-50 to-ink-100">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="h-8 w-8 text-ink-200">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+                    </svg>
+                  </div>
                 )}
-                <div className="mt-auto flex items-center justify-between pt-2">
-                  <span className="text-sm font-bold tabular-nums text-ink-900">
-                    {item.price != null ? formatBDT(item.price, lang) : "—"}
+                <div className="flex flex-1 flex-col p-2">
+                  <p className="text-xs font-bold text-ink-900 leading-tight">{item.name}</p>
+                  {item.description && (
+                    <p className="mt-0.5 line-clamp-1 text-[0.6rem] text-ink-400">{item.description}</p>
+                  )}
+                  <div className="mt-auto flex items-center justify-between pt-1.5">
+                    <span className="text-sm font-bold tabular-nums text-ink-900">
+                      {item.price != null ? formatBDT(item.price, lang) : "—"}
+                    </span>
+                    <span
+                      className="rounded-md bg-brand-600 px-2 py-0.5 text-[0.55rem] font-bold text-white"
+                    >
+                      {t("chat.add", "Add")}
+                    </span>
+                  </div>
+                  {item.badge && (
+                    <span className="mt-1 w-fit rounded-full bg-emerald-50 px-1.5 py-px text-[0.5rem] font-medium text-emerald-700">
+                      {item.badge}
+                    </span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Detail modal */}
+          {detailItem && (
+            <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center" onClick={() => setDetailItem(null)}>
+              <div className="w-full max-w-sm rounded-t-2xl bg-white p-5 shadow-lift sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+                {detailItem.image_url && (
+                  <img src={detailItem.image_url} alt={detailItem.name} className="mb-4 h-48 w-full rounded-xl object-cover" />
+                )}
+                <h3 className="text-lg font-bold text-ink-900">{detailItem.name}</h3>
+                {detailItem.category && (
+                  <p className="mt-0.5 text-xs text-ink-400">{detailItem.category}</p>
+                )}
+                {detailItem.description && (
+                  <p className="mt-2 text-sm leading-relaxed text-ink-600">{detailItem.description}</p>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {detailItem.is_vegetarian && (
+                    <span className="rounded-full bg-green-50 px-2 py-0.5 text-[0.65rem] font-medium text-green-700">Vegetarian</span>
+                  )}
+                  {detailItem.is_spicy && (
+                    <span className="rounded-full bg-red-50 px-2 py-0.5 text-[0.65rem] font-medium text-red-700">Spicy</span>
+                  )}
+                  {detailItem.badge && (
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[0.65rem] font-medium text-emerald-700">{detailItem.badge}</span>
+                  )}
+                </div>
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="text-xl font-bold tabular-nums text-ink-900">
+                    {detailItem.price != null ? formatBDT(detailItem.price, lang) : "—"}
                   </span>
+                  {detailItem.min_prep_time && (
+                    <span className="text-xs text-ink-400">{detailItem.min_prep_time}–{detailItem.max_prep_time} min</span>
+                  )}
+                </div>
+                <div className="mt-4 flex gap-2">
                   <button
                     type="button"
-                    onClick={() => onQuickReply(`Add ${item.name} to my order`)}
-                    className="rounded-md bg-brand-600 px-2 py-1 text-[0.6rem] font-bold text-white transition hover:bg-brand-700"
+                    onClick={() => { onQuickReply(`Add ${detailItem.name} to my order`); setDetailItem(null); }}
+                    className="flex-1 rounded-xl bg-brand-600 py-2.5 text-sm font-bold text-white transition hover:bg-brand-700"
                   >
-                    {t("chat.add", "Add")}
+                    {t("chat.addToOrder", "Add to order")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDetailItem(null)}
+                    className="rounded-xl border border-ink-200 px-4 py-2.5 text-sm font-medium text-ink-600 transition hover:bg-ink-50"
+                  >
+                    {t("common.close", "Close")}
                   </button>
                 </div>
-                {item.badge && (
-                  <span className="mt-1 w-fit rounded-full bg-emerald-50 px-2 py-0.5 text-[0.55rem] font-medium text-emerald-700">
-                    {item.badge}
-                  </span>
-                )}
               </div>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       );
 
     case "price_comparison":
