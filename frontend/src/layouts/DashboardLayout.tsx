@@ -309,9 +309,7 @@ export function DashboardLayout() {
         {sidebarCollapsed ? (
           <div className="flex flex-col items-center gap-2 border-b border-ink-800 px-2 py-3">
             <Link to="/" className="flex items-center justify-center">
-              <span className="flex h-9 w-9 items-center justify-center rounded-card bg-gradient-to-br from-brand-400 to-brand-600 text-sm font-bold text-white shadow-soft">
-                ভ
-              </span>
+              <img src="/images/logos/tomodine-logo-mobile.jpg" alt="TomoDine" className="h-8 w-8 shrink-0 rounded-lg object-contain" />
             </Link>
             <button
               type="button"
@@ -326,12 +324,8 @@ export function DashboardLayout() {
           </div>
         ) : (
           <div className="flex h-16 items-center gap-2.5 border-b border-ink-800 px-4">
-            <Link to="/" className="flex min-w-0 flex-1 items-center gap-2.5">
-              <img src="/images/logos/tomodine-logo-mobile.jpg" alt="TomoDine" className="h-8 w-8 shrink-0 rounded-lg object-contain" />
-              <div className="min-w-0">
-                <span className="block truncate text-sm font-semibold text-white">{t("common.appName")}</span>
-                <span className="block truncate text-[11px] text-ink-400">{restaurant?.name ?? ""}</span>
-              </div>
+            <Link to="/" className="flex min-w-0 flex-1 items-center">
+              <img src="/images/logos/tomodine-logo-desk.jpg" alt="TomoDine" className="h-8 shrink-0 object-contain" />
             </Link>
             <button
               type="button"
@@ -586,12 +580,8 @@ export function DashboardLayout() {
         >
           {/* Drawer header */}
           <div className="flex items-center justify-between border-b border-ink-800 px-4 py-3">
-            <Link to="/dashboard" onClick={() => setMobileDrawerOpen(false)} className="flex min-w-0 items-center gap-2.5">
-              <img src="/images/logos/tomodine-logo-mobile.jpg" alt="TomoDine" className="h-8 w-8 shrink-0 rounded-lg object-contain" />
-              <div className="min-w-0">
-                <span className="block truncate text-sm font-semibold text-white">{t("common.appName")}</span>
-                <span className="block truncate text-[11px] text-ink-400">{restaurant?.name ?? ""}</span>
-              </div>
+            <Link to="/dashboard" onClick={() => setMobileDrawerOpen(false)} className="flex min-w-0 items-center">
+              <img src="/images/logos/tomodine-logo-desk.jpg" alt="TomoDine" className="h-8 shrink-0 object-contain" />
             </Link>
             <button
               type="button"
