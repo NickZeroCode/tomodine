@@ -35,7 +35,49 @@ def _get_client():
 
 
 def _build_system_prompt(restaurant) -> str:
-    """Generate the system prompt with branch context."""
+    """Generate the system prompt with branch context.
+
+    When restaurant is None, returns a system-info-only prompt for the
+    landing page chatbot (no ordering, no branch data).
+    """
+    if restaurant is None:
+        return """You are **TomoDine AI**, the official assistant for the TomoDine platform.
+
+ABOUT TOMODINE:
+TomoDine is a restaurant management SaaS platform that helps restaurants in Bangladesh manage their operations, accept orders via QR codes, track inventory, and delight customers.
+
+FOR CUSTOMERS:
+- Scan the QR code at your table to browse the menu and order directly from your phone
+- No app download needed — works in any mobile browser
+- Track your order status in real-time
+- Available at partner restaurants across Bangladesh
+
+FOR RESTAURANT OWNERS:
+- Complete restaurant management dashboard
+- QR-code ordering system for dine-in customers
+- Real-time order tracking and kitchen display
+- Inventory management with COGS tracking
+- Staff management with role-based access control
+- Multi-branch support under one organization
+- Analytics and reporting
+- Subscription plans starting from free trial
+
+HOW TO SIGN UP:
+1. Visit www.tomodine.com and click "Register"
+2. Enter your restaurant details
+3. Set up your menu, tables, and QR codes
+4. Start accepting orders!
+
+CONTACT:
+- WhatsApp: +880 1779 184386
+- Website: www.tomodine.com
+
+RULES:
+- Answer questions about TomoDine the platform only
+- Be friendly, concise, and helpful
+- If asked about a specific restaurant's menu or orders, explain that you can only help with TomoDine platform info
+- Match the user's language"""
+
     hours = ""
     if restaurant.opening_time and restaurant.closing_time:
         hours = f"{restaurant.opening_time.strftime('%H:%M')} – {restaurant.closing_time.strftime('%H:%M')}"
@@ -90,17 +132,21 @@ def chat(
             "structured_actions": { ... } | None,
         }
     """
-    restaurant_id = str(restaurant.id)
-    org_id = str(restaurant.organization_id) if restaurant.organization_id else "default"
+    restaurant_id = str(restaurant.id) if restaurant else None
+    org_id = str(restaurant.organization_id) if restaurant and restaurant.organization_id else "default"
 
     # 1. Load conversation history.
-    history = memory.load_history(org_id, restaurant_id, session_id)
+    history = memory.load_history(org_id, restaurant_id or "system", session_id)
 
     # 2. Append user message to history.
     history.append({"role": "user", "content": user_message})
 
     # 3. Build tools with branch context injected.
-    tools_map = build_all_tools(restaurant, table_id, generate_embedding)
+    if restaurant:
+        tools_map = build_all_tools(restaurant, table_id, generate_embedding)
+    else:
+        # System-info mode — no tools needed.
+        tools_map = {}
 
     # 4. Build messages for the LLM.
     system_prompt = _build_system_prompt(restaurant)
@@ -109,19 +155,24 @@ def chat(
     client = _get_client()
     model = getattr(settings, "MIMO_MODEL", "mimo-v2.5")
 
+    # In system-info mode, don't send tools at all.
+    tools_param = TOOL_SCHEMAS if tools_map else None
+
     # 5. Agentic loop — call tools until the model produces a final answer.
     structured_actions = None
 
     for _ in range(MAX_TOOL_ROUNDS):
         try:
-            response = client.chat.completions.create(
+            kwargs = dict(
                 model=model,
                 messages=messages,
-                tools=TOOL_SCHEMAS,
-                tool_choice="auto",
                 temperature=0.3,
                 max_tokens=1024,
             )
+            if tools_param:
+                kwargs["tools"] = tools_param
+                kwargs["tool_choice"] = "auto"
+            response = client.chat.completions.create(**kwargs)
         except Exception:
             logger.exception("OpenAI API error")
             return {
@@ -129,7 +180,7 @@ def chat(
                 "response": "I'm having trouble right now. Please try again in a moment.",
                 "session_id": session_id,
                 "branch_id": restaurant_id,
-                "branch_name": restaurant.name,
+                "branch_name": restaurant.name if restaurant else "TomoDine",
             }
 
         choice = response.choices[0]
@@ -141,7 +192,7 @@ def chat(
 
             # Save assistant response to history.
             history.append({"role": "assistant", "content": final_text})
-            memory.save_history(org_id, restaurant_id, session_id, history)
+            memory.save_history(org_id, restaurant_id or "system", session_id, history)
 
             # Try to build structured_actions from the last tool result.
             structured_actions = _extract_structured_actions(history)
@@ -151,7 +202,7 @@ def chat(
                 "response": final_text,
                 "session_id": session_id,
                 "branch_id": restaurant_id,
-                "branch_name": restaurant.name,
+                "branch_name": restaurant.name if restaurant else "TomoDine",
                 "structured_actions": structured_actions,
             }
 
@@ -183,14 +234,14 @@ def chat(
     # If we exhausted all rounds, return whatever we have.
     final_text = "I'm having trouble completing your request. Please try rephrasing."
     history.append({"role": "assistant", "content": final_text})
-    memory.save_history(org_id, restaurant_id, session_id, history)
+    memory.save_history(org_id, restaurant_id or "system", session_id, history)
 
     return {
         "success": False,
         "response": final_text,
         "session_id": session_id,
         "branch_id": restaurant_id,
-        "branch_name": restaurant.name,
+        "branch_name": restaurant.name if restaurant else "TomoDine",
     }
 
 

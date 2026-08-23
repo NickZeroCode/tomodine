@@ -36,14 +36,30 @@ class ChatAPIView(APIView):
 
         # Resolve the branch/restaurant and normalise table_id to a UUID.
         restaurant, table_id = self._resolve(request, table_id_raw)
-        if restaurant is None:
-            return Response(
-                {"error": "Could not determine the restaurant. Provide X-Branch-ID or X-Restaurant-Slug."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
         # Run the agent.
         from apps.chatbot.agent import chat
+
+        if restaurant is None:
+            # No restaurant context — system-info mode (landing page chatbot).
+            try:
+                result = chat(
+                    restaurant=None,
+                    session_id=session_id,
+                    user_message=message,
+                    table_id=None,
+                )
+            except Exception:
+                logger.exception("Chat agent error (system-info mode)")
+                return Response(
+                    {
+                        "success": False,
+                        "response": "I'm having trouble right now. Please try again.",
+                        "session_id": session_id,
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            return Response(result)
 
         try:
             result = chat(
