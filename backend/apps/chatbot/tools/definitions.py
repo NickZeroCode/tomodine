@@ -383,6 +383,7 @@ def make_add_to_cart(restaurant_id: str, table_id: str | None):
                 is_active=True,
             )
         # Find or create an open order for this table.
+        # Skip served/paid/cancelled orders — only add to active ones.
         order = (
             Order.objects.filter(
                 restaurant_id=restaurant_id,
@@ -393,6 +394,7 @@ def make_add_to_cart(restaurant_id: str, table_id: str | None):
             .order_by("-created_at")
             .first()
         )
+        is_new_order = False
         if not order:
             order = Order.objects.create(
                 restaurant_id=restaurant_id,
@@ -403,6 +405,7 @@ def make_add_to_cart(restaurant_id: str, table_id: str | None):
                 subtotal=0,
                 total=0,
             )
+            is_new_order = True
 
         item = OrderItem.objects.create(
             order=order,
@@ -420,6 +423,21 @@ def make_add_to_cart(restaurant_id: str, table_id: str | None):
         order.subtotal = (order.subtotal or Decimal("0")) + line_total
         order.total = (order.total or Decimal("0")) + line_total
         order.save(update_fields=["subtotal", "total", "updated_at"])
+
+        # Notify the kitchen/restaurant about the new item.
+        from apps.notifications.services import notify_restaurant
+        from apps.restaurants.models import Restaurant
+        rest = Restaurant.objects.filter(pk=restaurant_id).first()
+        if rest:
+            notify_restaurant(
+                rest,
+                kind="new_order" if is_new_order else "order_status",
+                title_en=f"{'New order' if is_new_order else 'Order updated'} — Table {table.label or table.number}",
+                title_bn=f"{'নতুন অর্ডার' if is_new_order else 'অর্ডার আপডেট'} — টেবিল {table.label or table.number}",
+                body_en=f"{quantity}x {dish.name_en} added. Order #{order.order_number}",
+                body_bn=f"{quantity}x {dish.name_bn or dish.name_en} যোগ করা হয়েছে। অর্ডার #{order.order_number}",
+                metadata={"order_id": str(order.id), "table_id": str(table_id)},
+            )
 
         return json.dumps({
             "success": True,

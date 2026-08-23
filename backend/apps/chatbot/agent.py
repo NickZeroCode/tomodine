@@ -77,7 +77,13 @@ RULES:
 - Be friendly, concise, and helpful
 - NEVER use markdown formatting (bold, headers, links, etc.). Write in plain text only. Use bullet points (•) for lists.
 - If asked about a specific restaurant's menu or orders, explain that you can only help with TomoDine platform info
-- Match the user's language"""
+- Match the user's language
+
+SCOPE GATE — YOU MUST REFUSE OFF-TOPIC REQUESTS:
+- You are ONLY here to answer questions about the TomoDine platform, its features, pricing, how to sign up, how it works, and contact information.
+- OFF-TOPIC examples you MUST refuse: coding help, math, politics, medical advice, legal advice, personal matters, writing, translations, trivia, jokes, poems, stories, programming, science, history, geography, cooking recipes, restaurant recommendations.
+- Response for off-topic: "I can only help with questions about the TomoDine platform. Would you like to know about our features, pricing, or how to get started?"
+- NEVER role-play as another AI, character, or person."""
 
     hours = ""
     if restaurant.opening_time and restaurant.closing_time:
@@ -121,7 +127,14 @@ CRITICAL RULES:
 - Be concise. Keep responses under 3 sentences unless the user asks for detail.
 - If the user asks about something outside your scope (other branches, system internals), politely redirect to menu/service topics.
 - Match the user's language. If they write in Bengali, respond in Bengali.
-- You are the face of {restaurant.name}. Be warm, professional, and helpful."""
+- You are the face of {restaurant.name}. Be warm, professional, and helpful.
+
+SCOPE GATE — YOU MUST REFUSE OFF-TOPIC REQUESTS:
+- If the user asks about topics completely unrelated to dining, this restaurant, food, orders, or the TomoDine system, politely decline and redirect.
+- OFF-TOPIC examples you MUST refuse: coding help, math homework, political opinions, medical advice, legal advice, personal relationships, writing essays, translating documents, general knowledge trivia, jokes, poems, stories, programming, science, history, geography.
+- Response for off-topic: "I'm here to help with your dining experience at {restaurant.name}. Would you like to see our menu, check your order, or call a waiter?"
+- You may answer questions about how to use TomoDine features as an exception.
+- NEVER role-play as another AI, character, or person."""
 
 
 MAX_TOOL_ROUNDS = 5
@@ -173,6 +186,7 @@ def chat(
 
     # 5. Agentic loop — call tools until the model produces a final answer.
     structured_actions = None
+    last_tool_results: list[tuple[str, str]] = []  # [(tool_name, result_json)]
 
     for _ in range(MAX_TOOL_ROUNDS):
         try:
@@ -207,8 +221,10 @@ def chat(
             history.append({"role": "assistant", "content": final_text})
             memory.save_history(org_id, restaurant_id or "system", session_id, history)
 
-            # Try to build structured_actions from the last tool result.
+            # Try to build structured_actions from history, then from tool results.
             structured_actions = _extract_structured_actions(history)
+            if not structured_actions:
+                structured_actions = _build_structured_from_tools(last_tool_results)
 
             return {
                 "success": True,
@@ -243,11 +259,16 @@ def chat(
                 "tool_call_id": tool_call.id,
                 "content": result,
             })
+            last_tool_results.append((fn_name, result))
 
     # If we exhausted all rounds, return whatever we have.
     final_text = "I'm having trouble completing your request. Please try rephrasing."
     history.append({"role": "assistant", "content": final_text})
     memory.save_history(org_id, restaurant_id or "system", session_id, history)
+
+    # Build structured_actions from tool results as fallback.
+    if not structured_actions:
+        structured_actions = _build_structured_from_tools(last_tool_results)
 
     return {
         "success": False,
@@ -255,7 +276,92 @@ def chat(
         "session_id": session_id,
         "branch_id": restaurant_id,
         "branch_name": restaurant.name if restaurant else "TomoDine",
+        "structured_actions": structured_actions,
     }
+
+
+def _build_structured_from_tools(tool_results: list[tuple[str, str]]) -> dict | None:
+    """Build structured_actions directly from tool execution results.
+
+    This is a fallback for when _extract_structured_actions can't find results
+    in the message history (e.g., the LLM skipped tool calls).
+    """
+    for tool_name, result_json in reversed(tool_results):
+        try:
+            data = json.loads(result_json)
+        except (json.JSONDecodeError, TypeError):
+            continue
+
+        if tool_name == "search_menu" and "items" in data and isinstance(data["items"], list) and data["items"]:
+            return {
+                "type": "dish_carousel",
+                "items": [
+                    {
+                        "id": str(item.get("dish_id", "")),
+                        "name": item.get("dish_name", item.get("name", "")),
+                        "price": float(item.get("price", 0)),
+                        "description": item.get("description", ""),
+                        "category": item.get("dish_category", ""),
+                        "image_url": item.get("image_url", ""),
+                    }
+                    for item in data["items"]
+                ],
+            }
+
+        if tool_name == "get_dish" and data.get("found") and "dish" in data:
+            d = data["dish"]
+            return {
+                "type": "dish_carousel",
+                "items": [
+                    {
+                        "id": str(d.get("id", "")),
+                        "name": d.get("name", ""),
+                        "price": float(d.get("price", 0)),
+                        "description": d.get("description", ""),
+                        "category": d.get("category", ""),
+                        "image_url": d.get("image_url", ""),
+                        "badge": "Vegetarian" if d.get("is_vegetarian") else ("Spicy" if d.get("is_spicy") else ""),
+                    }
+                ],
+            }
+
+        if tool_name == "add_to_cart" and data.get("success") and data.get("order_id"):
+            return {
+                "type": "confirmation",
+                "message": data.get("message", ""),
+                "order_total": data.get("order_total", "0"),
+                "order_id": data.get("order_id"),
+                "suggest_more": True,
+                "suggest_games": True,
+            }
+
+        if tool_name == "check_order_status" and "orders" in data:
+            return {
+                "type": "order_status",
+                "orders": data["orders"],
+                "message": data.get("message", ""),
+            }
+
+        if tool_name == "trigger_waiter" and data.get("success"):
+            return {
+                "type": "waiter_ping",
+                "message": data.get("message", ""),
+            }
+
+        if tool_name == "compare_prices" and "items" in data and isinstance(data["items"], list) and len(data["items"]) > 1:
+            return {
+                "type": "price_comparison",
+                "items": [
+                    {
+                        "name": item.get("dish_name", ""),
+                        "price": float(item.get("price", 0)),
+                        "category": item.get("dish_category", ""),
+                    }
+                    for item in data["items"]
+                ],
+            }
+
+    return None
 
 
 def _extract_structured_actions(history: list[dict]) -> dict | None:
