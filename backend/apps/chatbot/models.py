@@ -28,9 +28,9 @@ class MenuEmbedding(models.Model):
         db_index=True,
     )
 
-    # pgvector field — stored as a float array in Postgres.
-    # OpenAI text-embedding-3-small produces 1536-dim vectors.
-    embedding = models.JSONField(help_text="1536-dim float vector from OpenAI")
+    # Local sentence-transformers vector (all-MiniLM-L6-v2 = 384 dimensions).
+    # Stored as a JSON array of floats — no pgvector extension required.
+    embedding = models.JSONField(help_text="384-dim float vector from local sentence-transformers")
 
     # Denormalised for fast filtering without joins.
     dish_name = models.CharField(max_length=255)

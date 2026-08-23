@@ -1,7 +1,10 @@
 """Embedding generation service.
 
-Uses OpenAI text-embedding-3-small (1536 dimensions).
-Generates embeddings for menu items and stores them in MenuEmbedding.
+Uses a local sentence-transformers model (all-MiniLM-L6-v2, 384 dimensions).
+No API key required — runs entirely on the server CPU.  Model is ~80 MB and
+cached after first load.  Inference takes ~5 ms per sentence.
+
+MiMo v2.5 is used ONLY for chat completions (the agent), NOT for embeddings.
 """
 
 from __future__ import annotations
@@ -9,31 +12,25 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from django.conf import settings
-
 if TYPE_CHECKING:
     from apps.menus.models import Dish
 
 logger = logging.getLogger(__name__)
 
-# OpenAI client for embeddings — lazy initialised.
-# Uses the standard OpenAI endpoint (MiMo may not support /embeddings).
-_client = None
+# Lazy-loaded model — only loaded on first embedding request.
+_model = None
+MODEL_NAME = "all-MiniLM-L6-v2"
+DIMENSIONS = 384
 
 
-def _get_client():
-    global _client
-    if _client is None:
-        import openai
-        _client = openai.OpenAI(
-            api_key=getattr(settings, "OPENAI_EMBEDDING_API_KEY", None),
-            base_url=getattr(settings, "OPENAI_EMBEDDING_BASE_URL", "https://api.openai.com/v1"),
-        )
-    return _client
-
-
-MODEL = getattr(settings, "OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
-DIMENSIONS = 1536
+def _get_model():
+    global _model
+    if _model is None:
+        from sentence_transformers import SentenceTransformer
+        logger.info("Loading embedding model: %s (first call, ~80 MB download)", MODEL_NAME)
+        _model = SentenceTransformer(MODEL_NAME)
+        logger.info("Embedding model loaded successfully (%d dimensions)", DIMENSIONS)
+    return _model
 
 
 def build_embedding_text(dish: "Dish") -> str:
@@ -58,13 +55,10 @@ def build_embedding_text(dish: "Dish") -> str:
 
 
 def generate_embedding(text: str) -> list[float]:
-    """Generate a 1536-dim embedding vector for the given text."""
-    client = _get_client()
-    response = client.embeddings.create(
-        model=MODEL,
-        input=text[:8000],  # Stay within token limits.
-    )
-    return response.data[0].embedding
+    """Generate a 384-dim embedding vector using the local sentence-transformers model."""
+    model = _get_model()
+    vector = model.encode(text[:2000], normalize_embeddings=True)
+    return vector.tolist()
 
 
 def sync_dish_embedding(dish_id: str) -> None:

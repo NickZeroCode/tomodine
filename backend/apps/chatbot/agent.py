@@ -19,7 +19,7 @@ from apps.chatbot.tools.definitions import TOOL_SCHEMAS, build_all_tools
 
 logger = logging.getLogger(__name__)
 
-# Lazy OpenAI client (pointed at MiMo v2.5 endpoint).
+# Lazy OpenAI-compatible client (pointed at MiMo v2.5 endpoint).
 _client = None
 
 
@@ -28,8 +28,8 @@ def _get_client():
     if _client is None:
         import openai
         _client = openai.OpenAI(
-            api_key=getattr(settings, "OPENAI_API_KEY", None),
-            base_url=getattr(settings, "OPENAI_BASE_URL", "https://api.openai.com/v1"),
+            api_key=getattr(settings, "MIMO_API_KEY", None),
+            base_url=getattr(settings, "MIMO_BASE_URL", "https://token-plan-cn.xiaomimimo.com/v1"),
         )
     return _client
 
@@ -105,7 +105,7 @@ def chat(
     messages = [{"role": "system", "content": system_prompt}] + history
 
     client = _get_client()
-    model = getattr(settings, "OPENAI_MODEL", "gpt-4o-mini")
+    model = getattr(settings, "MIMO_MODEL", "mimo-v2.5")
 
     # 5. Agentic loop — call tools until the model produces a final answer.
     structured_actions = None

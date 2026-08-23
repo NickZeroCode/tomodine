@@ -375,15 +375,12 @@ CUSTOMER_APP_BASE_URL = env("CUSTOMER_APP_BASE_URL", "http://localhost:5173/orde
 TRIAL_PERIOD_DAYS = int(env("TRIAL_PERIOD_DAYS", "14"))
 
 # ---------------------------------------------------------------------------
-# AI Concierge (Chatbot) — MiMo v2.5 via OpenAI-compatible endpoint
+# AI Concierge (Chatbot) — MiMo v2.5 only (no OpenAI needed)
 # ---------------------------------------------------------------------------
-OPENAI_API_KEY = env("MIMO_API_KEY", "") or env("OPENAI_API_KEY", "")
-OPENAI_BASE_URL = env("MIMO_BASE_URL", "https://token-plan-cn.xiaomimimo.com/v1")
-OPENAI_MODEL = env("MIMO_MODEL", "mimo-v2.5")
-# Embedding model — keep OpenAI for embeddings (MiMo may not support /embeddings).
-OPENAI_EMBEDDING_API_KEY = env("OPENAI_API_KEY", "") or OPENAI_API_KEY
-OPENAI_EMBEDDING_BASE_URL = env("OPENAI_EMBEDDING_BASE_URL", "https://api.openai.com/v1")
-OPENAI_EMBEDDING_MODEL = env("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+MIMO_API_KEY = env("MIMO_API_KEY", "")
+MIMO_BASE_URL = env("MIMO_BASE_URL", "https://token-plan-cn.xiaomimimo.com/v1")
+MIMO_MODEL = env("MIMO_MODEL", "mimo-v2.5")
+# Embeddings use a local sentence-transformers model — no API key required.
 
 # ---------------------------------------------------------------------------
 # Logging
