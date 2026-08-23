@@ -99,7 +99,16 @@ YOUR ROLE:
 3. Compare dishes using the compare_prices tool when asked.
 4. Add items to the customer's order using add_to_cart when they explicitly want to order.
 5. Call a waiter using trigger_waiter when the customer needs service.
-6. Answer questions about the restaurant using get_restaurant_info.
+6. Check order status using check_order_status when the user asks about their order.
+7. Answer questions about the restaurant using get_restaurant_info.
+
+AFTER ADDING TO CART:
+- Always ask: "Would you like to add anything else?"
+- Then suggest: "While you wait for your food, you can play some games! Just tap the games icon on your screen."
+
+AFTER ORDER STATUS CHECK:
+- Tell the user the status of their order(s) in a friendly way.
+- If food is being prepared, suggest: "It won't be long! You can play some games while you wait."
 
 CRITICAL RULES:
 - NEVER invent menu items, prices, or availability. Always use tools to get real data.
@@ -310,13 +319,23 @@ def _extract_structured_actions(history: list[dict]) -> dict | None:
                 ],
             }
 
-        # add_to_cart result → confirmation
+        # add_to_cart result → confirmation with suggestion
         if data.get("success") and data.get("order_id"):
             return {
                 "type": "confirmation",
                 "message": data.get("message", ""),
                 "order_total": data.get("order_total", "0"),
                 "order_id": data.get("order_id"),
+                "suggest_more": True,
+                "suggest_games": True,
+            }
+
+        # check_order_status result → order tracking
+        if "orders" in data and isinstance(data["orders"], list):
+            return {
+                "type": "order_status",
+                "orders": data["orders"],
+                "message": data.get("message", ""),
             }
 
         # trigger_waiter result → waiter_ping

@@ -15,11 +15,12 @@ import { stripMarkdown } from "@/lib/stripMarkdown";
 interface Props {
   tableId?: string;
   restaurantSlug?: string;
+  onPlayGames?: () => void;
 }
 
 /* ── Main widget ─────────────────────────────────────────────── */
 
-export function ChatWidget({ tableId, restaurantSlug }: Props) {
+export function ChatWidget({ tableId, restaurantSlug, onPlayGames }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { messages, isLoading, sendMessage, resetSession } = useChatApi({ tableId, restaurantSlug });
@@ -119,7 +120,7 @@ export function ChatWidget({ tableId, restaurantSlug }: Props) {
             )}
 
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} onQuickReply={handleQuickReply} />
+              <MessageBubble key={msg.id} message={msg} onQuickReply={handleQuickReply} onPlayGames={onPlayGames} />
             ))}
 
             {isLoading && (
@@ -197,9 +198,11 @@ export function ChatWidget({ tableId, restaurantSlug }: Props) {
 function MessageBubble({
   message,
   onQuickReply,
+  onPlayGames,
 }: {
   message: ChatMessage;
   onQuickReply: (text: string) => void;
+  onPlayGames?: () => void;
 }) {
   const { i18n } = useTranslation();
   const lang = i18n.language === "bn" ? "bn" : "en";
@@ -230,7 +233,7 @@ function MessageBubble({
 
         {/* Structured actions */}
         {message.structuredActions && (
-          <StructuredActionsRenderer actions={message.structuredActions} onQuickReply={onQuickReply} lang={lang} />
+          <StructuredActionsRenderer actions={message.structuredActions} onQuickReply={onQuickReply} onPlayGames={onPlayGames} lang={lang} />
         )}
       </div>
     </div>
@@ -242,10 +245,12 @@ function MessageBubble({
 function StructuredActionsRenderer({
   actions,
   onQuickReply,
+  onPlayGames,
   lang,
 }: {
   actions: StructuredActions;
   onQuickReply: (text: string) => void;
+  onPlayGames?: () => void;
   lang: "en" | "bn";
 }) {
   const { t } = useTranslation();
@@ -335,6 +340,57 @@ function StructuredActionsRenderer({
               {t("chat.orderTotal", "Order total")}: {formatBDT(actions.order_total, lang)}
             </p>
           )}
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => onQuickReply("Show me the menu")}
+              className="rounded-full border border-emerald-300 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+            >
+              {t("chat.addMore", "Add something else")}
+            </button>
+            {onPlayGames && (
+              <button
+                type="button"
+                onClick={onPlayGames}
+                className="flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                  <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 7.5a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm-2 5a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm7-2a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0z" />
+                </svg>
+                {t("chat.playGames", "Play games while you wait")}
+              </button>
+            )}
+          </div>
+        </div>
+      );
+
+    case "order_status":
+      return (
+        <div className="space-y-2">
+          {(actions.orders ?? []).map((order, idx) => {
+            const statusColors: Record<string, string> = {
+              new: "bg-blue-100 text-blue-700",
+              accepted: "bg-violet-100 text-violet-700",
+              preparing: "bg-amber-100 text-amber-700",
+              ready: "bg-emerald-100 text-emerald-700",
+              served: "bg-teal-100 text-teal-700",
+              paid: "bg-ink-100 text-ink-700",
+            };
+            return (
+              <div key={order.id ?? idx} className="rounded-lg border border-ink-100 bg-white p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-ink-900">#{order.order_number}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-bold ${statusColors[order.status ?? ""] ?? "bg-ink-100 text-ink-600"}`}>
+                    {order.status}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-[0.65rem] text-ink-500">
+                  <span>{formatBDT(order.total ?? "0", lang)}</span>
+                  {order.minutes_ago != null && <span>{order.minutes_ago}m ago</span>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       );
 

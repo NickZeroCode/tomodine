@@ -85,10 +85,11 @@ class MenuRetriever:
         # Score each row by cosine similarity.
         scored: list[tuple[float, dict]] = []
         for row in rows:
-            emb = row.pop("embedding", None) or []
+            emb = row.get("embedding") or []
             sim = _cosine_similarity(query_vector, emb) if emb else 0.0
-            row["similarity"] = round(sim, 4)
-            scored.append((sim, row))
+            result = {k: v for k, v in row.items() if k != "embedding"}
+            result["similarity"] = round(sim, 4)
+            scored.append((sim, result))
 
         scored.sort(key=lambda x: x[0], reverse=True)
         return [row for _, row in scored[:limit]]

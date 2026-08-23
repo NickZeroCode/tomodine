@@ -19,7 +19,7 @@ export interface ChatMessage {
 }
 
 export interface StructuredActions {
-  type: "dish_carousel" | "price_comparison" | "confirmation" | "waiter_ping" | "quick_replies";
+  type: "dish_carousel" | "price_comparison" | "confirmation" | "waiter_ping" | "quick_replies" | "order_status";
   items?: Array<{
     id?: string;
     name: string;
@@ -33,6 +33,15 @@ export interface StructuredActions {
   order_total?: string;
   order_id?: string;
   quick_replies?: string[];
+  suggest_more?: boolean;
+  suggest_games?: boolean;
+  orders?: Array<{
+    id?: string;
+    order_number?: string;
+    status?: string;
+    total?: string;
+    minutes_ago?: number;
+  }>;
 }
 
 interface UseChatApiReturn {

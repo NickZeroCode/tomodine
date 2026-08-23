@@ -106,6 +106,22 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "check_order_status",
+            "description": (
+                "Check the status of the customer's latest order(s) for today. "
+                "Use when the user asks 'where is my order', 'what's the status', "
+                "'is my food ready', or similar order tracking questions."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "add_to_cart",
             "description": (
                 "Add a menu item to the customer's order cart. "
@@ -418,6 +434,52 @@ def make_add_to_cart(restaurant_id: str, table_id: str | None):
     return add_to_cart
 
 
+def make_check_order_status(restaurant_id: str, table_id: str | None):
+    """Create a branch-scoped check_order_status tool."""
+
+    def check_order_status() -> str:
+        if not table_id:
+            return json.dumps({"orders": [], "message": "No table associated with this session."})
+
+        from datetime import date
+        from apps.ordering.models import Order
+        from apps.tables.models import Table
+
+        table = Table.objects.filter(pk=table_id, restaurant_id=restaurant_id).first()
+        if not table:
+            return json.dumps({"orders": [], "message": "Table not found."})
+
+        today = date.today()
+        orders = (
+            Order.objects.filter(
+                restaurant_id=restaurant_id,
+                table=table,
+                created_at__date=today,
+            )
+            .exclude(status__in=["cancelled", "rejected"])
+            .order_by("-created_at")
+            .values("id", "order_number", "status", "total", "created_at")[:5]
+        )
+
+        order_list = []
+        for o in orders:
+            age_min = int((__import__("datetime").datetime.now().timestamp() - o["created_at"].timestamp()) / 60)
+            order_list.append({
+                "id": str(o["id"]),
+                "order_number": o["order_number"],
+                "status": o["status"],
+                "total": str(o["total"]),
+                "minutes_ago": age_min,
+            })
+
+        if not order_list:
+            return json.dumps({"orders": [], "message": "No orders found for today at your table."})
+
+        return json.dumps({"orders": order_list}, default=str)
+
+    return check_order_status
+
+
 def make_trigger_waiter(restaurant_id: str, table_id: str | None):
     """Create a branch-scoped trigger_waiter tool."""
 
@@ -472,6 +534,7 @@ def build_all_tools(restaurant, table_id: str | None, query_vector_fn) -> dict[s
 
     if table_id:
         tools["add_to_cart"] = make_add_to_cart(rid, table_id)
+        tools["check_order_status"] = make_check_order_status(rid, table_id)
         tools["trigger_waiter"] = make_trigger_waiter(rid, table_id)
 
     return tools

@@ -1140,7 +1140,7 @@ export function CustomerOrderPage() {
       )}
 
       {/* ── AI Concierge ── */}
-      <ChatWidget tableId={qrToken} restaurantSlug={menuQuery.data?.restaurant.slug} />
+      <ChatWidget tableId={qrToken} restaurantSlug={menuQuery.data?.restaurant.slug} onPlayGames={() => setShowGames(true)} />
     </div>
   );
 }
