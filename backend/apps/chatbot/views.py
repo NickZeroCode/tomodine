@@ -32,10 +32,10 @@ class ChatAPIView(APIView):
 
         message = serializer.validated_data["message"]
         session_id = serializer.validated_data.get("session_id") or str(uuid.uuid4())
-        table_id = str(serializer.validated_data["table_id"]) if serializer.validated_data.get("table_id") else None
+        table_id_raw = serializer.validated_data.get("table_id") or None
 
-        # Resolve the branch/restaurant.
-        restaurant = self._resolve_restaurant(request, table_id)
+        # Resolve the branch/restaurant and normalise table_id to a UUID.
+        restaurant, table_id = self._resolve(request, table_id_raw)
         if restaurant is None:
             return Response(
                 {"error": "Could not determine the restaurant. Provide X-Branch-ID or X-Restaurant-Slug."},
@@ -65,42 +65,72 @@ class ChatAPIView(APIView):
 
         return Response(result)
 
-    def _resolve_restaurant(self, request, table_id: str | None):
-        """Resolve the restaurant from headers, table_id, or auth."""
+    def _resolve(self, request, table_id_raw: str | None):
+        """Resolve restaurant and normalise table_id to a UUID.
+
+        Accepts either a UUID table_id or a QR token string.
+        Returns (restaurant, table_id | None).
+        """
         from apps.restaurants.models import Restaurant
 
-        # 1. Explicit X-Branch-ID header.
-        branch_id = request.headers.get("X-Branch-ID")
-        if branch_id:
-            return Restaurant.objects.filter(pk=branch_id, status="active").first()
+        table_id: str | None = None
+        restaurant = None
 
-        # 2. X-Restaurant-Slug header.
-        slug = request.headers.get("X-Restaurant-Slug")
-        if slug:
-            return Restaurant.objects.filter(slug=slug, status="active").first()
+        # 1. Try to resolve table_id / QR token first (gives us both restaurant + table).
+        if table_id_raw:
+            table_id, restaurant = self._resolve_table(table_id_raw)
 
-        # 3. From table_id.
-        if table_id:
-            from apps.tables.models import Table
-            table = Table.objects.filter(pk=table_id).select_related("restaurant").first()
-            if table:
-                return table.restaurant
+        # 2. Explicit X-Branch-ID header.
+        if not restaurant:
+            branch_id = request.headers.get("X-Branch-ID")
+            if branch_id:
+                restaurant = Restaurant.objects.filter(pk=branch_id, status="active").first()
+
+        # 3. X-Restaurant-Slug header.
+        if not restaurant:
+            slug = request.headers.get("X-Restaurant-Slug")
+            if slug:
+                restaurant = Restaurant.objects.filter(slug=slug, status="active").first()
 
         # 4. From authenticated user's active branch.
-        if request.user and request.user.is_authenticated:
+        if not restaurant and request.user and request.user.is_authenticated:
             from apps.restaurants.models import RestaurantMembership
             membership = (
-                RestaurantMembership.objects.filter(
-                    user=request.user,
-                    is_active=True,
-                )
+                RestaurantMembership.objects.filter(user=request.user, is_active=True)
                 .select_related("restaurant")
                 .first()
             )
             if membership:
-                return membership.restaurant
+                restaurant = membership.restaurant
 
-        return None
+        return restaurant, table_id
+
+    @staticmethod
+    def _resolve_table(raw: str) -> tuple[str | None, "Restaurant | None"]:
+        """Try to resolve `raw` as a UUID table_id or a QR token.
+
+        Returns (table_id_uuid, restaurant) — either may be None.
+        """
+        from apps.tables.models import QRCode, Table
+
+        # A) Try as a direct UUID primary key.
+        try:
+            table = Table.objects.select_related("restaurant").filter(pk=raw).first()
+            if table:
+                return str(table.id), table.restaurant
+        except Exception:
+            pass
+
+        # B) Try as a QR token.
+        qr = (
+            QRCode.objects.select_related("table__restaurant")
+            .filter(token=raw, is_active=True)
+            .first()
+        )
+        if qr and qr.table:
+            return str(qr.table_id), qr.table.restaurant
+
+        return None, None
 
 
 class SessionResetAPIView(APIView):
