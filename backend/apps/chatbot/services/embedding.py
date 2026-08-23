@@ -1,8 +1,7 @@
 """Embedding generation service.
 
-Uses a local sentence-transformers model (all-MiniLM-L6-v2, 384 dimensions).
-No API key required — runs entirely on the server CPU.  Model is ~80 MB and
-cached after first load.  Inference takes ~5 ms per sentence.
+Uses fastembed (ONNX-based, no PyTorch) with the BAAI/bge-small-en-v1.5 model.
+~50 MB total download, runs on CPU, ~3 ms per sentence.  384 dimensions.
 
 MiMo v2.5 is used ONLY for chat completions (the agent), NOT for embeddings.
 """
@@ -19,16 +18,16 @@ logger = logging.getLogger(__name__)
 
 # Lazy-loaded model — only loaded on first embedding request.
 _model = None
-MODEL_NAME = "all-MiniLM-L6-v2"
+MODEL_NAME = "BAAI/bge-small-en-v1.5"
 DIMENSIONS = 384
 
 
 def _get_model():
     global _model
     if _model is None:
-        from sentence_transformers import SentenceTransformer
-        logger.info("Loading embedding model: %s (first call, ~80 MB download)", MODEL_NAME)
-        _model = SentenceTransformer(MODEL_NAME)
+        from fastembed import TextEmbedding
+        logger.info("Loading embedding model: %s (first call, ~50 MB download)", MODEL_NAME)
+        _model = TextEmbedding(model_name=MODEL_NAME)
         logger.info("Embedding model loaded successfully (%d dimensions)", DIMENSIONS)
     return _model
 
@@ -55,10 +54,11 @@ def build_embedding_text(dish: "Dish") -> str:
 
 
 def generate_embedding(text: str) -> list[float]:
-    """Generate a 384-dim embedding vector using the local sentence-transformers model."""
+    """Generate a 384-dim embedding vector using the local fastembed model."""
     model = _get_model()
-    vector = model.encode(text[:2000], normalize_embeddings=True)
-    return vector.tolist()
+    # fastembed returns a generator; list() materialises it.
+    embeddings = list(model.embed([text[:2000]]))
+    return embeddings[0].tolist()
 
 
 def sync_dish_embedding(dish_id: str) -> None:
