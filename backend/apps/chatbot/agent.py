@@ -19,7 +19,7 @@ from apps.chatbot.tools.definitions import TOOL_SCHEMAS, build_all_tools
 
 logger = logging.getLogger(__name__)
 
-# Lazy OpenAI client.
+# Lazy OpenAI client (pointed at MiMo v2.5 endpoint).
 _client = None
 
 
@@ -27,7 +27,10 @@ def _get_client():
     global _client
     if _client is None:
         import openai
-        _client = openai.OpenAI(api_key=getattr(settings, "OPENAI_API_KEY", None))
+        _client = openai.OpenAI(
+            api_key=getattr(settings, "OPENAI_API_KEY", None),
+            base_url=getattr(settings, "OPENAI_BASE_URL", "https://api.openai.com/v1"),
+        )
     return _client
 
 

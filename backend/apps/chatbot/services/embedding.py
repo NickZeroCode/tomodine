@@ -16,7 +16,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# OpenAI client — lazy initialised so the module loads without the key.
+# OpenAI client for embeddings — lazy initialised.
+# Uses the standard OpenAI endpoint (MiMo may not support /embeddings).
 _client = None
 
 
@@ -24,11 +25,14 @@ def _get_client():
     global _client
     if _client is None:
         import openai
-        _client = openai.OpenAI(api_key=getattr(settings, "OPENAI_API_KEY", None))
+        _client = openai.OpenAI(
+            api_key=getattr(settings, "OPENAI_EMBEDDING_API_KEY", None),
+            base_url=getattr(settings, "OPENAI_EMBEDDING_BASE_URL", "https://api.openai.com/v1"),
+        )
     return _client
 
 
-MODEL = "text-embedding-3-small"
+MODEL = getattr(settings, "OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 DIMENSIONS = 1536
 
 
