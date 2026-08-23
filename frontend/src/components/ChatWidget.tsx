@@ -53,38 +53,38 @@ export function ChatWidget({ tableId, restaurantSlug }: Props) {
 
   return (
     <>
-      {/* ── Floating bubble ── */}
+      {/* ── Floating bubble — positioned above the bottom nav bar ── */}
       {!open && (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg transition-all hover:bg-brand-700 hover:shadow-xl active:scale-95"
-          aria-label={t("chat.open", "Open chat")}
+          className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg transition-all hover:bg-brand-700 hover:shadow-xl active:scale-95 sm:bottom-16 sm:right-5 sm:h-14 sm:w-14"
+          aria-label={t("chat.open", "Open TomoDine AI")}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           {messages.length > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[0.5rem] font-bold">
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[0.55rem] font-bold">
               {messages.filter((m) => m.role === "assistant").length}
             </span>
           )}
         </button>
       )}
 
-      {/* ── Chat window ── */}
+      {/* ── Chat window — full-screen on mobile, floating on desktop ── */}
       {open && (
-        <div className="fixed bottom-5 right-5 z-50 flex h-[520px] w-[380px] flex-col overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-2xl transition-all sm:w-[420px]">
+        <div className="fixed inset-0 z-50 flex flex-col bg-white sm:inset-auto sm:bottom-20 sm:right-5 sm:h-[520px] sm:w-[400px] sm:rounded-2xl sm:border sm:border-ink-100 sm:shadow-2xl">
           {/* Header */}
           <div className="flex items-center gap-3 bg-brand-600 px-4 py-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 text-white">
                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-white">{t("chat.title", "TomoDine Concierge")}</p>
-              <p className="text-[0.65rem] text-white/70">{t("chat.subtitle", "Ask about the menu, order, or call a waiter")}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-white">{t("chat.title", "TomoDine AI")}</p>
+              <p className="truncate text-[0.65rem] text-white/70">{t("chat.subtitle", "Ask about the menu, order, or call a waiter")}</p>
             </div>
             <div className="flex gap-1">
               <button
@@ -110,7 +110,7 @@ export function ChatWidget({ tableId, restaurantSlug }: Props) {
           </div>
 
           {/* Messages */}
-          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-3 py-3 sm:px-4">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-50">
@@ -145,7 +145,7 @@ export function ChatWidget({ tableId, restaurantSlug }: Props) {
 
           {/* Quick suggestions */}
           {messages.length === 0 && (
-            <div className="flex gap-1.5 border-t border-ink-50 px-4 py-2">
+            <div className="flex gap-1.5 border-t border-ink-50 px-3 py-2 sm:px-4">
               {[
                 t("chat.suggestMenu", "Show me the menu"),
                 t("chat.suggestVeg", "What's vegetarian?"),
@@ -164,7 +164,7 @@ export function ChatWidget({ tableId, restaurantSlug }: Props) {
           )}
 
           {/* Input */}
-          <div className="flex items-center gap-2 border-t border-ink-100 px-3 py-2.5">
+          <div className="flex items-center gap-2 border-t border-ink-100 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
             <input
               ref={inputRef}
               type="text"
