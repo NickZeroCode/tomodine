@@ -10,8 +10,8 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("restaurants", "0003_alter_restaurant_name"),
-        ("menus", "0001_initial"),
+        ("restaurants", "0003_backfill_organizations"),
+        ("menus", "0003_add_prep_time"),
     ]
 
     operations = [
