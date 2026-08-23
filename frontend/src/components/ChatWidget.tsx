@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useChatApi, type ChatMessage, type StructuredActions } from "@/hooks/useChatApi";
 import { formatBDT } from "@/lib/format";
+import { stripMarkdown } from "@/lib/stripMarkdown";
 
 interface Props {
   tableId?: string;
@@ -58,7 +59,7 @@ export function ChatWidget({ tableId, restaurantSlug }: Props) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-24 right-3 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg transition-all hover:bg-brand-700 hover:shadow-xl active:scale-95 sm:bottom-20 sm:right-5 sm:h-13 sm:w-13"
+          className="fixed bottom-24 right-3 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg transition-all hover:bg-brand-700 hover:shadow-xl active:scale-95 sm:bottom-20 sm:right-5 sm:h-12 sm:w-12"
           aria-label={t("chat.open", "Open TomoDine AI")}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
@@ -223,13 +224,13 @@ function MessageBubble({
         {/* Text bubble */}
         {message.content && (
           <div
-            className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+            className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-line ${
               isUser
                 ? "rounded-tr-sm bg-brand-600 text-white"
                 : "rounded-tl-sm bg-ink-50 text-ink-800"
             }`}
           >
-            {message.content}
+            {isUser ? message.content : stripMarkdown(message.content)}
           </div>
         )}
 

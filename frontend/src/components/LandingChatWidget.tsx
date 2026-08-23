@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
+import { stripMarkdown } from "@/lib/stripMarkdown";
 
 const chatApi = axios.create({ baseURL: "/api/v1" });
 
@@ -81,12 +82,12 @@ export function LandingChatWidget() {
     <>
       {/* Floating bubble */}
       {!open && (
-        <div className="fixed bottom-6 left-6 z-40 flex flex-col items-center gap-3">
+        <div className="fixed bottom-6 right-6 z-40 flex flex-col items-center gap-3">
           {/* TomoDine AI — bot icon */}
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-lg transition-all hover:bg-brand-700 hover:shadow-xl active:scale-95"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg transition-all hover:bg-brand-700 hover:shadow-xl active:scale-95"
             aria-label={t("landing.chatOpen", "Ask TomoDine AI")}
           >
             <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
@@ -152,10 +153,10 @@ export function LandingChatWidget() {
                     <span className="text-[0.5rem] font-bold text-brand-600">T</span>
                   </div>
                 )}
-                <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-line ${
                   msg.role === "user" ? "rounded-tr-sm bg-brand-600 text-white" : "rounded-tl-sm bg-ink-50 text-ink-800"
                 }`}>
-                  {msg.content}
+                  {msg.role === "user" ? msg.content : stripMarkdown(msg.content)}
                 </div>
               </div>
             ))}
