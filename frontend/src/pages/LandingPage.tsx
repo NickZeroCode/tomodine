@@ -570,10 +570,8 @@ export function LandingPage() {
       <header className="sticky top-0 z-30 border-b border-ink-100/70 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-sm font-bold text-white shadow-soft">
-              ভ
-            </span>
-            <span className="hidden text-base font-semibold text-ink-900 sm:inline">{t("common.appName")}</span>
+            <img src="/images/logos/tomodine-logo-mobile.jpg" alt="TomoDine" className="h-8 w-8 rounded-lg object-contain sm:hidden" />
+            <img src="/images/logos/tomodine-logo-desk.jpg" alt="TomoDine" className="hidden h-8 object-contain sm:block" />
           </Link>
           <nav className="hidden items-center gap-7 lg:flex">
             <a href="#solution" className="text-sm font-medium text-ink-600 transition-colors hover:text-ink-900">{t("landing.navSolution")}</a>
@@ -629,9 +627,7 @@ export function LandingPage() {
         {/* Sidebar header */}
         <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3.5">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-sm font-bold text-white shadow-soft">
-              ভ
-            </span>
+            <img src="/images/logos/tomodine-logo-mobile.jpg" alt="TomoDine" className="h-8 w-8 rounded-lg object-contain" />
             <span className="text-base font-semibold text-ink-900">{t("common.appName")}</span>
           </div>
           <button
@@ -884,7 +880,7 @@ export function LandingPage() {
             {/* Brand + ratings */}
             <div className="lg:col-span-4">
               <span className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-sm font-bold text-white">ভ</span>
+                <img src="/images/logos/tomodine-logo-mobile.jpg" alt="TomoDine" className="h-8 w-8 rounded-lg object-contain" />
                 <span className="text-base font-semibold">{t("common.appName")}</span>
               </span>
               <p className="mt-4 max-w-xs text-sm text-white/60">{t("landing.footerTagline")}</p>

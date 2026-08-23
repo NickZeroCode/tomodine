@@ -43,8 +43,7 @@ export function LoginPage() {
           className="pointer-events-none absolute left-1/2 top-1/2 w-3/4 -translate-x-1/2 -translate-y-1/2 object-contain opacity-[0.18]"
         />
         <Link to="/" className="relative flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-lg font-bold text-white backdrop-blur-sm">ভ</span>
-          <span className="text-xl font-semibold text-white">{t("common.appName")}</span>
+          <img src="/images/logos/tomodine-logo-desk.jpg" alt="TomoDine" className="h-10 object-contain" />
         </Link>
         <div className="relative space-y-6">
           <h1 className="font-display text-3xl font-bold leading-snug text-white xl:text-4xl">{t("auth.loginSubtitle")}</h1>
@@ -65,8 +64,7 @@ export function LoginPage() {
       <div className="flex min-h-dvh flex-1 flex-col items-center justify-center bg-ink-50/50 px-6 py-12 sm:px-12 lg:ml-[50%] lg:px-16">
         <div className="w-full max-w-md">
           <Link to="/" className="mb-10 flex items-center gap-2.5 lg:hidden">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-base font-bold text-white shadow-soft">ভ</span>
-            <span className="text-lg font-semibold text-ink-900">{t("common.appName")}</span>
+              <img src="/images/logos/tomodine-logo-mobile.jpg" alt="TomoDine" className="h-9 w-9 rounded-lg object-contain" />
           </Link>
 
           <div className="flex items-center justify-between">
