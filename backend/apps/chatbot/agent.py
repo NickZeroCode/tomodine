@@ -51,17 +51,19 @@ BRANCH CONTEXT:
 - Language: Default to {restaurant.default_language or 'English'} unless the user writes in another language.
 
 YOUR ROLE:
-1. Help customers discover menu items using the search_menu tool.
-2. Compare dishes using the compare_prices tool when asked.
-3. Add items to the customer's order using add_to_cart when they explicitly want to order.
-4. Call a waiter using trigger_waiter when the customer needs service.
-5. Answer questions about the restaurant using get_restaurant_info.
+1. Help customers discover menu items using the search_menu tool for broad queries.
+2. When a customer asks about a SPECIFIC dish (e.g. "Tell me about the Tiramisu"), use the get_dish tool.
+3. Compare dishes using the compare_prices tool when asked.
+4. Add items to the customer's order using add_to_cart when they explicitly want to order.
+5. Call a waiter using trigger_waiter when the customer needs service.
+6. Answer questions about the restaurant using get_restaurant_info.
 
 CRITICAL RULES:
 - NEVER invent menu items, prices, or availability. Always use tools to get real data.
 - If search_menu returns no results, say: "I don't see that on our current menu. Would you like me to show you something similar?"
+- When presenting dishes from search_menu, DO NOT dump raw JSON or list every field. Instead, briefly mention the dish names and prices in a conversational way (e.g. "We have Chicken Biryani at ৳350, and a Grilled Fish at ৳450."). The UI will render dish cards automatically.
+- When presenting a single dish from get_dish, give a brief friendly description and mention the price.
 - Be concise. Keep responses under 3 sentences unless the user asks for detail.
-- When presenting dishes, format them clearly with name and price.
 - If the user asks about something outside your scope (other branches, system internals), politely redirect to menu/service topics.
 - Match the user's language. If they write in Bengali, respond in Bengali.
 - You are the face of {restaurant.name}. Be warm, professional, and helpful."""
@@ -194,7 +196,6 @@ def chat(
 
 def _extract_structured_actions(history: list[dict]) -> dict | None:
     """Look at recent tool results and build structured_actions for the frontend."""
-    # Walk backwards to find the last tool result.
     for msg in reversed(history):
         if msg.get("role") != "tool":
             continue
@@ -216,10 +217,29 @@ def _extract_structured_actions(history: list[dict]) -> dict | None:
                             "price": float(item.get("price", 0)),
                             "description": item.get("description", ""),
                             "category": item.get("dish_category", ""),
+                            "image_url": item.get("image_url", ""),
                         }
                         for item in data["items"]
                     ],
                 }
+
+        # get_dish result → single dish card (rendered as carousel with 1 item)
+        if data.get("found") and "dish" in data:
+            d = data["dish"]
+            return {
+                "type": "dish_carousel",
+                "items": [
+                    {
+                        "id": str(d.get("id", "")),
+                        "name": d.get("name", ""),
+                        "price": float(d.get("price", 0)),
+                        "description": d.get("description", ""),
+                        "category": d.get("category", ""),
+                        "image_url": d.get("image_url", ""),
+                        "badge": "Vegetarian" if d.get("is_vegetarian") else ("Spicy" if d.get("is_spicy") else ""),
+                    }
+                ],
+            }
 
         # compare_prices result → price_comparison
         if "items" in data and isinstance(data["items"], list) and len(data["items"]) > 1:

@@ -23,7 +23,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "name": "search_menu",
             "description": (
                 "Search the restaurant menu for dishes matching a natural-language query. "
-                "Returns up to 5 items with names, prices, images, descriptions, and similarity scores."
+                "Returns up to 5 items with names, prices, images, descriptions, and similarity scores. "
+                "Use this for broad queries like 'show me the menu', 'what's spicy', 'vegetarian options'."
             ),
             "parameters": {
                 "type": "object",
@@ -42,6 +43,27 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_dish",
+            "description": (
+                "Get full details for a specific dish by name — price, description, image, category, "
+                "prep time, dietary info. Use when the user asks about ONE specific dish, asks 'tell me about X', "
+                "or shows interest in a particular item."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dish_name": {
+                        "type": "string",
+                        "description": "The name of the dish to look up",
+                    },
+                },
+                "required": ["dish_name"],
             },
         },
     },
@@ -152,6 +174,7 @@ def make_search_menu(restaurant_id: str, query_vector_fn):
         category: str | None = None,
     ) -> str:
         from apps.chatbot.services.retrieval import MenuRetriever
+        from apps.menus.models import Dish
 
         retriever = MenuRetriever(restaurant_id)
         vector = query_vector_fn(query)
@@ -163,9 +186,82 @@ def make_search_menu(restaurant_id: str, query_vector_fn):
         )
         if not results:
             return json.dumps({"items": [], "message": "No dishes found matching your query."})
+
+        # Enrich with image URLs from the Dish model.
+        dish_ids = [r.get("dish_id") for r in results if r.get("dish_id")]
+        dishes = {str(d.pk): d for d in Dish.objects.filter(pk__in=dish_ids).select_related("category")}
+        for r in results:
+            dish = dishes.get(str(r.get("dish_id", "")))
+            if dish and dish.image:
+                try:
+                    r["image_url"] = dish.image.url if hasattr(dish.image, "url") else str(dish.image)
+                except Exception:
+                    r["image_url"] = ""
+            else:
+                r["image_url"] = ""
+            r["is_vegetarian"] = bool(dish and dish.is_vegetarian)
+            r["is_spicy"] = bool(dish and dish.is_spicy)
+
         return json.dumps({"items": results}, default=str)
 
     return search_menu
+
+
+def make_get_dish(restaurant_id: str):
+    """Create a branch-scoped get_dish tool for looking up a single dish."""
+
+    def get_dish(dish_name: str) -> str:
+        from apps.chatbot.models import MenuEmbedding
+
+        # Try exact match first, then fuzzy.
+        emb = (
+            MenuEmbedding.objects.filter(
+                restaurant_id=restaurant_id,
+                is_available=True,
+                dish_name__iexact=dish_name,
+            )
+            .first()
+        )
+        if not emb:
+            emb = (
+                MenuEmbedding.objects.filter(
+                    restaurant_id=restaurant_id,
+                    is_available=True,
+                    dish_name__icontains=dish_name,
+                )
+                .first()
+            )
+        if not emb:
+            return json.dumps({"found": False, "message": f"No dish called '{dish_name}' found on the menu."})
+
+        # Fetch the full Dish object for image and extra fields.
+        from apps.menus.models import Dish
+        dish = Dish.objects.filter(pk=emb.dish_id).select_related("category").first()
+
+        image_url = ""
+        if dish and dish.image:
+            try:
+                image_url = dish.image.url if hasattr(dish.image, "url") else str(dish.image)
+            except Exception:
+                pass
+
+        return json.dumps({
+            "found": True,
+            "dish": {
+                "id": str(emb.dish_id),
+                "name": emb.dish_name,
+                "description": emb.description,
+                "price": float(emb.price),
+                "category": emb.dish_category,
+                "image_url": image_url,
+                "is_vegetarian": bool(dish and dish.is_vegetarian),
+                "is_spicy": bool(dish and dish.is_spicy),
+                "min_prep_time": dish.min_prep_time if dish else None,
+                "max_prep_time": dish.max_prep_time if dish else None,
+            },
+        }, default=str)
+
+    return get_dish
 
 
 def make_compare_prices(restaurant_id: str):
@@ -259,44 +355,38 @@ def make_add_to_cart(restaurant_id: str, table_id: str | None):
             return json.dumps({"success": False, "error": "Table not found."})
 
         # Get or create an open order for this table.
-        session, _ = CustomerSession.objects.get_or_create(
+        session = CustomerSession.objects.filter(
             restaurant_id=restaurant_id,
             table=table,
-            defaults={"status": "active"},
-        )
-        order, created = Order.objects.get_or_create(
-            restaurant_id=restaurant_id,
-            table=table,
-            session=session,
-            status__in=["new", "accepted", "preparing"],
-            defaults={
-                "order_type": "dine_in",
-                "status": "new",
-                "subtotal": 0,
-                "total": 0,
-            },
-        )
-        if not created:
-            # Use the most recent open order.
-            order = (
-                Order.objects.filter(
-                    restaurant_id=restaurant_id,
-                    table=table,
-                    status__in=["new", "accepted", "preparing"],
-                )
-                .order_by("-created_at")
-                .first()
+            status="active",
+        ).first()
+        if not session:
+            session = CustomerSession.objects.create(
+                restaurant_id=restaurant_id,
+                table=table,
+                status="active",
             )
-            if not order:
-                order = Order.objects.create(
-                    restaurant_id=restaurant_id,
-                    table=table,
-                    session=session,
-                    order_type="dine_in",
-                    status="new",
-                    subtotal=0,
-                    total=0,
-                )
+        # Find or create an open order for this table.
+        order = (
+            Order.objects.filter(
+                restaurant_id=restaurant_id,
+                table=table,
+                session=session,
+                status__in=["new", "accepted", "preparing"],
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if not order:
+            order = Order.objects.create(
+                restaurant_id=restaurant_id,
+                table=table,
+                session=session,
+                order_type="dine_in",
+                status="new",
+                subtotal=0,
+                total=0,
+            )
 
         item = OrderItem.objects.create(
             order=order,
@@ -372,14 +462,16 @@ def make_trigger_waiter(restaurant_id: str, table_id: str | None):
 
 def build_all_tools(restaurant, table_id: str | None, query_vector_fn) -> dict[str, callable]:
     """Build all branch-scoped tools and return as {name: fn} dict."""
+    rid = str(restaurant.id)
     tools = {
-        "search_menu": make_search_menu(str(restaurant.id), query_vector_fn),
-        "compare_prices": make_compare_prices(str(restaurant.id)),
+        "search_menu": make_search_menu(rid, query_vector_fn),
+        "get_dish": make_get_dish(rid),
+        "compare_prices": make_compare_prices(rid),
         "get_restaurant_info": make_get_restaurant_info(restaurant),
     }
 
     if table_id:
-        tools["add_to_cart"] = make_add_to_cart(str(restaurant.id), table_id)
-        tools["trigger_waiter"] = make_trigger_waiter(str(restaurant.id), table_id)
+        tools["add_to_cart"] = make_add_to_cart(rid, table_id)
+        tools["trigger_waiter"] = make_trigger_waiter(rid, table_id)
 
     return tools
