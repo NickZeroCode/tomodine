@@ -14,9 +14,27 @@ Bangladesh-first defaults:
 from __future__ import annotations
 
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlparse, parse_qsl
+
+# ---------------------------------------------------------------------------
+# Python 3.14 compatibility: patch Django's Context.__copy__ before import.
+# Python 3.14 changed copy.copy() with super() objects — Django 5.1.x's
+# template context __copy__ method breaks. Monkey-patch it.
+# ---------------------------------------------------------------------------
+if sys.version_info >= (3, 14):
+    try:
+        from django.template.context import BaseContext
+        def _patched_copy(self):
+            cls = self.__class__
+            duplicate = cls.__new__(cls)
+            duplicate.dicts = self.dicts[:]
+            return duplicate
+        BaseContext.__copy__ = _patched_copy
+    except ImportError:
+        pass  # Django not yet imported — will patch in apps.py if needed
 
 from dotenv import load_dotenv
 

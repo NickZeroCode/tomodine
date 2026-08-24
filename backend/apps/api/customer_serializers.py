@@ -45,6 +45,23 @@ class CustomerDishSerializer(serializers.ModelSerializer):
             "is_spicy", "min_prep_time", "max_prep_time", "variants", "modifiers",
         )
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        from django.conf import settings
+        if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
+            return data
+        img = getattr(instance, "image", None)
+        if img and hasattr(img, "path"):
+            try:
+                import base64, mimetypes
+                with open(img.path, "rb") as f:
+                    encoded = base64.b64encode(f.read()).decode()
+                mime = mimetypes.guess_type(img.path)[0] or "image/png"
+                data["image"] = f"data:{mime};base64,{encoded}"
+            except (FileNotFoundError, OSError):
+                data["image"] = None
+        return data
+
 
 class CustomerCategorySerializer(serializers.ModelSerializer):
     dishes = serializers.SerializerMethodField()
@@ -116,7 +133,7 @@ class CustomerOrderItemSerializer(serializers.ModelSerializer):
         fields = ("dish_name_en", "dish_name_bn", "dish_image", "min_prep_time", "max_prep_time", "variant_name", "quantity", "unit_price")
 
     def get_dish_image(self, obj: OrderItem) -> str:
-        """Resolve legacy local media paths against the active storage."""
+        """Resolve dish image — base64 for local storage, URL for S3."""
         url = (obj.dish_image or "").strip()
         if not url:
             return ""
@@ -125,19 +142,29 @@ class CustomerOrderItemSerializer(serializers.ModelSerializer):
 
         from django.conf import settings
 
-        name = url
-        for prefix in ("/media/", "media/"):
-            if name.startswith(prefix):
-                name = name[len(prefix):]
-                break
-        name = name.lstrip("/")
+        # S3 configured — build full S3 URL.
+        if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
+            name = url
+            for prefix in ("/media/", "media/"):
+                if name.startswith(prefix):
+                    name = name[len(prefix):]
+                    break
+            name = name.lstrip("/")
+            media_url = settings.MEDIA_URL or ""
+            return f"{media_url.rstrip('/')}/{name}"
 
-        media_url = settings.MEDIA_URL or "media/"
-        if not media_url.startswith(("http://", "https://")):
-            full = f"/{media_url.rstrip('/')}/{name}"
-            request = self.context.get("request")
-            return request.build_absolute_uri(full) if request else full
-        return f"{media_url.rstrip('/')}/{name}"
+        # Local storage — try base64 data URI.
+        import os
+        media_root = settings.MEDIA_ROOT or ""
+        full_path = os.path.join(media_root, url.lstrip("/"))
+        try:
+            import base64, mimetypes
+            with open(full_path, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode()
+            mime = mimetypes.guess_type(full_path)[0] or "image/png"
+            return f"data:{mime};base64,{encoded}"
+        except (FileNotFoundError, OSError):
+            return ""
 
 
 class CustomerOrderSerializer(serializers.ModelSerializer):
