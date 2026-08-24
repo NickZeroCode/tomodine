@@ -413,6 +413,7 @@ def make_add_to_cart(restaurant_id: str, table_id: str | None):
             order=order,
             dish_name_en=dish.name_en,
             dish_name_bn=dish.name_bn or "",
+            dish_image=dish.image.name if dish.image else "",
             quantity=quantity,
             unit_price=dish.price,
             min_prep_time=dish.min_prep_time,
