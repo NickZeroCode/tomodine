@@ -71,12 +71,18 @@ def sync_dish_embedding(dish_id: str) -> None:
 
     dish = (
         Dish.objects.select_related("restaurant", "category")
-        .filter(pk=dish_id, is_available=True)
+        .filter(pk=dish_id)
         .first()
     )
-    if dish is None:
+    if dish is None or not dish.is_available:
         # Dish was deleted or is unavailable — remove stale embedding.
-        MenuEmbedding.objects.filter(dish_id=dish_id).delete()
+        deleted, _ = MenuEmbedding.objects.filter(dish_id=dish_id).delete()
+        if deleted:
+            from apps.chatbot.services.retrieval import invalidate_cache
+            # We don't know the restaurant_id from the deleted row, so
+            # clear all caches (safe — just forces a DB reload).
+            from apps.chatbot.services.retrieval import _EMBED_CACHE
+            _EMBED_CACHE.clear()
         return
 
     text = build_embedding_text(dish)

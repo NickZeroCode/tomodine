@@ -129,7 +129,7 @@ export function MiniGames({ onClose }: { onClose: () => void }) {
   if (activeGame === "wordchain") return <WordChain onBack={() => setActiveGame(null)} onClose={onClose} />;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white">
+    <div className="fixed inset-0 z-[60] flex flex-col bg-white">
       <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
         <button type="button" onClick={onClose} className="text-sm font-medium text-ink-500">← Back</button>
         <h2 className="font-display text-base font-bold text-ink-900">Games</h2>

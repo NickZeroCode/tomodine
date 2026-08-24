@@ -67,11 +67,8 @@ function guessStructuredActions(response: string, sentText: string): StructuredA
   const lower = sentText.toLowerCase();
   const respLower = response.toLowerCase();
 
-  // User tried to add something and bot confirmed it.
-  if (
-    (lower.includes("add") && lower.includes("order")) ||
-    (respLower.includes("added") && (respLower.includes("cart") || respLower.includes("order")))
-  ) {
+  // User tried to add something to their order.
+  if (lower.includes("add") && (lower.includes("order") || lower.includes("my order"))) {
     return {
       type: "confirmation",
       message: response,
@@ -80,15 +77,13 @@ function guessStructuredActions(response: string, sentText: string): StructuredA
     };
   }
 
-  // User asked about order status and bot responded with status info.
-  if (
-    lower.includes("order") && (lower.includes("status") || lower.includes("where") || lower.includes("track")) &&
-    (respLower.includes("preparing") || respLower.includes("ready") || respLower.includes("served") || respLower.includes("order"))
-  ) {
+  // Bot confirmed an addition (even if user message was ambiguous).
+  if (respLower.includes("added") && (respLower.includes("order") || respLower.includes("cart"))) {
     return {
-      type: "order_status",
-      orders: [],
+      type: "confirmation",
       message: response,
+      suggest_more: true,
+      suggest_games: true,
     };
   }
 

@@ -111,7 +111,7 @@ export function ChatWidget({ tableId, restaurantSlug, onPlayGames }: Props) {
           </div>
 
           {/* Messages */}
-          <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4">
+          <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden overscroll-contain px-3 py-3 sm:px-4">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-brand-50">
@@ -264,16 +264,16 @@ function StructuredActionsRenderer({
     case "dish_carousel":
       return (
         <>
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin snap-x snap-mandatory">
+          <div className="min-w-0 max-w-full flex gap-2 overflow-x-auto pb-1 scrollbar-thin snap-x snap-mandatory">
             {(actions.items ?? []).map((item, idx) => (
               <button
                 key={item.id ?? idx}
                 type="button"
                 onClick={() => { setDetailItem(item); setDetailQty(1); }}
-                className="flex w-40 shrink-0 snap-start cursor-pointer flex-col overflow-hidden rounded-xl border border-ink-100 bg-white text-left transition-all hover:shadow-md active:scale-[0.98]"
+                className="flex w-36 shrink-0 snap-start cursor-pointer flex-col overflow-hidden rounded-xl border border-ink-100 bg-white text-left transition-all hover:shadow-md active:scale-[0.98]"
               >
                 {item.image_url ? (
-                  <img src={item.image_url} alt={item.name} className="h-28 w-full object-cover" />
+                  <img src={item.image_url} alt={item.name} className="h-24 w-full object-cover" />
                 ) : (
                   <div className="flex h-28 items-center justify-center bg-gradient-to-br from-ink-50 to-ink-100">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="h-8 w-8 text-ink-200">
