@@ -258,6 +258,7 @@ function StructuredActionsRenderer({
 }) {
   const { t } = useTranslation();
   const [detailItem, setDetailItem] = useState<NonNullable<StructuredActions["items"]>[number] | null>(null);
+  const [detailQty, setDetailQty] = useState(1);
 
   switch (actions.type) {
     case "dish_carousel":
@@ -268,7 +269,7 @@ function StructuredActionsRenderer({
               <button
                 key={item.id ?? idx}
                 type="button"
-                onClick={() => setDetailItem(item)}
+                onClick={() => { setDetailItem(item); setDetailQty(1); }}
                 className="flex w-40 shrink-0 snap-start cursor-pointer flex-col overflow-hidden rounded-xl border border-ink-100 bg-white text-left transition-all hover:shadow-md active:scale-[0.98]"
               >
                 {item.image_url ? (
@@ -332,23 +333,41 @@ function StructuredActionsRenderer({
                 </div>
                 <div className="mt-4 flex items-center justify-between">
                   <span className="text-xl font-bold tabular-nums text-ink-900">
-                    {detailItem.price != null ? formatBDT(detailItem.price, lang) : "—"}
+                    {detailItem.price != null ? formatBDT(detailItem.price * detailQty, lang) : "—"}
                   </span>
                   {detailItem.min_prep_time && (
                     <span className="text-xs text-ink-400">{detailItem.min_prep_time}–{detailItem.max_prep_time} min</span>
                   )}
                 </div>
+                {/* Quantity selector */}
+                <div className="mt-3 flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDetailQty((q) => Math.max(1, q - 1))}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-200 text-ink-600 transition hover:bg-ink-50 active:scale-90"
+                  >
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path fillRule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
+                  </button>
+                  <span className="w-10 text-center text-lg font-bold tabular-nums text-ink-900">{detailQty}</span>
+                  <button
+                    type="button"
+                    onClick={() => setDetailQty((q) => Math.min(20, q + 1))}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-200 text-ink-600 transition hover:bg-ink-50 active:scale-90"
+                  >
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                  </button>
+                </div>
                 <div className="mt-4 flex gap-2">
                   <button
                     type="button"
-                    onClick={() => { onQuickReply(`Add ${detailItem.name} to my order`); setDetailItem(null); }}
+                    onClick={() => { onQuickReply(`Add ${detailQty}x ${detailItem.name} to my order`); setDetailItem(null); setDetailQty(1); }}
                     className="flex-1 rounded-xl bg-brand-600 py-2.5 text-sm font-bold text-white transition hover:bg-brand-700"
                   >
                     {t("chat.addToOrder", "Add to order")}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDetailItem(null)}
+                    onClick={() => { setDetailItem(null); setDetailQty(1); }}
                     className="rounded-xl border border-ink-200 px-4 py-2.5 text-sm font-medium text-ink-600 transition hover:bg-ink-50"
                   >
                     {t("common.close", "Close")}

@@ -552,9 +552,10 @@ export function LandingPage() {
       { label: t("landing.contactUs"), href: "/register" },
     ]},
     { heading: t("landing.footerCompany"), links: [
-      { label: t("landing.pricingTitle"), href: "#pricing" },
-      { label: t("landing.faqTitle"), href: "#faq" },
-      { label: t("landing.contactUs"), href: "/register" },
+      { label: t("landing.footerAbout", "About Us"), href: "#solution" },
+      { label: t("landing.footerBlog", "Blog"), href: "#" },
+      { label: t("landing.footerCareers", "Careers"), href: "#" },
+      { label: t("landing.footerPartners", "Partners"), href: "#" },
     ]},
     { heading: t("landing.footerAccount"), links: [
       { label: t("auth.login"), href: "/login" },
