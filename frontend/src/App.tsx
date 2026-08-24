@@ -18,6 +18,7 @@ import { CustomersPage } from "@/pages/dashboard/CustomersPage";
 import { ReportsPage } from "@/pages/dashboard/ReportsPage";
 import { MenuEngineeringPage } from "@/pages/dashboard/MenuEngineeringPage";
 import { InventoryPage } from "@/pages/dashboard/InventoryPage";
+import { HelpPage } from "@/pages/dashboard/HelpPage";
 import { CustomerOrderPage } from "@/pages/customer/CustomerOrderPage";
 import { InviteAcceptPage } from "@/pages/InviteAcceptPage";
 import { BranchesPage } from "@/pages/dashboard/BranchesPage";
@@ -84,6 +85,7 @@ export default function App() {
         <Route path="staff" element={<RequirePermission perm={PERM.staffManage}><StaffPage /></RequirePermission>} />
         <Route path="subscription" element={<RequirePermission perm={PERM.billingManage}><SubscriptionPage /></RequirePermission>} />
         <Route path="settings" element={<RequirePermission perm={PERM.settingsManage}><SettingsPage /></RequirePermission>} />
+        <Route path="help" element={<HelpPage />} />
         <Route path="branches" element={<RequirePermission perm={PERM.staffManage}><BranchesPage /></RequirePermission>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

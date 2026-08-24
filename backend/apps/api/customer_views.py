@@ -89,18 +89,24 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
             )
             .order_by("display_order")
         )
+        def _abs_url(request, field):
+            """Build an absolute URL for an ImageField (works with S3 and local)."""
+            if not field:
+                return None
+            url = field.url
+            if url.startswith(("http://", "https://", "data:")):
+                return url
+            # Local storage — build absolute URL from the request.
+            return request.build_absolute_uri(url)
+
         return Response(
             {
                 "restaurant": {
                     "name": qr.restaurant.name,
                     "slug": qr.restaurant.slug,
                     "currency": qr.restaurant.currency,
-                    "logo": qr.restaurant.logo.url if qr.restaurant.logo else None,
-                    "cover_image": (
-                        qr.restaurant.cover_image.url
-                        if qr.restaurant.cover_image
-                        else None
-                    ),
+                    "logo": _abs_url(request, qr.restaurant.logo),
+                    "cover_image": _abs_url(request, qr.restaurant.cover_image),
                 },
                 "table": {"number": qr.table.number, "label": qr.table.label},
                 "menus": CustomerMenuSerializer(menus, many=True).data,

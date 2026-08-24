@@ -137,10 +137,11 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
       { to: "/dashboard/offers", key: "nav.offers", icon: IC.offers, perm: PERM.billingManage },
     ],
   },
-  {
-    labelKey: "nav.customerSection",
-    items: [{ to: "/dashboard/customers", key: "nav.customers", icon: IC.customers, perm: PERM.analyticsView }],
-  },
+  // Customers section — hidden for now, uncomment when feature is ready.
+  // {
+  //   labelKey: "nav.customerSection",
+  //   items: [{ to: "/dashboard/customers", key: "nav.customers", icon: IC.customers, perm: PERM.analyticsView }],
+  // },
   {
     labelKey: "nav.financeAndInsights",
     items: [
@@ -409,7 +410,7 @@ export function DashboardLayout() {
             </NavLink>
             ) : null}
             <a
-              href="#"
+              href="/dashboard/help"
               title={sidebarCollapsed ? t("nav.help") : undefined}
               className={`flex items-center gap-3 rounded-card text-sm font-medium text-gray-300 transition-colors hover:bg-ink-800 hover:text-white ${
                 sidebarCollapsed ? "justify-center px-0 py-2.5" : "px-3 py-2"
