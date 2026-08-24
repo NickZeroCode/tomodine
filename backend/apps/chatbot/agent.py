@@ -130,7 +130,8 @@ CRITICAL RULES:
 - If search_menu returns no results, say: "I don't see that on our current menu. Would you like me to show you something similar?"
 - When presenting dishes from search_menu, DO NOT dump raw JSON or list every field. Instead, briefly mention the dish names and prices in a conversational way (e.g. "We have Chicken Biryani at ৳350, and a Grilled Fish at ৳450."). The UI will render dish cards automatically.
 - When presenting a single dish from get_dish, give a brief friendly description and mention the price.
-- When the user asks about food, dishes, menu, or recommendations, you MUST call the search_menu or get_dish tool. Never describe dishes from memory — always use tools.
+- When the user asks about food, dishes, menu, or recommendations, you MUST call the appropriate tool(s). Never describe dishes from memory — always use tools.
+- For multi-item queries like "Is there Biryani and Chotpoti and some drinks?", call MULTIPLE tools: get_dish for each named dish + search_menu for the category. Example: get_dish("Biryani") + get_dish("Chotpoti") + search_menu(query="drinks"). You can call multiple tools in the same response.
 - NEVER use markdown formatting (**, *, ##, [], etc.) in your responses. Write in plain text only. Use bullet points (•) for lists.
 - For comparisons, use the compare_prices tool and present the results conversationally.
 - Be concise. Keep responses under 3 sentences unless the user asks for detail.
@@ -292,50 +293,44 @@ def chat(
 def _build_structured_from_tools(tool_results: list[tuple[str, str]]) -> dict | None:
     """Build structured_actions directly from tool execution results.
 
-    This is a fallback for when _extract_structured_actions can't find results
-    in the message history (e.g., the LLM skipped tool calls).
+    Collects dish items from ALL tool results (get_dish, search_menu)
+    into a single carousel — handles multi-dish queries like
+    "Is there Biryani and Chotpoti and some drinks?"
     """
-    for tool_name, result_json in reversed(tool_results):
+    all_items: list[dict] = []
+    last_action: dict | None = None
+
+    for tool_name, result_json in tool_results:
         try:
             data = json.loads(result_json)
         except (json.JSONDecodeError, TypeError):
             continue
 
-        if tool_name == "search_menu" and "items" in data and isinstance(data["items"], list) and data["items"]:
-            return {
-                "type": "dish_carousel",
-                "items": [
-                    {
-                        "id": str(item.get("dish_id", "")),
-                        "name": item.get("dish_name", item.get("name", "")),
-                        "price": float(item.get("price", 0)),
-                        "description": item.get("description", ""),
-                        "category": item.get("dish_category", ""),
-                        "image_url": item.get("image_url", ""),
-                    }
-                    for item in data["items"]
-                ],
-            }
+        if tool_name == "search_menu" and "items" in data and isinstance(data["items"], list):
+            for item in data["items"]:
+                all_items.append({
+                    "id": str(item.get("dish_id", "")),
+                    "name": item.get("dish_name", item.get("name", "")),
+                    "price": float(item.get("price", 0)),
+                    "description": item.get("description", ""),
+                    "category": item.get("dish_category", ""),
+                    "image_url": item.get("image_url", ""),
+                })
 
-        if tool_name == "get_dish" and data.get("found") and "dish" in data:
+        elif tool_name == "get_dish" and data.get("found") and "dish" in data:
             d = data["dish"]
-            return {
-                "type": "dish_carousel",
-                "items": [
-                    {
-                        "id": str(d.get("id", "")),
-                        "name": d.get("name", ""),
-                        "price": float(d.get("price", 0)),
-                        "description": d.get("description", ""),
-                        "category": d.get("category", ""),
-                        "image_url": d.get("image_url", ""),
-                        "badge": "Vegetarian" if d.get("is_vegetarian") else ("Spicy" if d.get("is_spicy") else ""),
-                    }
-                ],
-            }
+            all_items.append({
+                "id": str(d.get("id", "")),
+                "name": d.get("name", ""),
+                "price": float(d.get("price", 0)),
+                "description": d.get("description", ""),
+                "category": d.get("category", ""),
+                "image_url": d.get("image_url", ""),
+                "badge": "Vegetarian" if d.get("is_vegetarian") else ("Spicy" if d.get("is_spicy") else ""),
+            })
 
-        if tool_name == "add_to_cart" and data.get("success") and data.get("order_id"):
-            return {
+        elif tool_name == "add_to_cart" and data.get("success") and data.get("order_id"):
+            last_action = {
                 "type": "confirmation",
                 "message": data.get("message", ""),
                 "order_total": data.get("order_total", "0"),
@@ -344,21 +339,21 @@ def _build_structured_from_tools(tool_results: list[tuple[str, str]]) -> dict | 
                 "suggest_games": True,
             }
 
-        if tool_name == "check_order_status" and "orders" in data:
-            return {
+        elif tool_name == "check_order_status" and "orders" in data:
+            last_action = {
                 "type": "order_status",
                 "orders": data["orders"],
                 "message": data.get("message", ""),
             }
 
-        if tool_name == "trigger_waiter" and data.get("success"):
-            return {
+        elif tool_name == "trigger_waiter" and data.get("success"):
+            last_action = {
                 "type": "waiter_ping",
                 "message": data.get("message", ""),
             }
 
-        if tool_name == "compare_prices" and "items" in data and isinstance(data["items"], list) and len(data["items"]) > 1:
-            return {
+        elif tool_name == "compare_prices" and "items" in data and isinstance(data["items"], list) and len(data["items"]) > 1:
+            last_action = {
                 "type": "price_comparison",
                 "items": [
                     {
@@ -370,11 +365,31 @@ def _build_structured_from_tools(tool_results: list[tuple[str, str]]) -> dict | 
                 ],
             }
 
-    return None
+    # If we collected dish items, return them as a carousel.
+    if all_items:
+        # Deduplicate by id.
+        seen = set()
+        unique = []
+        for item in all_items:
+            if item["id"] and item["id"] in seen:
+                continue
+            if item["id"]:
+                seen.add(item["id"])
+            unique.append(item)
+        return {"type": "dish_carousel", "items": unique}
+
+    # Otherwise return the last non-dish action (confirmation, order_status, etc.)
+    return last_action
 
 
 def _extract_structured_actions(history: list[dict]) -> dict | None:
-    """Look at recent tool results and build structured_actions for the frontend."""
+    """Look at recent tool results and build structured_actions for the frontend.
+
+    Collects dish items from ALL tool messages into one carousel.
+    """
+    all_items: list[dict] = []
+    last_action: dict | None = None
+
     for msg in reversed(history):
         if msg.get("role") != "tool":
             continue
@@ -383,60 +398,36 @@ def _extract_structured_actions(history: list[dict]) -> dict | None:
         except (json.JSONDecodeError, TypeError):
             continue
 
-        # search_menu result → dish_carousel
+        # search_menu result → collect items
         if "items" in data and isinstance(data["items"], list) and data["items"]:
             first = data["items"][0]
             if "dish_name" in first or "name" in first:
-                return {
-                    "type": "dish_carousel",
-                    "items": [
-                        {
-                            "id": str(item.get("dish_id", "")),
-                            "name": item.get("dish_name", item.get("name", "")),
-                            "price": float(item.get("price", 0)),
-                            "description": item.get("description", ""),
-                            "category": item.get("dish_category", ""),
-                            "image_url": item.get("image_url", ""),
-                        }
-                        for item in data["items"]
-                    ],
-                }
+                for item in data["items"]:
+                    all_items.append({
+                        "id": str(item.get("dish_id", "")),
+                        "name": item.get("dish_name", item.get("name", "")),
+                        "price": float(item.get("price", 0)),
+                        "description": item.get("description", ""),
+                        "category": item.get("dish_category", ""),
+                        "image_url": item.get("image_url", ""),
+                    })
 
-        # get_dish result → single dish card (rendered as carousel with 1 item)
+        # get_dish result → collect single item
         if data.get("found") and "dish" in data:
             d = data["dish"]
-            return {
-                "type": "dish_carousel",
-                "items": [
-                    {
-                        "id": str(d.get("id", "")),
-                        "name": d.get("name", ""),
-                        "price": float(d.get("price", 0)),
-                        "description": d.get("description", ""),
-                        "category": d.get("category", ""),
-                        "image_url": d.get("image_url", ""),
-                        "badge": "Vegetarian" if d.get("is_vegetarian") else ("Spicy" if d.get("is_spicy") else ""),
-                    }
-                ],
-            }
+            all_items.append({
+                "id": str(d.get("id", "")),
+                "name": d.get("name", ""),
+                "price": float(d.get("price", 0)),
+                "description": d.get("description", ""),
+                "category": d.get("category", ""),
+                "image_url": d.get("image_url", ""),
+                "badge": "Vegetarian" if d.get("is_vegetarian") else ("Spicy" if d.get("is_spicy") else ""),
+            })
 
-        # compare_prices result → price_comparison
-        if "items" in data and isinstance(data["items"], list) and len(data["items"]) > 1:
-            return {
-                "type": "price_comparison",
-                "items": [
-                    {
-                        "name": item.get("dish_name", ""),
-                        "price": float(item.get("price", 0)),
-                        "category": item.get("dish_category", ""),
-                    }
-                    for item in data["items"]
-                ],
-            }
-
-        # add_to_cart result → confirmation with suggestion
+        # add_to_cart → confirmation
         if data.get("success") and data.get("order_id"):
-            return {
+            last_action = {
                 "type": "confirmation",
                 "message": data.get("message", ""),
                 "order_total": data.get("order_total", "0"),
@@ -445,19 +436,47 @@ def _extract_structured_actions(history: list[dict]) -> dict | None:
                 "suggest_games": True,
             }
 
-        # check_order_status result → order tracking
+        # check_order_status
         if "orders" in data and isinstance(data["orders"], list):
-            return {
+            last_action = {
                 "type": "order_status",
                 "orders": data["orders"],
                 "message": data.get("message", ""),
             }
 
-        # trigger_waiter result → waiter_ping
+        # trigger_waiter
         if data.get("success") and "waiter" in data.get("message", "").lower():
-            return {
+            last_action = {
                 "type": "waiter_ping",
                 "message": data.get("message", ""),
             }
 
-    return None
+        # compare_prices
+        if "items" in data and isinstance(data["items"], list) and len(data["items"]) > 1:
+            has_dish_name = any("dish_name" in item for item in data["items"])
+            if has_dish_name:
+                last_action = {
+                    "type": "price_comparison",
+                    "items": [
+                        {
+                            "name": item.get("dish_name", ""),
+                            "price": float(item.get("price", 0)),
+                            "category": item.get("dish_category", ""),
+                        }
+                        for item in data["items"]
+                    ],
+                }
+
+    # If we collected dish items, return them as a carousel.
+    if all_items:
+        seen = set()
+        unique = []
+        for item in all_items:
+            if item["id"] and item["id"] in seen:
+                continue
+            if item["id"]:
+                seen.add(item["id"])
+            unique.append(item)
+        return {"type": "dish_carousel", "items": unique}
+
+    return last_action
