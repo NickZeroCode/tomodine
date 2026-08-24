@@ -90,38 +90,39 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
             .order_by("display_order")
         )
         def _abs_url(request, field):
-            """Build an absolute URL for an ImageField (works with S3 and local).
+            """Build an image URL for the frontend.
 
-            For S3: returns the full S3 URL.
-            For local storage: converts to a base64 data URI so the
-            frontend can render it without needing nginx media proxy.
+            - S3: returns the full S3 URL.
+            - Local storage: converts to a base64 data URI.
+            - No image: returns None.
             """
-            if not field:
+            # Django ImageFieldFile: check .name to confirm a file is assigned.
+            name = getattr(field, "name", None)
+            if not name:
                 return None
-            try:
-                url = field.url
-            except ValueError:
-                return None
-            if not url:
-                return None
-            # S3 or already absolute — return as-is.
-            if url.startswith(("http://", "https://", "data:")):
-                return url
-            # Check if S3 is configured.
+
             from django.conf import settings
+
+            # S3 storage — field.url is already a full https:// URL.
             if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
-                return url  # S3 URLs are already absolute.
-            # Local storage — convert to base64 data URI.
-            if hasattr(field, "path"):
+                try:
+                    return field.url
+                except ValueError:
+                    return None
+
+            # Local storage — read file and return as base64 data URI.
+            path = getattr(field, "path", None)
+            if path:
                 try:
                     import base64, mimetypes
-                    with open(field.path, "rb") as f:
+                    with open(path, "rb") as f:
                         encoded = base64.b64encode(f.read()).decode()
-                    mime = mimetypes.guess_type(field.path)[0] or "image/png"
+                    mime = mimetypes.guess_type(path)[0] or "image/png"
                     return f"data:{mime};base64,{encoded}"
                 except (FileNotFoundError, OSError):
                     return None
-            return request.build_absolute_uri(url)
+
+            return None
 
         return Response(
             {
@@ -131,6 +132,11 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
                     "currency": qr.restaurant.currency,
                     "logo": _abs_url(request, qr.restaurant.logo),
                     "cover_image": _abs_url(request, qr.restaurant.cover_image),
+                    # Debug info — remove after verifying images work.
+                    "_debug_logo_field": str(qr.restaurant.logo) if qr.restaurant.logo else None,
+                    "_debug_logo_name": getattr(qr.restaurant.logo, "name", None),
+                    "_debug_cover_field": str(qr.restaurant.cover_image) if qr.restaurant.cover_image else None,
+                    "_debug_cover_name": getattr(qr.restaurant.cover_image, "name", None),
                 },
                 "table": {"number": qr.table.number, "label": qr.table.label},
                 "menus": CustomerMenuSerializer(menus, many=True).data,
