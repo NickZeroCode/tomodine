@@ -8,6 +8,7 @@ import { useRestaurant } from "@/context/RestaurantContext";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { Modal } from "@/components/Modal";
 import { Field, TextField } from "@/components/FormField";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
 import { DishDetailModal } from "@/components/DishDetailModal";
 import type { ApiError, Dish, Menu, MenuCategory } from "@/types";
@@ -75,6 +76,7 @@ export function MenuPage() {
   const lang = i18n.language.startsWith("bn") ? "bn" : "en";
   const { restaurant } = useRestaurant();
   const queryClient = useQueryClient();
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const [dishFormOpen, setDishFormOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
@@ -365,9 +367,9 @@ export function MenuPage() {
                             type="button"
                             className="btn-ghost px-2 py-1 text-xs text-red-600"
                             disabled={removeCategory.isPending}
-                            onClick={() => {
-                              if (window.confirm(t("menu.deleteCategoryConfirm")))
-                                removeCategory.mutate(cat.id);
+                            onClick={async () => {
+                              const ok = await confirm(t("menu.deleteCategoryConfirm"));
+                              if (ok) removeCategory.mutate(cat.id);
                             }}
                           >
                             {t("common.delete")}
@@ -431,9 +433,9 @@ export function MenuPage() {
                                     type="button"
                                     className="btn-ghost px-2 py-1.5 text-xs text-red-600"
                                     disabled={removeDish.isPending}
-                                    onClick={() => {
-                                      if (window.confirm(t("menu.deleteDishConfirm")))
-                                        removeDish.mutate(dish.id);
+                                    onClick={async () => {
+                                      const ok = await confirm(t("menu.deleteDishConfirm"));
+                                      if (ok) removeDish.mutate(dish.id);
                                     }}
                                   >
                                     {t("common.delete")}
@@ -706,6 +708,8 @@ export function MenuPage() {
           showAddButton={false}
         />
       )}
+
+      {confirmDialog}
     </section>
   );
 }

@@ -6,6 +6,7 @@ import { useRestaurant } from "@/context/RestaurantContext";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { Modal } from "@/components/Modal";
 import { Field, TextField } from "@/components/FormField";
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { ApiError, Membership, Role } from "@/types";
 
 export function StaffPage() {
@@ -13,6 +14,7 @@ export function StaffPage() {
   const lang = i18n.language.startsWith("bn") ? "bn" : "en";
   const { restaurant } = useRestaurant();
   const queryClient = useQueryClient();
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -233,11 +235,12 @@ export function StaffPage() {
                     className="input w-auto px-2 py-1 text-xs"
                     value=""
                     disabled={transfer.isPending}
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const targetId = e.target.value;
                       if (!targetId) return;
-                      if (window.confirm(t("staff.transferConfirm")))
-                        transfer.mutate({ memberId: m.id, targetBranchId: targetId });
+                      const ok = await confirm(t("staff.transferConfirm"));
+                      if (ok) transfer.mutate({ memberId: m.id, targetBranchId: targetId });
+                      e.target.value = "";
                     }}
                     aria-label={t("staff.transfer")}
                   >
@@ -263,8 +266,9 @@ export function StaffPage() {
                     type="button"
                     className="btn-ghost px-2 py-1 text-xs text-red-600"
                     disabled={remove.isPending}
-                    onClick={() => {
-                      if (window.confirm(t("staff.removeConfirm"))) remove.mutate(m.id);
+                    onClick={async () => {
+                      const ok = await confirm(t("staff.removeConfirm"));
+                      if (ok) remove.mutate(m.id);
                     }}
                   >
                     {t("staff.remove")}
@@ -329,6 +333,7 @@ export function StaffPage() {
           </form>
         </Modal>
       )}
+      {confirmDialog}
     </section>
   );
 }

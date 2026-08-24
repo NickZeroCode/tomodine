@@ -12,6 +12,7 @@ import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { Modal } from "@/components/Modal";
 import { Icon } from "@/components/Icon";
 import { TextField } from "@/components/FormField";
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { ApiError, Order, OrderStatus, QRCodeInfo, Table } from "@/types";
 
 interface TableFormState {
@@ -56,6 +57,7 @@ export function TablesPage() {
   const [criticalOnly, setCriticalOnly] = useState(false);
   const [pulseId, setPulseId] = useState<string | null>(null);
   const [orderStatusFilter, setOrderStatusFilter] = useState<OrderStatus | "ALL">("ALL");
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const tablesKey = ["tables", restaurant?.slug];
 
@@ -627,8 +629,9 @@ export function TablesPage() {
                         type="button"
                         className="btn-ghost px-2 py-1 text-xs text-red-600"
                         disabled={remove.isPending}
-                        onClick={() => {
-                          if (window.confirm(t("tables.deleteConfirm"))) remove.mutate(table.id);
+                        onClick={async () => {
+                          const ok = await confirm(t("tables.deleteConfirm"));
+                          if (ok) remove.mutate(table.id);
                         }}
                       >
                         {t("common.delete")}
@@ -902,6 +905,8 @@ export function TablesPage() {
           )}
         </Modal>
       )}
+
+      {confirmDialog}
     </section>
   );
 }

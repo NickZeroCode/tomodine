@@ -15,6 +15,7 @@ import { getActiveBranchId, setActiveBranchId } from "@/lib/api";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { Modal } from "@/components/Modal";
 import { TextField } from "@/components/FormField";
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { ApiError } from "@/types";
 
 interface Branch {
@@ -45,6 +46,7 @@ export function BranchesPage() {
   const lang = i18n.language.startsWith("bn") ? "bn" : "en";
   const { restaurant } = useRestaurant();
   const queryClient = useQueryClient();
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Branch | null>(null);
@@ -239,9 +241,9 @@ export function BranchesPage() {
                       <button
                         type="button"
                         className="rounded-md px-2 py-1 text-[0.65rem] font-semibold text-red-600 hover:bg-red-50"
-                        onClick={() => {
-                          if (window.confirm(t("branches.deactivateConfirm")))
-                            deactivate.mutate(branch.id);
+                        onClick={async () => {
+                          const ok = await confirm(t("branches.deactivateConfirm"));
+                          if (ok) deactivate.mutate(branch.id);
                         }}
                       >
                         {t("branches.deactivate")}
@@ -303,6 +305,8 @@ export function BranchesPage() {
           </form>
         </Modal>
       )}
+
+      {confirmDialog}
     </section>
   );
 }

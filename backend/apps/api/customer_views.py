@@ -229,7 +229,7 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
                 created_at__date=session.created_at.date(),
             )
             .prefetch_related("items")
-            .exclude(status__in=["cancelled", "rejected"])
+            .exclude(status="rejected")
             .order_by("-created_at")[:30]
         )
         return Response(CustomerOrderSerializer(orders, many=True).data)

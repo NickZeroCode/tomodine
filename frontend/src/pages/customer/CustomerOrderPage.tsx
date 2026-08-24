@@ -12,6 +12,7 @@ import { DishDetailModal } from "@/components/DishDetailModal";
 import { OfferBanner } from "@/components/OfferBanner";
 import { MiniGames } from "@/components/games/MiniGames";
 import { ChatWidget } from "@/components/ChatWidget";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
 import type { Dish, DishVariant, Offer, Order } from "@/types";
 
@@ -77,6 +78,7 @@ export function CustomerOrderPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language === "bn" ? "bn" : "en";
   const queryClient = useQueryClient();
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -915,9 +917,9 @@ export function CustomerOrderPage() {
                             <button
                               type="button"
                               className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[0.65rem] font-semibold text-red-600"
-                              onClick={() => {
-                                if (window.confirm(t("customer.cancelConfirm")))
-                                  cancelOrder.mutate(order.id);
+                              onClick={async () => {
+                                const ok = await confirm(t("customer.cancelConfirm"));
+                                if (ok) cancelOrder.mutate(order.id);
                               }}
                             >
                               {t("customer.cancelOrder")}
@@ -1141,6 +1143,8 @@ export function CustomerOrderPage() {
 
       {/* ── AI Concierge ── */}
       <ChatWidget tableId={qrToken} restaurantSlug={menuQuery.data?.restaurant.slug} onPlayGames={() => setShowGames(true)} />
+
+      {confirmDialog}
     </div>
   );
 }

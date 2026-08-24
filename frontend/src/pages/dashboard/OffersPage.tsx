@@ -6,6 +6,7 @@ import { formatBDT, localized } from "@/lib/format";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { Modal } from "@/components/Modal";
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { ApiError, Dish, Offer } from "@/types";
 
 interface OfferForm {
@@ -78,6 +79,7 @@ export function OffersPage() {
   const lang = i18n.language === "bn" ? "bn" : "en";
   const { restaurant } = useRestaurant();
   const queryClient = useQueryClient();
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Offer | null>(null);
@@ -275,8 +277,9 @@ export function OffersPage() {
                     <button
                       type="button"
                       className="rounded-lg px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50"
-                      onClick={() => {
-                        if (window.confirm(t("offers.deleteConfirm"))) remove.mutate(offer.id);
+                        onClick={async () => {
+                          const ok = await confirm(t("offers.deleteConfirm"));
+                          if (ok) remove.mutate(offer.id);
                       }}
                     >
                       {t("common.delete")}
@@ -376,6 +379,8 @@ export function OffersPage() {
           </form>
         </Modal>
       )}
+
+      {confirmDialog}
     </section>
   );
 }
