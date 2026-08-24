@@ -93,6 +93,29 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "get_popular_dishes",
+            "description": (
+                "Get the most-ordered dishes at this restaurant based on real order data. "
+                "Use when the customer asks for recommendations, popular items, best sellers, "
+                "'what do people usually order', 'what's good here', or 'what should I try'. "
+                "Returns dishes ranked by order frequency — these are proven favorites."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Number of popular dishes to return (default 5, max 10)",
+                        "default": 5,
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_restaurant_info",
             "description": (
                 "Get general information about the restaurant: hours, address, "
@@ -556,6 +579,73 @@ def make_trigger_waiter(restaurant_id: str, table_id: str | None):
     return trigger_waiter
 
 
+def make_get_popular_dishes(restaurant_id: str):
+    """Create a branch-scoped get_popular_dishes tool.
+
+    Queries real order data to find the most-ordered dishes — no hallucination.
+    """
+
+    def get_popular_dishes(limit: int = 5) -> str:
+        from django.db.models import Sum
+        from apps.ordering.models import OrderItem
+        from apps.menus.models import Dish
+
+        limit = max(1, min(10, limit))
+
+        # Aggregate order items by dish name for this restaurant.
+        popular = (
+            OrderItem.objects.filter(
+                order__restaurant_id=restaurant_id,
+                order__status__in=["paid", "served", "ready", "preparing", "new", "accepted"],
+            )
+            .values("dish_name_en")
+            .annotate(total_qty=Sum("quantity"))
+            .order_by("-total_qty")[:limit]
+        )
+
+        if not popular:
+            return json.dumps({"dishes": [], "message": "No order data available yet."})
+
+        # Enrich with current menu data (price, image, description).
+        results = []
+        for item in popular:
+            name = item["dish_name_en"]
+            dish = Dish.objects.filter(
+                restaurant_id=restaurant_id, name_en__iexact=name, is_available=True
+            ).select_related("category").first()
+
+            image_url = ""
+            if dish and dish.image:
+                try:
+                    from django.conf import settings
+                    if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
+                        image_url = dish.image.url
+                    else:
+                        import base64, mimetypes
+                        with open(dish.image.path, "rb") as f:
+                            encoded = base64.b64encode(f.read()).decode()
+                        mime = mimetypes.guess_type(dish.image.path)[0] or "image/png"
+                        image_url = f"data:{mime};base64,{encoded}"
+                except Exception:
+                    pass
+
+            results.append({
+                "dish_id": str(dish.id) if dish else "",
+                "dish_name": name,
+                "description": (dish.description_en or "") if dish else "",
+                "price": float(dish.price) if dish else 0,
+                "category": getattr(getattr(dish, "category", None), "name_en", "") if dish else "",
+                "image_url": image_url,
+                "times_ordered": item["total_qty"],
+                "is_vegetarian": bool(dish and dish.is_vegetarian),
+                "is_spicy": bool(dish and dish.is_spicy),
+            })
+
+        return json.dumps({"dishes": results}, default=str)
+
+    return get_popular_dishes
+
+
 def build_all_tools(restaurant, table_id: str | None, query_vector_fn) -> dict[str, callable]:
     """Build all branch-scoped tools and return as {name: fn} dict."""
     rid = str(restaurant.id)
@@ -564,6 +654,7 @@ def build_all_tools(restaurant, table_id: str | None, query_vector_fn) -> dict[s
         "get_dish": make_get_dish(rid),
         "compare_prices": make_compare_prices(rid),
         "get_restaurant_info": make_get_restaurant_info(restaurant),
+        "get_popular_dishes": make_get_popular_dishes(rid),
     }
 
     if table_id:

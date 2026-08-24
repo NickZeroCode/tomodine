@@ -389,9 +389,20 @@ class OfferSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "current_uses", "created_at")
 
     def get_dish_image(self, obj):
-        if obj.dish and obj.dish.image:
+        if not obj.dish or not obj.dish.image:
+            return None
+        from django.conf import settings
+        if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
             return obj.dish.image.url
-        return None
+        # Local storage — base64 data URI.
+        try:
+            import base64, mimetypes
+            with open(obj.dish.image.path, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode()
+            mime = mimetypes.guess_type(obj.dish.image.path)[0] or "image/png"
+            return f"data:{mime};base64,{encoded}"
+        except (FileNotFoundError, OSError):
+            return None
 
 
 # ---------------------------------------------------------------------------

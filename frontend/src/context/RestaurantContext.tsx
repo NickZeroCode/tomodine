@@ -23,7 +23,14 @@ const RestaurantContext = createContext<RestaurantContextValue | null>(null);
 
 export function RestaurantProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
-  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  // Initialize from localStorage so branch switching persists across reloads.
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("tenant.slug") || null;
+    } catch {
+      return null;
+    }
+  });
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["restaurants"],
