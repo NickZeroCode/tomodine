@@ -193,14 +193,23 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=["get"], url_path="orders")
     def list_orders(self, request):
-        """Return all orders for a customer session (most recent first)."""
+        """Return all orders for a customer session (most recent first).
+
+        Includes orders from the same table (not just this session) so
+        bot-placed orders also appear in the customer's 'My Orders' view.
+        """
         session_token = request.query_params.get("session_token", "")
         session = get_object_or_404(
             CustomerSession, token=session_token, is_active=True
         )
         orders = (
-            Order.objects.filter(session=session)
+            Order.objects.filter(
+                restaurant=session.restaurant,
+                table=session.table,
+                created_at__date__gte=session.created_at.date(),
+            )
             .prefetch_related("items")
+            .exclude(status__in=["cancelled", "rejected"])
             .order_by("-created_at")[:30]
         )
         return Response(CustomerOrderSerializer(orders, many=True).data)
