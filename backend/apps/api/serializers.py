@@ -49,14 +49,12 @@ class RestaurantSerializer(serializers.ModelSerializer):
             return data
         for field_name in ("logo", "cover_image"):
             img = getattr(instance, field_name, None)
-            if img and hasattr(img, "path"):
+            if img and hasattr(img, "url"):
                 try:
-                    import base64, mimetypes
-                    with open(img.path, "rb") as f:
-                        encoded = base64.b64encode(f.read()).decode()
-                    mime = mimetypes.guess_type(img.path)[0] or "image/png"
-                    data[field_name] = f"data:{mime};base64,{encoded}"
-                except (FileNotFoundError, OSError):
+                    request = self.context.get("request")
+                    if request:
+                        data[field_name] = request.build_absolute_uri(img.url)
+                except ValueError:
                     data[field_name] = None
         return data
 
@@ -394,14 +392,10 @@ class OfferSerializer(serializers.ModelSerializer):
         from django.conf import settings
         if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
             return obj.dish.image.url
-        # Local storage — base64 data URI.
+        request = self.context.get("request")
         try:
-            import base64, mimetypes
-            with open(obj.dish.image.path, "rb") as f:
-                encoded = base64.b64encode(f.read()).decode()
-            mime = mimetypes.guess_type(obj.dish.image.path)[0] or "image/png"
-            return f"data:{mime};base64,{encoded}"
-        except (FileNotFoundError, OSError):
+            return request.build_absolute_uri(obj.dish.image.url) if request else obj.dish.image.url
+        except ValueError:
             return None
 
 

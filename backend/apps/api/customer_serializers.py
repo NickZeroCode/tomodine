@@ -51,14 +51,12 @@ class CustomerDishSerializer(serializers.ModelSerializer):
         if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
             return data
         img = getattr(instance, "image", None)
-        if img and hasattr(img, "path"):
+        if img and hasattr(img, "url"):
             try:
-                import base64, mimetypes
-                with open(img.path, "rb") as f:
-                    encoded = base64.b64encode(f.read()).decode()
-                mime = mimetypes.guess_type(img.path)[0] or "image/png"
-                data["image"] = f"data:{mime};base64,{encoded}"
-            except (FileNotFoundError, OSError):
+                request = self.context.get("request")
+                if request:
+                    data["image"] = request.build_absolute_uri(img.url)
+            except ValueError:
                 data["image"] = None
         return data
 
@@ -133,38 +131,24 @@ class CustomerOrderItemSerializer(serializers.ModelSerializer):
         fields = ("dish_name_en", "dish_name_bn", "dish_image", "min_prep_time", "max_prep_time", "variant_name", "quantity", "unit_price")
 
     def get_dish_image(self, obj: OrderItem) -> str:
-        """Resolve dish image — base64 for local storage, URL for S3."""
+        """Resolve dish image URL."""
         url = (obj.dish_image or "").strip()
         if not url:
             return ""
-        if url.startswith(("http://", "https://", "data:")):
+        if url.startswith(("http://", "https://")):
             return url
-
         from django.conf import settings
-
-        # S3 configured — build full S3 URL.
         if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
+            media_url = settings.MEDIA_URL or ""
             name = url
             for prefix in ("/media/", "media/"):
                 if name.startswith(prefix):
                     name = name[len(prefix):]
                     break
-            name = name.lstrip("/")
-            media_url = settings.MEDIA_URL or ""
-            return f"{media_url.rstrip('/')}/{name}"
-
-        # Local storage — try base64 data URI.
-        import os
-        media_root = settings.MEDIA_ROOT or ""
-        full_path = os.path.join(media_root, url.lstrip("/"))
-        try:
-            import base64, mimetypes
-            with open(full_path, "rb") as f:
-                encoded = base64.b64encode(f.read()).decode()
-            mime = mimetypes.guess_type(full_path)[0] or "image/png"
-            return f"data:{mime};base64,{encoded}"
-        except (FileNotFoundError, OSError):
-            return ""
+            return f"{media_url.rstrip('/')}/{name.lstrip('/')}"
+        request = self.context.get("request")
+        full = f"/media/{url.lstrip('/')}"
+        return request.build_absolute_uri(full) if request else full
 
 
 class CustomerOrderSerializer(serializers.ModelSerializer):

@@ -116,6 +116,22 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "get_offers",
+            "description": (
+                "Get current active offers and promotions at this restaurant. "
+                "Use when the user asks about deals, discounts, promotions, offers, "
+                "'any discounts?', 'what's on sale?', or 'do you have any offers?'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_restaurant_info",
             "description": (
                 "Get general information about the restaurant: hours, address, "
@@ -203,6 +219,27 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
 # ── Tool implementations (branch-scoped) ────────────────────────
 
 
+def _abs_image_url(field) -> str:
+    """Build an absolute URL for an ImageField (no request needed)."""
+    if not field:
+        return ""
+    name = getattr(field, "name", None)
+    if not name:
+        return ""
+    from django.conf import settings
+    if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
+        try:
+            return field.url
+        except ValueError:
+            return ""
+    # Local storage — build URL from MEDIA_URL + relative path.
+    media_url = getattr(settings, "MEDIA_URL", "/media/") or "/media/"
+    try:
+        return f"{media_url.rstrip('/')}/{name.lstrip('/')}"
+    except Exception:
+        return ""
+
+
 def make_search_menu(restaurant_id: str, query_vector_fn):
     """Create a branch-scoped search_menu tool.
 
@@ -233,13 +270,7 @@ def make_search_menu(restaurant_id: str, query_vector_fn):
         dishes = {str(d.pk): d for d in Dish.objects.filter(pk__in=dish_ids).select_related("category")}
         for r in results:
             dish = dishes.get(str(r.get("dish_id", "")))
-            if dish and dish.image:
-                try:
-                    r["image_url"] = dish.image.url if hasattr(dish.image, "url") else str(dish.image)
-                except Exception:
-                    r["image_url"] = ""
-            else:
-                r["image_url"] = ""
+            r["image_url"] = _abs_image_url(dish.image) if dish and dish.image else ""
             r["is_vegetarian"] = bool(dish and dish.is_vegetarian)
             r["is_spicy"] = bool(dish and dish.is_spicy)
 
@@ -614,20 +645,7 @@ def make_get_popular_dishes(restaurant_id: str):
                 restaurant_id=restaurant_id, name_en__iexact=name, is_available=True
             ).select_related("category").first()
 
-            image_url = ""
-            if dish and dish.image:
-                try:
-                    from django.conf import settings
-                    if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
-                        image_url = dish.image.url
-                    else:
-                        import base64, mimetypes
-                        with open(dish.image.path, "rb") as f:
-                            encoded = base64.b64encode(f.read()).decode()
-                        mime = mimetypes.guess_type(dish.image.path)[0] or "image/png"
-                        image_url = f"data:{mime};base64,{encoded}"
-                except Exception:
-                    pass
+            image_url = _abs_image_url(dish.image) if dish and dish.image else ""
 
             results.append({
                 "dish_id": str(dish.id) if dish else "",
@@ -646,6 +664,47 @@ def make_get_popular_dishes(restaurant_id: str):
     return get_popular_dishes
 
 
+def make_get_offers(restaurant_id: str):
+    """Create a branch-scoped get_offers tool."""
+
+    def get_offers() -> str:
+        from django.db.models import Q
+        from django.utils import timezone
+        from apps.billing.models import Offer
+
+        now = timezone.now()
+        offers = Offer.objects.filter(
+            restaurant_id=restaurant_id,
+            is_active=True,
+        ).filter(
+            Q(start_date__isnull=True) | Q(start_date__lte=now),
+        ).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=now),
+        ).select_related("dish")
+
+        if not offers:
+            return json.dumps({"offers": [], "message": "No active offers at the moment."})
+
+        results = []
+        for offer in offers:
+            image_url = _abs_image_url(offer.dish.image) if offer.dish and offer.dish.image else ""
+            results.append({
+                "id": str(offer.id),
+                "name": offer.name_en or "",
+                "description": offer.description_en or "",
+                "code": offer.code or "",
+                "discount_type": offer.discount_type,
+                "discount_value": str(offer.discount_value),
+                "dish_name": offer.dish.name_en if offer.dish else None,
+                "dish_price": float(offer.dish.price) if offer.dish else None,
+                "dish_image": image_url,
+            })
+
+        return json.dumps({"offers": results}, default=str)
+
+    return get_offers
+
+
 def build_all_tools(restaurant, table_id: str | None, query_vector_fn) -> dict[str, callable]:
     """Build all branch-scoped tools and return as {name: fn} dict."""
     rid = str(restaurant.id)
@@ -655,6 +714,7 @@ def build_all_tools(restaurant, table_id: str | None, query_vector_fn) -> dict[s
         "compare_prices": make_compare_prices(rid),
         "get_restaurant_info": make_get_restaurant_info(restaurant),
         "get_popular_dishes": make_get_popular_dishes(rid),
+        "get_offers": make_get_offers(rid),
     }
 
     if table_id:

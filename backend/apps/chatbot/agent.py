@@ -120,6 +120,7 @@ YOUR ROLE:
 3. Call a waiter using trigger_waiter when the customer needs service.
 4. Check order status using check_order_status when the user asks about their order.
 5. Answer questions about the restaurant using get_restaurant_info.
+6. Check current offers and discounts using get_offers when asked about deals or promotions.
 
 AFTER ADDING TO CART:
 - Always ask: "Would you like to add anything else?"

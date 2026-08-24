@@ -90,39 +90,20 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
             .order_by("display_order")
         )
         def _abs_url(request, field):
-            """Build an image URL for the frontend.
-
-            - S3: returns the full S3 URL.
-            - Local storage: converts to a base64 data URI.
-            - No image: returns None.
-            """
-            # Django ImageFieldFile: check .name to confirm a file is assigned.
+            """Build an absolute image URL for the frontend."""
             name = getattr(field, "name", None)
             if not name:
                 return None
-
             from django.conf import settings
-
-            # S3 storage — field.url is already a full https:// URL.
             if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
                 try:
                     return field.url
                 except ValueError:
                     return None
-
-            # Local storage — read file and return as base64 data URI.
-            path = getattr(field, "path", None)
-            if path:
-                try:
-                    import base64, mimetypes
-                    with open(path, "rb") as f:
-                        encoded = base64.b64encode(f.read()).decode()
-                    mime = mimetypes.guess_type(path)[0] or "image/png"
-                    return f"data:{mime};base64,{encoded}"
-                except (FileNotFoundError, OSError):
-                    return None
-
-            return None
+            try:
+                return request.build_absolute_uri(field.url)
+            except ValueError:
+                return None
 
         return Response(
             {
