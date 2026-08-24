@@ -22,9 +22,11 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "function": {
             "name": "search_menu",
             "description": (
-                "Search the restaurant menu for dishes matching a natural-language query. "
-                "Returns up to 5 items with names, prices, images, descriptions, and similarity scores. "
-                "Use this for broad queries like 'show me the menu', 'what's spicy', 'vegetarian options'."
+                "Search the restaurant menu using natural language. Returns matching dishes with names, prices, images, and descriptions. "
+                "Supports filters: category (e.g. 'Dessert', 'Appetizer', 'Main'), max_price (number in BDT). "
+                "Use for: broad menu browsing, category filtering ('show me desserts'), price filtering ('under 300 taka'), "
+                "dietary queries ('vegetarian'), and ingredient searches ('chicken dishes'). "
+                "Do NOT use for a single specific dish the user named — use get_dish instead."
             ),
             "parameters": {
                 "type": "object",
