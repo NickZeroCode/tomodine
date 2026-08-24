@@ -23,6 +23,7 @@ export function RegisterPage() {
   });
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -142,10 +143,30 @@ export function RegisterPage() {
               />
             ))}
 
+            {/* Terms agreement */}
+            <label className="mt-2 flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-ink-300 text-brand-600 focus:ring-brand-500"
+              />
+              <span className="text-xs leading-relaxed text-ink-500">
+                {t("auth.agreePrefix", "I have read and agree to the")}{" "}
+                <Link to="/terms" target="_blank" className="font-semibold text-brand-700 underline underline-offset-2 hover:text-brand-900">
+                  {t("auth.termsOfUse", "Terms of Use")}
+                </Link>{" "}
+                {t("auth.and", "and")}{" "}
+                <Link to="/privacy" target="_blank" className="font-semibold text-brand-700 underline underline-offset-2 hover:text-brand-900">
+                  {t("auth.privacyPolicy", "Privacy Policy")}
+                </Link>
+              </span>
+            </label>
+
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="relative mt-2 w-full overflow-hidden rounded-xl bg-gradient-to-r from-brand-600 to-brand-700 py-3.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(29,106,78,0.35)] transition-all duration-200 hover:shadow-[0_6px_20px_rgba(29,106,78,0.45)] hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
+              disabled={isSubmitting || !agreed}
+              className="relative mt-2 w-full overflow-hidden rounded-xl bg-gradient-to-r from-brand-600 to-brand-700 py-3.5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(29,106,78,0.35)] transition-all duration-200 hover:shadow-[0_6px_20px_rgba(29,106,78,0.45)] hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <span className="relative z-10">{isSubmitting ? t("common.loading") : t("auth.register")}</span>
             </button>
