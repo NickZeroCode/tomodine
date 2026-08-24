@@ -74,9 +74,12 @@ export function ChatWidget({ tableId, restaurantSlug, onPlayGames }: Props) {
 
       {/* ── Chat window — full-screen on mobile, floating on desktop ── */}
       {open && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-white sm:inset-auto sm:bottom-20 sm:right-5 sm:h-[500px] sm:w-[380px] sm:rounded-2xl sm:border sm:border-ink-100 sm:shadow-2xl">
+        <div
+          className="fixed inset-0 z-50 flex flex-col bg-white sm:inset-auto sm:bottom-20 sm:right-5 sm:h-[500px] sm:w-[380px] sm:rounded-2xl sm:border sm:border-ink-100 sm:shadow-2xl"
+          style={{ height: "100dvh", maxHeight: "-webkit-fill-available" } as React.CSSProperties}
+        >
           {/* Header */}
-          <div className="flex items-center gap-3 bg-brand-600 px-4 py-3">
+          <div className="flex shrink-0 items-center gap-3 bg-brand-600 px-4 py-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">
               <img src="/images/logos/chatbot-logo.png" alt="" className="h-5 w-5 rounded-full object-cover" />
             </div>
@@ -108,7 +111,7 @@ export function ChatWidget({ tableId, restaurantSlug, onPlayGames }: Props) {
           </div>
 
           {/* Messages */}
-          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-3 py-3 sm:px-4">
+          <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-brand-50">
@@ -160,7 +163,7 @@ export function ChatWidget({ tableId, restaurantSlug, onPlayGames }: Props) {
           )}
 
           {/* Input */}
-          <div className="flex items-center gap-2 border-t border-ink-100 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
+          <div className="flex shrink-0 items-center gap-2 border-t border-ink-100 px-3 py-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <input
               ref={inputRef}
               type="text"

@@ -106,3 +106,17 @@
   background: #cdd2d6;
   border-radius: 2px;
 }
+
+/* iOS Safari: prevent virtual keyboard from squishing fixed-position chat window */
+@supports (-webkit-touch-callout: none) {
+  .chat-window-mobile {
+    height: -webkit-fill-available !important;
+    height: 100dvh !important;
+  }
+}
+
+/* Prevent page bounce on iOS when scrolling inside chat */
+.chat-messages-area {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
