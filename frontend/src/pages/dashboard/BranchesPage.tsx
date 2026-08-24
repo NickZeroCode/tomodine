@@ -41,7 +41,8 @@ interface BranchForm {
 const EMPTY_FORM: BranchForm = { name: "", address_line: "", area: "", phone: "" };
 
 export function BranchesPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language.startsWith("bn") ? "bn" : "en";
   const { restaurant } = useRestaurant();
   const queryClient = useQueryClient();
 
@@ -88,7 +89,18 @@ export function BranchesPage() {
     },
     onError: (err) => {
       const apiErr = err as unknown as ApiError;
-      setErrors(apiErr.errors ?? { non_field_errors: [apiErr.message] });
+      const code = (apiErr as unknown as { response?: { data?: { code?: string } } })?.response?.data?.code;
+      if (code === "plan_limit_reached") {
+        setErrors({
+          non_field_errors: [
+            lang === "bn"
+              ? "ফ্রি ট্রায়ালে শুধুমাত্র ১টি ব্রাঞ্চ অনুমোদিত। আরও ব্রাঞ্চ যোগ করতে আপনার সাবস্ক্রিপশন আপগ্রেড করুন।"
+              : "Free trial is limited to 1 branch. Upgrade your subscription to add more branches.",
+          ],
+        });
+      } else {
+        setErrors(apiErr.errors ?? { non_field_errors: [apiErr.message] });
+      }
     },
   });
 

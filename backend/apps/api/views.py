@@ -85,6 +85,30 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         ).distinct()
 
     def perform_create(self, serializer):
+        # Enforce branch limit: free trial = 1 branch.
+        from apps.billing.entitlements import get_entitlements
+        from apps.billing.models import Subscription
+
+        existing_branches = Restaurant.objects.filter(
+            memberships__user=self.request.user,
+            memberships__is_owner=True,
+            memberships__is_active=True,
+        ).count()
+
+        # Check if user is on trial.
+        sub = Subscription.objects.filter(
+            restaurant__memberships__user=self.request.user,
+            restaurant__memberships__is_owner=True,
+            status=Subscription.Status.TRIALING,
+        ).first()
+
+        if sub and existing_branches >= 1:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({
+                "detail": "Free trial is limited to 1 branch. Upgrade your subscription to add more branches.",
+                "code": "plan_limit_reached",
+            })
+
         restaurant = serializer.save(owner=self.request.user)
         RestaurantMembership.objects.get_or_create(
             restaurant=restaurant,

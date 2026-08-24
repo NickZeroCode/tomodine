@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
@@ -11,6 +12,7 @@ export function SubscriptionPage() {
   const lang = i18n.language === "bn" ? "bn" : "en";
   const { restaurant } = useRestaurant();
   const queryClient = useQueryClient();
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const plansQuery = useQuery({
     queryKey: ["subscription-plans"],
@@ -37,8 +39,25 @@ export function SubscriptionPage() {
       const res = await api.post("/subscriptions/subscribe/", { plan_id: planId });
       return res.data as Subscription;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      const planName = localized(data.plan, lang);
+      const days = data.plan.trial_days || 14;
+      setToast({
+        type: "success",
+        message: lang === "bn"
+          ? `অভিনন্দন! আপনার ${days} দিনের ফ্রি ট্রায়াল সফলভাবে শুরু হয়েছে। প্ল্যান: ${planName}`
+          : `Congratulations! Your ${days}-day free trial has started successfully. Plan: ${planName}`,
+      });
+      setTimeout(() => setToast(null), 6000);
+    },
+    onError: (err: unknown) => {
+      const apiErr = err as { response?: { data?: { detail?: string } } };
+      setToast({
+        type: "error",
+        message: apiErr?.response?.data?.detail || (lang === "bn" ? "সাবস্ক্রিপশন শুরু করা যায়নি" : "Could not start subscription"),
+      });
+      setTimeout(() => setToast(null), 5000);
     },
   });
 
@@ -51,9 +70,48 @@ export function SubscriptionPage() {
 
   return (
     <section aria-labelledby="billing-heading">
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed right-4 top-4 z-50 max-w-sm rounded-xl border p-4 shadow-lift transition-all ${
+          toast.type === "success"
+            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+            : "border-red-200 bg-red-50 text-red-800"
+        }`}>
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 text-lg">{toast.type === "success" ? "🎉" : "⚠️"}</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">{toast.type === "success" ? (lang === "bn" ? "সফল!" : "Success!") : (lang === "bn" ? "ত্রুটি" : "Error")}</p>
+              <p className="mt-0.5 text-xs leading-relaxed">{toast.message}</p>
+            </div>
+            <button type="button" onClick={() => setToast(null)} className="shrink-0 text-ink-400 hover:text-ink-600">
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       <h2 id="billing-heading" className="mb-4 text-lg font-semibold text-ink-900">
         {t("nav.billing")}
       </h2>
+
+      {/* Empty state — no active subscription */}
+      {!subscription && (
+        <div className="mb-6 overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 to-emerald-50 p-8 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-100">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-8 w-8 text-brand-600">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-bold text-ink-900">
+            {lang === "bn" ? "কোনো সক্রিয় সাবস্ক্রিপশন নেই" : "No Active Subscription"}
+          </h3>
+          <p className="mt-2 max-w-md mx-auto text-sm text-ink-500">
+            {lang === "bn"
+              ? "আপনার অ্যাকাউন্টে কোনো লাইভ সাবস্ক্রিপশন নেই। ১৪ দিনের ফ্রি ট্রায়াল শুরু করুন অথবা নিচে থেকে আপনার পছন্দের প্ল্যান বেছে নিন।"
+              : "Your account has no live subscription. Start a 14-day free trial or choose a plan below to get started."}
+          </p>
+        </div>
+      )}
 
       {subscription && (
         <div className="mb-6 overflow-hidden rounded-2xl bg-gradient-to-r from-brand-800 to-brand-900 p-6 text-white shadow-soft">

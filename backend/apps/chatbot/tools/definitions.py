@@ -411,16 +411,27 @@ def make_add_to_cart(restaurant_id: str, table_id: str | None):
             )
             is_new_order = True
 
-        item = OrderItem.objects.create(
+        # Check if this dish is already in the order — increase qty instead of duplicate.
+        existing_item = OrderItem.objects.filter(
             order=order,
             dish_name_en=dish.name_en,
-            dish_name_bn=dish.name_bn or "",
-            dish_image=dish.image.name if dish.image else "",
-            quantity=quantity,
-            unit_price=dish.price,
-            min_prep_time=dish.min_prep_time,
-            max_prep_time=dish.max_prep_time,
-        )
+        ).first()
+
+        if existing_item:
+            existing_item.quantity += quantity
+            existing_item.save(update_fields=["quantity", "updated_at"])
+            item = existing_item
+        else:
+            item = OrderItem.objects.create(
+                order=order,
+                dish_name_en=dish.name_en,
+                dish_name_bn=dish.name_bn or "",
+                dish_image=dish.image.name if dish.image else "",
+                quantity=quantity,
+                unit_price=dish.price,
+                min_prep_time=dish.min_prep_time,
+                max_prep_time=dish.max_prep_time,
+            )
 
         # Update order total.
         from decimal import Decimal

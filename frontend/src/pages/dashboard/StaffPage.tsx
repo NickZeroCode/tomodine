@@ -108,7 +108,10 @@ export function StaffPage() {
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState onRetry={() => void refetch()} />;
 
-  const list = (members ?? []).filter((m) => m.is_active);
+  // Show active members first, then pending (inactive) invitations.
+  const activeList = (members ?? []).filter((m) => m.is_active);
+  const pendingList = (members ?? []).filter((m) => !m.is_active);
+  const list = [...activeList, ...pendingList];
 
   return (
     <section aria-labelledby="staff-heading">
@@ -178,6 +181,11 @@ export function StaffPage() {
                     {m.is_owner && (
                       <span className="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
                         {t("staff.owner")}
+                      </span>
+                    )}
+                    {!m.is_active && (
+                      <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        {t("staff.pending", "Pending Invitation")}
                       </span>
                     )}
                   </p>
