@@ -61,6 +61,40 @@ function uid(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
+/** Fallback: detect add-to-cart confirmations from bot text when backend
+ *  doesn't return structured_actions (LLM skipped tool call). */
+function guessStructuredActions(response: string, sentText: string): StructuredActions | null {
+  const lower = sentText.toLowerCase();
+  const respLower = response.toLowerCase();
+
+  // User tried to add something and bot confirmed it.
+  if (
+    (lower.includes("add") && lower.includes("order")) ||
+    (respLower.includes("added") && (respLower.includes("cart") || respLower.includes("order")))
+  ) {
+    return {
+      type: "confirmation",
+      message: response,
+      suggest_more: true,
+      suggest_games: true,
+    };
+  }
+
+  // User asked about order status and bot responded with status info.
+  if (
+    lower.includes("order") && (lower.includes("status") || lower.includes("where") || lower.includes("track")) &&
+    (respLower.includes("preparing") || respLower.includes("ready") || respLower.includes("served") || respLower.includes("order"))
+  ) {
+    return {
+      type: "order_status",
+      orders: [],
+      message: response,
+    };
+  }
+
+  return null;
+}
+
 interface Props {
   tableId?: string;
   restaurantSlug?: string;
@@ -75,11 +109,12 @@ export function useChatApi({ tableId, restaurantSlug }: Props = {}): UseChatApiR
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || isLoading) return;
+      const sentText = text.trim();
 
       const userMsg: ChatMessage = {
         id: uid(),
         role: "user",
-        content: text.trim(),
+        content: sentText,
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, userMsg]);
@@ -88,7 +123,7 @@ export function useChatApi({ tableId, restaurantSlug }: Props = {}): UseChatApiR
 
       try {
         const payload: Record<string, unknown> = {
-          message: text.trim(),
+          message: sentText,
         };
         if (sessionIdRef.current) payload.session_id = sessionIdRef.current;
         if (tableId) payload.table_id = tableId;
@@ -104,7 +139,7 @@ export function useChatApi({ tableId, restaurantSlug }: Props = {}): UseChatApiR
           id: uid(),
           role: "assistant",
           content: data.response || "",
-          structuredActions: data.structured_actions ?? null,
+          structuredActions: data.structured_actions ?? guessStructuredActions(data.response, sentText),
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, botMsg]);
