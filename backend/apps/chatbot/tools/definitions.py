@@ -105,8 +105,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "description": "Number of popular dishes to return (default 5, max 10)",
-                        "default": 5,
+                        "description": "Number of popular dishes to return (default 3, max 5)",
+                        "default": 3,
                     },
                 },
                 "required": [],
@@ -616,12 +616,12 @@ def make_get_popular_dishes(restaurant_id: str):
     Queries real order data to find the most-ordered dishes — no hallucination.
     """
 
-    def get_popular_dishes(limit: int = 5) -> str:
+    def get_popular_dishes(limit: int = 3) -> str:
         from django.db.models import Sum
         from apps.ordering.models import OrderItem
         from apps.menus.models import Dish
 
-        limit = max(1, min(10, limit))
+        limit = max(1, min(5, limit))
 
         # Aggregate order items by dish name for this restaurant.
         popular = (
@@ -654,7 +654,6 @@ def make_get_popular_dishes(restaurant_id: str):
                 "price": float(dish.price) if dish else 0,
                 "category": getattr(getattr(dish, "category", None), "name_en", "") if dish else "",
                 "image_url": image_url,
-                "times_ordered": item["total_qty"],
                 "is_vegetarian": bool(dish and dish.is_vegetarian),
                 "is_spicy": bool(dish and dish.is_spicy),
             })

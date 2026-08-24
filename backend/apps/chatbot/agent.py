@@ -133,7 +133,7 @@ AFTER ORDER STATUS CHECK:
 CRITICAL RULES:
 - NEVER invent menu items, prices, or availability. Always use tools to get real data.
 - NEVER recommend a dish by name unless it was returned by a tool (search_menu, get_dish, or get_popular_dishes). If you don't have tool data, say "Let me check our menu for you" and call the appropriate tool.
-- For recommendations, ALWAYS use get_popular_dishes — it returns real order data. Never guess what's popular.
+- For recommendations, ALWAYS use get_popular_dishes — it returns real order data. Never guess what's popular. NEVER mention order counts or numbers to the customer — just present the dishes naturally (e.g. "Here are our most popular dishes").
 - If search_menu returns no results, say: "I don't see that on our current menu. Would you like me to show you something similar?"
 - When presenting dishes from search_menu, DO NOT dump raw JSON or list every field. Instead, briefly mention the dish names and prices in a conversational way (e.g. "We have Chicken Biryani at ৳350, and a Grilled Fish at ৳450."). The UI will render dish cards automatically.
 - When presenting a single dish from get_dish, give a brief friendly description and mention the price.
@@ -343,7 +343,6 @@ def _build_structured_from_tools(tool_results: list[tuple[str, str]]) -> dict | 
                     badge_parts.append("Vegetarian")
                 if item.get("is_spicy"):
                     badge_parts.append("Spicy")
-                badge_parts.append(f"Ordered {item.get('times_ordered', 0)}x")
                 all_items.append({
                     "id": str(item.get("dish_id", "")),
                     "name": item.get("dish_name", ""),
@@ -458,7 +457,6 @@ def _extract_structured_actions(history: list[dict]) -> dict | None:
                     badge_parts.append("Vegetarian")
                 if item.get("is_spicy"):
                     badge_parts.append("Spicy")
-                badge_parts.append(f"Ordered {item.get('times_ordered', 0)}x")
                 all_items.append({
                     "id": str(item.get("dish_id", "")),
                     "name": item.get("dish_name", ""),
