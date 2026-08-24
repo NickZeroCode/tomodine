@@ -9,6 +9,7 @@ import { QrScannerModal } from "@/components/QrScannerModal";
 import { TrustedMarquee } from "@/components/TrustedMarquee";
 import { Reveal } from "@/components/Reveal";
 import { LandingChatWidget } from "@/components/LandingChatWidget";
+import { CookieConsentBanner } from "@/pages/CookiePage";
 import type { SubscriptionPlan } from "@/types";
 
 /* ─── placeholder images (from TheFork — swap later) ─────── */
@@ -548,14 +549,14 @@ export function LandingPage() {
     { heading: t("landing.footerSupport"), links: [
       { label: t("landing.pricingTitle"), href: "#pricing" },
       { label: t("landing.faqTitle"), href: "#faq" },
-      { label: t("landing.howItWorks"), href: "#solution" },
-      { label: t("landing.contactUs"), href: "/register" },
+      { label: t("landing.contactUs"), href: "#contact" },
+      { label: t("landing.footerHelp", "Help Center"), href: "/login" },
     ]},
     { heading: t("landing.footerCompany"), links: [
       { label: t("landing.footerAbout", "About Us"), href: "#solution" },
-      { label: t("landing.footerBlog", "Blog"), href: "#" },
-      { label: t("landing.footerCareers", "Careers"), href: "#" },
-      { label: t("landing.footerPartners", "Partners"), href: "#" },
+      { label: t("landing.footerTerms", "Terms of Use"), href: "/terms" },
+      { label: t("landing.footerPrivacy", "Privacy Policy"), href: "/privacy" },
+      { label: t("landing.footerCookies", "Cookie Settings"), href: "/cookies" },
     ]},
     { heading: t("landing.footerAccount"), links: [
       { label: t("auth.login"), href: "/login" },
@@ -907,14 +908,17 @@ export function LandingPage() {
           {/* Legal */}
           <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row">
             <div className="flex gap-5">
-              <span>{t("landing.legalTerms")}</span>
-              <span>{t("landing.legalPrivacy")}</span>
-              <span>{t("landing.legalCookies")}</span>
+              <Link to="/terms" className="transition-colors hover:text-white">{t("landing.legalTerms")}</Link>
+              <Link to="/privacy" className="transition-colors hover:text-white">{t("landing.legalPrivacy")}</Link>
+              <Link to="/cookies" className="transition-colors hover:text-white">{t("landing.legalCookies")}</Link>
             </div>
             <p>© 2026 {t("common.appName")}. {t("landing.rights")}</p>
           </div>
         </div>
       </footer>
+
+      {/* ── Cookie consent banner ── */}
+      <CookieConsentBanner />
 
       {/* ── TomoDine AI + WhatsApp (positioned by LandingChatWidget) ── */}
       <LandingChatWidget />
