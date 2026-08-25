@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Icon } from "@/components/Icon";
-import type { DishModifier, ModifierGroup } from "@/types";
+import type { ModifierGroup } from "@/types";
 
 interface ModifierOptionDraft {
   id?: string; // Existing ID (for edits)
@@ -95,7 +95,7 @@ interface Props {
 }
 
 export function ModifierGroupsEditor({ dishId, initialGroups, onSaved }: Props) {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const lang = i18n.language.startsWith("bn") ? "bn" : "en";
   const queryClient = useQueryClient();
 
@@ -281,7 +281,7 @@ export function ModifierGroupsEditor({ dishId, initialGroups, onSaved }: Props) 
           >
             <div className="flex min-w-0 items-center gap-2">
               <Icon
-                name={g._collapsed ? "chevron-right" : "chevron-down"}
+                name={g._collapsed ? "chevronRight" : "chevronDown"}
                 className="h-4 w-4 shrink-0 text-ink-400"
               />
               <span className="truncate text-sm font-medium text-ink-800">

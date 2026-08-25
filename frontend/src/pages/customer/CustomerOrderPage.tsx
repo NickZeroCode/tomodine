@@ -368,6 +368,16 @@ export function CustomerOrderPage() {
       },
       variant: null,
       quantity: item.quantity,
+      modifiers: item.selected_modifiers?.map((m) => ({
+        id: m.id,
+        name_en: m.name_en,
+        name_bn: m.name_bn,
+        price_delta: m.price_delta,
+        is_available: true,
+        is_default: false,
+        display_order: 0,
+        group: null,
+      })) ?? [],
       offerPrice: null,
     }));
     setCart(newLines);

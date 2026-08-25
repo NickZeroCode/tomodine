@@ -49,7 +49,7 @@ interface Props {
 }
 
 export function VariantsEditor({ dishId, initialVariants, onSaved }: Props) {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const lang = i18n.language.startsWith("bn") ? "bn" : "en";
   const queryClient = useQueryClient();
 
