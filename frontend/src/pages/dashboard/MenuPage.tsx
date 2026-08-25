@@ -146,14 +146,29 @@ export function MenuPage() {
       if (editingDish) return api.patch(`/dishes/${editingDish.id}/`, fd);
       return api.post("/dishes/", fd);
     },
-    onSuccess: () => {
+    onSuccess: async (response) => {
+      const isCreate = !editingDish;
       setDishFormOpen(false);
       setEditingDish(null);
       setDishForm(EMPTY_DISH);
       setDishErrors({});
       setDishImage(null);
       setRemoveDishImage(false);
-      invalidate();
+      // Refetch menus so the new dish appears with its ID.
+      await queryClient.invalidateQueries({ queryKey: menusKey });
+      if (isCreate && response?.data?.id) {
+        // Reopen the newly created dish in edit mode so the user can add variations.
+        const newDishId = response.data.id as string;
+        const freshMenus = queryClient.getQueryData<Menu[]>(menusKey) ?? [];
+        const newDish = freshMenus.flatMap((m) => m.categories.flatMap((c) => c.dishes)).find((d) => d.id === newDishId);
+        if (newDish) {
+          setEditingDish(newDish);
+          setDishForm(dishToForm(newDish));
+          setDishFormOpen(true);
+          showToast({ kind: "success", title: lang === "bn" ? "ডিশ তৈরি হয়েছে!" : "Dish created!", body: lang === "bn" ? "এখন ভ্যারিয়েশন যোগ করতে পারেন।" : "Now you can add variations to this dish." });
+          return;
+        }
+      }
       showToast({ kind: "success", title: lang === "bn" ? "সংরক্ষিত!" : "Saved!", body: lang === "bn" ? "ডিশ সফলভাবে সংরক্ষিত হয়েছে।" : "Dish saved successfully." });
     },
     onError: onMutError(setDishErrors),
