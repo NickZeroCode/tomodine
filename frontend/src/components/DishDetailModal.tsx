@@ -8,12 +8,13 @@ interface DishDetailModalProps {
   dish: Dish;
   lang: "en" | "bn";
   onClose: () => void;
-  onAddToCart?: (dish: Dish, selectedModifiers: DishModifier[]) => void;
+  onAddToCart?: (dish: Dish, selectedModifiers: DishModifier[], quantity: number) => void;
   showAddButton?: boolean;
 }
 
 export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButton = true }: DishDetailModalProps) {
   const { t } = useTranslation();
+  const [quantity, setQuantity] = useState(1);
 
   // Track selected modifiers by group ID (for grouped) and as a set (for ungrouped).
   const [groupSelections, setGroupSelections] = useState<Record<string, string[]>>(() => {
@@ -281,19 +282,45 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
             </div>
           )}
 
-          {/* Add to cart */}
+          {/* Quantity selector */}
+          {showAddButton && onAddToCart && (
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-sm font-medium text-ink-600">
+                {lang === "bn" ? "পরিমাণ" : "Quantity"}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-ink-200 text-ink-600 transition hover:bg-ink-50 active:scale-90"
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path fillRule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
+                </button>
+                <span className="w-8 text-center text-lg font-bold tabular-nums text-ink-900">{quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.min(20, q + 1))}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-ink-200 text-ink-600 transition hover:bg-ink-50 active:scale-90"
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Add to cart button */}
           {showAddButton && onAddToCart && (
             <button
               type="button"
               disabled={validationErrors.length > 0}
-              onClick={() => { onAddToCart(dish, allSelectedModifiers); onClose(); }}
-              className={`mt-5 w-full rounded-xl py-3 text-base font-bold text-white shadow-soft transition-colors ${
+              onClick={() => { onAddToCart(dish, allSelectedModifiers, quantity); onClose(); }}
+              className={`mt-3 w-full rounded-xl py-3 text-base font-bold text-white shadow-soft transition-colors ${
                 validationErrors.length > 0
                   ? "bg-ink-300 cursor-not-allowed"
                   : "bg-orange-500 hover:bg-orange-600"
               }`}
             >
-              {t("cart.addToCart")} · {formatBDT(totalPrice, lang)}
+              {t("cart.addToCart")} · {formatBDT(totalPrice * quantity, lang)}
               {modifierTotal > 0 && (
                 <span className="ml-1 text-xs font-normal opacity-80">
                   ({formatBDT(dish.price, lang)} + {formatBDT(modifierTotal, lang)})

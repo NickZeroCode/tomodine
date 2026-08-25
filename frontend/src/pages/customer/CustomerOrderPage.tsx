@@ -305,7 +305,7 @@ export function CustomerOrderPage() {
 
   // ── Cart helpers ─────────────────────────────────────────────
 
-  function addToCart(dish: Dish, selectedModifiers: DishModifier[] = []) {
+  function addToCart(dish: Dish, selectedModifiers: DishModifier[] = [], qty: number = 1) {
     const offer = dishOffers.get(dish.id);
     const price = parseFloat(dish.price);
     const modifierTotal = selectedModifiers.reduce((s, m) => s + parseFloat(m.price_delta || "0"), 0);
@@ -325,10 +325,10 @@ export function CustomerOrderPage() {
       );
       if (existing) {
         return prev.map((l) =>
-          l === existing ? { ...l, quantity: l.quantity + 1 } : l
+          l === existing ? { ...l, quantity: l.quantity + qty } : l
         );
       }
-      return [...prev, { dish, variant: null, modifiers: selectedModifiers, quantity: 1, offerPrice }];
+      return [...prev, { dish, variant: null, modifiers: selectedModifiers, quantity: qty, offerPrice }];
     });
   }
 
@@ -791,22 +791,30 @@ export function CustomerOrderPage() {
                                 <span className="shrink-0 rounded-full bg-ink-100 px-2.5 py-1 text-[0.6rem] font-medium text-ink-400">
                                   {t("menu.unavailable")}
                                 </span>
-                              ) : inCart && !(dish.modifier_groups?.length || dish.modifiers?.filter((m) => !m.group).length) ? (
+                              ) : (dish.modifier_groups && dish.modifier_groups.length > 0) || (dish.modifiers && dish.modifiers.filter((m) => !m.group && m.is_available).length > 0) ? (
+                                /* Dish has variations — always open the selection modal */
+                                <button
+                                  type="button"
+                                  className="relative shrink-0 rounded-full bg-orange-500 px-3 py-1.5 text-[0.65rem] font-semibold text-white shadow-sm transition-all hover:bg-orange-600 active:scale-95"
+                                  onClick={(e) => { e.stopPropagation(); setDetailDish(dish); }}
+                                >
+                                  {inCart ? (
+                                    <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[0.55rem] font-bold text-orange-600 shadow-sm ring-1 ring-orange-200">
+                                      {inCart.quantity}
+                                    </span>
+                                  ) : null}
+                                  {lang === "bn" ? "বেছে নিন" : "Choose"}
+                                </button>
+                              ) : inCart ? (
+                                /* Simple dish in cart — show quantity controls */
                                 <div className="flex shrink-0 items-center gap-0.5">
                                   <button type="button" className="flex h-7 w-7 items-center justify-center rounded-full border border-ink-200 text-sm font-bold text-ink-500 transition-colors active:bg-ink-100" onClick={(e) => { e.stopPropagation(); updateQuantity(dish.id, -1); }}>−</button>
                                   <span className="w-5 text-center text-xs font-bold tabular-nums text-ink-800">{inCart.quantity}</span>
                                   <button type="button" className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 text-sm font-bold text-white shadow-sm transition-all active:scale-95" onClick={(e) => { e.stopPropagation(); addToCart(dish); }}>+</button>
                                 </div>
                               ) : (
-                                <button type="button" className="shrink-0 rounded-full bg-orange-500 px-3 py-1.5 text-[0.65rem] font-semibold text-white shadow-sm transition-all hover:bg-orange-600 active:scale-95" onClick={(e) => {
-                                  e.stopPropagation();
-                                  // If dish has modifiers, open detail modal for selection.
-                                  if (dish.modifier_groups?.length || dish.modifiers?.filter((m) => !m.group).length) {
-                                    setDetailDish(dish);
-                                  } else {
-                                    addToCart(dish);
-                                  }
-                                }}>
+                                /* Simple dish not in cart — quick add */
+                                <button type="button" className="shrink-0 rounded-full bg-orange-500 px-3 py-1.5 text-[0.65rem] font-semibold text-white shadow-sm transition-all hover:bg-orange-600 active:scale-95" onClick={(e) => { e.stopPropagation(); addToCart(dish); }}>
                                   {t("cart.addToCart")}
                                 </button>
                               )}
