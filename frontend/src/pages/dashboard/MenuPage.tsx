@@ -308,10 +308,10 @@ export function MenuPage() {
   return (
     <section aria-labelledby="menu-heading" className="space-y-5">
       {/* ── Header ── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 id="menu-heading" className="text-lg font-semibold text-ink-900">{t("menu.title")}</h2>
-          <p className="mt-0.5 text-xs text-ink-400">
+          <p className="text-xs text-ink-400">
             {lang === "bn"
               ? "আপনার রেস্তোরাঁর মেনু, ক্যাটাগরি এবং ডিশ পরিচালনা করুন"
               : "Manage your restaurant's menus, categories and dishes"}
@@ -328,21 +328,16 @@ export function MenuPage() {
       </div>
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          { label: lang === "bn" ? "মেনু" : "Menus", value: totalMenus, icon: "menu" as const, color: "brand" },
-          { label: lang === "bn" ? "ক্যাটাগরি" : "Categories", value: totalCategories, icon: "menu" as const, color: "blue" },
-          { label: lang === "bn" ? "ডিশ" : "Dishes", value: totalDishes, icon: "orders" as const, color: "amber" },
-          { label: lang === "bn" ? "বিশেষ" : "Featured", value: featuredDishes, icon: "star" as const, color: "emerald" },
+          { label: lang === "bn" ? "মেনু" : "Menus", value: totalMenus, tone: "border-brand-100 bg-brand-50/60" },
+          { label: lang === "bn" ? "ক্যাটাগরি" : "Categories", value: totalCategories, tone: "border-ink-100 bg-white" },
+          { label: lang === "bn" ? "ডিশ" : "Dishes", value: totalDishes, tone: "border-amber-200 bg-amber-50" },
+          { label: lang === "bn" ? "বিশেষ" : "Featured", value: featuredDishes, tone: "border-emerald-200 bg-emerald-50" },
         ].map((kpi) => (
-          <div key={kpi.label} className="card flex items-center gap-3 p-4">
-            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-${kpi.color}-50`}>
-              <Icon name={kpi.icon} className={`h-5 w-5 text-${kpi.color}-600`} />
-            </span>
-            <div>
-              <p className="font-display text-xl font-bold tabular-nums text-ink-900">{kpi.value}</p>
-              <p className="text-xs text-ink-400">{kpi.label}</p>
-            </div>
+          <div key={kpi.label} className={`rounded-lg border p-4 ${kpi.tone}`}>
+            <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-ink-400">{kpi.label}</p>
+            <p className="mt-1 font-display text-xl font-bold tabular-nums text-ink-900 sm:text-2xl">{kpi.value}</p>
           </div>
         ))}
       </div>
@@ -371,11 +366,11 @@ export function MenuPage() {
           {menus.map((menu) => (
             <div key={menu.id} className="card overflow-hidden">
               {/* Menu header */}
-              <div className="flex items-center justify-between border-b border-ink-100 bg-[#EDF6F5] px-5 py-3">
+              <div className="flex items-center justify-between border-b border-ink-100 bg-ink-50/70 px-5 py-3">
                 <div className="flex items-center gap-3">
-                  <Icon name="menu" className="h-4 w-4 text-brand-600" />
+                  <Icon name="menu" className="h-4 w-4 text-ink-400" />
                   <h3 className="text-sm font-semibold text-ink-900">{localized(menu, lang)}</h3>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[0.6rem] font-bold text-ink-500">
+                  <span className="rounded-full bg-white px-2 py-0.5 text-[0.65rem] font-semibold text-ink-500 border border-ink-100">
                     {menu.categories.length} {lang === "bn" ? "ক্যাটাগরি" : "categories"}
                   </span>
                 </div>
@@ -399,8 +394,8 @@ export function MenuPage() {
                       {/* Category header */}
                       <div className="mb-3 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="h-4 w-0.5 rounded-full bg-brand-500" />
-                          <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-500">{localized(cat, lang)}</h4>
+                          <span className="h-4 w-0.5 rounded-full bg-ink-300" />
+                          <h4 className="text-[0.65rem] font-semibold uppercase tracking-wider text-ink-400">{localized(cat, lang)}</h4>
                           <span className="rounded-full bg-ink-100 px-1.5 py-0.5 text-[0.55rem] font-bold text-ink-400">{cat.dishes.length}</span>
                         </div>
                         <div className="flex shrink-0 gap-1">
