@@ -268,11 +268,11 @@ export function OffersPage() {
                     <button
                       type="button"
                       className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-                        offer.is_active ? "text-amber-600 hover:bg-amber-50" : "text-emerald-600 hover:bg-emerald-50"
+                        status === "active" ? "text-amber-600 hover:bg-amber-50" : "text-emerald-600 hover:bg-emerald-50"
                       }`}
                       onClick={() => toggleActive.mutate(offer)}
                     >
-                      {offer.is_active ? t("offers.deactivate", "Deactivate") : t("offers.activate", "Activate")}
+                      {status === "active" ? t("offers.deactivate", "Deactivate") : t("offers.activate", "Activate")}
                     </button>
                     <button
                       type="button"

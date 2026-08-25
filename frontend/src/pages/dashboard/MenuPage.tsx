@@ -315,22 +315,34 @@ export function MenuPage() {
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: lang === "bn" ? "মেনু" : "Menus", value: totalMenus, icon: "menu", color: "brand" },
-          { label: lang === "bn" ? "ক্যাটাগরি" : "Categories", value: totalCategories, icon: "menu", color: "blue" },
-          { label: lang === "bn" ? "ডিশ" : "Dishes", value: totalDishes, icon: "orders", color: "amber" },
-          { label: lang === "bn" ? "বিশেষ" : "Featured", value: featuredDishes, icon: "star", color: "emerald" },
+          { label: lang === "bn" ? "মেনু" : "Menus", value: totalMenus, icon: "menu" as const, color: "brand" },
+          { label: lang === "bn" ? "ক্যাটাগরি" : "Categories", value: totalCategories, icon: "menu" as const, color: "blue" },
+          { label: lang === "bn" ? "ডিশ" : "Dishes", value: totalDishes, icon: "orders" as const, color: "amber" },
+          { label: lang === "bn" ? "বিশেষ" : "Featured", value: featuredDishes, icon: "star" as const, color: "emerald" },
         ].map((kpi) => (
-          <div key={kpi.label} className="rounded-xl border border-ink-100 bg-white p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-ink-400">{kpi.label}</span>
-              <span className={`flex h-8 w-8 items-center justify-center rounded-lg bg-${kpi.color}-50`}>
-                <Icon name={kpi.icon as "menu" | "orders" | "star"} className={`h-4 w-4 text-${kpi.color}-600`} />
-              </span>
+          <div key={kpi.label} className="card flex items-center gap-3 p-4">
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-${kpi.color}-50`}>
+              <Icon name={kpi.icon} className={`h-5 w-5 text-${kpi.color}-600`} />
+            </span>
+            <div>
+              <p className="font-display text-xl font-bold tabular-nums text-ink-900">{kpi.value}</p>
+              <p className="text-xs text-ink-400">{kpi.label}</p>
             </div>
-            <p className="mt-2 font-display text-2xl font-bold tabular-nums text-ink-900">{kpi.value}</p>
           </div>
         ))}
       </div>
+
+      {/* ── How it works tip ── */}
+      {menus.length > 0 && (
+        <div className="rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3">
+          <p className="text-xs text-brand-800">
+            <span className="font-semibold">{lang === "bn" ? "💡 কিভাবে কাজ করে:" : "💡 How it works:"}</span>{" "}
+            {lang === "bn"
+              ? "প্রতিটি মেনুতে ক্যাটাগরি থাকে (যেমন: স্টার্টার, মেইন কোর্স)। প্রতিটি ক্যাটাগরিতে ডিশ থাকে। গ্রাহকরা QR স্ক্যান করে মেনু দেখবেন।"
+              : "Each Menu contains Categories (e.g. Starters, Main Course). Each Category contains Dishes. Customers see this when they scan the QR code."}
+          </p>
+        </div>
+      )}
 
       {/* ── Empty state ── */}
       {menus.length === 0 ? (
@@ -392,44 +404,58 @@ export function MenuPage() {
                       {cat.dishes.length === 0 ? (
                         <p className="pl-2.5 text-xs text-ink-300">{lang === "bn" ? "এই ক্যাটাগরিতে এখনো কোনো ডিশ নেই" : "No dishes in this category yet"}</p>
                       ) : (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                           {cat.dishes.map((dish) => (
-                            <div key={dish.id} className="group flex gap-3 rounded-xl border border-ink-100 bg-white p-3 transition-all hover:shadow-lift">
-                              {/* Dish image — compact */}
-                              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-ink-50">
+                            <div key={dish.id} className="card group overflow-hidden transition-all hover:shadow-lift">
+                              {/* Dish image — large, prominent */}
+                              <div className="relative h-40 w-full overflow-hidden bg-ink-50">
                                 {dish.image ? (
-                                  <img src={dish.image} alt="" className="h-full w-full object-cover" loading="lazy" />
+                                  <img src={dish.image} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
                                 ) : (
-                                  <div className="flex h-full w-full items-center justify-center"><Icon name="image" className="h-6 w-6 text-ink-200" /></div>
+                                  <div className="flex h-full w-full items-center justify-center"><Icon name="image" className="h-10 w-10 text-ink-200" /></div>
                                 )}
+                                {/* Status overlay */}
                                 {!dish.is_available && (
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                                    <span className="rounded-full bg-white/90 px-1.5 py-0.5 text-[8px] font-bold text-ink-700">{lang === "bn" ? "নেই" : "OFF"}</span>
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                    <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-ink-800">{lang === "bn" ? "অনুপলব্ধ" : "Unavailable"}</span>
                                   </div>
                                 )}
+                                {/* Top badges */}
+                                <div className="absolute left-2.5 top-2.5 flex flex-wrap gap-1">
+                                  {dish.is_featured && <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">{t("menu.featured")}</span>}
+                                  {dish.modifier_groups && dish.modifier_groups.length > 0 && <span className="rounded-full bg-brand-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">{dish.modifier_groups.length} {lang === "bn" ? "ভ্যারিয়েশন" : "variations"}</span>}
+                                </div>
+                                {/* Price badge */}
+                                <div className="absolute bottom-2.5 right-2.5">
+                                  <span className="rounded-full bg-white/95 px-3 py-1 text-sm font-bold text-brand-700 shadow-sm backdrop-blur-sm">{formatBDT(dish.price, lang)}</span>
+                                </div>
                               </div>
                               {/* Dish info */}
-                              <div className="flex min-w-0 flex-1 flex-col">
+                              <div className="p-4">
                                 <div className="flex items-start justify-between gap-2">
-                                  <p className="truncate text-sm font-semibold text-ink-900">{localized(dish, lang)}</p>
-                                  <span className="shrink-0 text-sm font-bold tabular-nums text-brand-700">{formatBDT(dish.price, lang)}</span>
+                                  <h5 className="text-sm font-semibold text-ink-900 leading-tight">{localized(dish, lang)}</h5>
                                 </div>
                                 {/* Description — truncated */}
                                 {localizedDescription(dish, lang) && (
-                                  <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-ink-400">{localizedDescription(dish, lang)}</p>
+                                  <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ink-500">{localizedDescription(dish, lang)}</p>
                                 )}
-                                {/* Badges */}
-                                <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1.5">
-                                  {dish.is_featured && <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">{t("menu.featured")}</span>}
-                                  {dish.is_vegetarian && <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700"><Icon name="vegetarian" className="h-2.5 w-2.5" />{t("menu.vegetarian")}</span>}
-                                  {dish.is_spicy && <span className="inline-flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-bold text-red-600"><Icon name="spicy" className="h-2.5 w-2.5" />{t("menu.spicy")}</span>}
-                                  {dish.modifier_groups && dish.modifier_groups.length > 0 && <span className="rounded-full bg-brand-50 px-1.5 py-0.5 text-[9px] font-bold text-brand-700">{dish.modifier_groups.length} {lang === "bn" ? "ভ্যারিয়েশন" : "var"}</span>}
-                                  {/* Actions */}
-                                  <div className="ml-auto flex gap-1">
-                                    <button type="button" className="rounded-md px-1.5 py-1 text-[0.6rem] font-medium text-ink-400 hover:bg-ink-50 hover:text-ink-600" onClick={() => setDetailDish(dish)}>{t("common.view")}</button>
-                                    <button type="button" className="rounded-md px-1.5 py-1 text-[0.6rem] font-medium text-brand-600 hover:bg-brand-50" onClick={() => openDishEdit(dish)}>{t("common.edit")}</button>
-                                    <button type="button" className="rounded-md px-1.5 py-1 text-[0.6rem] font-medium text-red-500 hover:bg-red-50" disabled={removeDish.isPending} onClick={async () => { const ok = await confirm(t("menu.deleteDishConfirm")); if (ok) removeDish.mutate(dish.id); }}>{t("common.delete")}</button>
-                                  </div>
+                                {/* Dietary badges */}
+                                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                                  {dish.is_vegetarian && <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"><Icon name="vegetarian" className="h-3 w-3" />{t("menu.vegetarian")}</span>}
+                                  {dish.is_spicy && <span className="inline-flex items-center gap-0.5 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-600"><Icon name="spicy" className="h-3 w-3" />{t("menu.spicy")}</span>}
+                                  {!dish.is_available && <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-semibold text-ink-500">{t("menu.unavailable")}</span>}
+                                </div>
+                                {/* Actions */}
+                                <div className="mt-3 flex gap-2 border-t border-ink-50 pt-3">
+                                  <button type="button" className="btn-ghost flex-1 px-2 py-1.5 text-xs" onClick={() => setDetailDish(dish)}>
+                                    <Icon name="eye" className="mr-1 h-3.5 w-3.5 inline" />{t("common.view")}
+                                  </button>
+                                  <button type="button" className="btn-ghost flex-1 px-2 py-1.5 text-xs text-brand-600" onClick={() => openDishEdit(dish)}>
+                                    {t("common.edit")}
+                                  </button>
+                                  <button type="button" className="btn-ghost px-2 py-1.5 text-xs text-red-500" disabled={removeDish.isPending} onClick={async () => { const ok = await confirm(t("menu.deleteDishConfirm")); if (ok) removeDish.mutate(dish.id); }}>
+                                    {t("common.delete")}
+                                  </button>
                                 </div>
                               </div>
                             </div>
