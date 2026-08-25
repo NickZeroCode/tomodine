@@ -13,6 +13,7 @@ import { api } from "@/lib/api";
 import { formatBDT } from "@/lib/format";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { useRestaurantSocket } from "@/hooks/useRestaurantSocket";
+import { showToast } from "@/components/Toast";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { Modal } from "@/components/Modal";
 import { Field, TextField } from "@/components/FormField";
@@ -101,7 +102,24 @@ export function InventoryPage() {
 
   // Real-time: any inventory/menu event refreshes the board.
   useRestaurantSocket(restaurant?.slug ?? null, (event) => {
-    if (event.type === "inventory.event" || event.type === "menu.event") invalidateAll();
+    if (event.type === "inventory.event" || event.type === "menu.event") {
+      invalidateAll();
+      // Toast when an item goes out of stock.
+      if (event.type === "inventory.event") {
+        const payload = event.payload as Record<string, unknown> | undefined;
+        if (payload?.event === "out_of_stock") {
+          const itemName = String(payload.item_name || payload.name || "");
+          showToast({
+            kind: "warning",
+            title: t("inv.oosTitle", "Out of stock"),
+            body: itemName
+              ? t("inv.oosItemToast", "{{name}} is out of stock. Affected dishes hidden from QR menu.", { name: itemName })
+              : t("inv.oosGenericToast", "An ingredient is out of stock. Affected dishes hidden from QR menu."),
+            duration: 8000,
+          });
+        }
+      }
+    }
   });
 
   /* ── Queries ── */

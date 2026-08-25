@@ -262,6 +262,20 @@ export function DashboardLayout() {
     (o) => o.status?.toUpperCase() === "NEW"
   );
 
+  // Read inventory to detect out-of-stock items for sidebar blinking.
+  const inventoryQuery = useQuery({
+    queryKey: ["inventory-items", restaurant?.slug],
+    queryFn: async () => {
+      const res = await api.get("/inventory-items/");
+      return (Array.isArray(res.data) ? res.data : res.data.results) as Array<{ current_stock: number | string; min_stock: number | string }>;
+    },
+    enabled: !!restaurant,
+    staleTime: 60_000,
+  });
+  const hasOosItems = (inventoryQuery.data ?? []).some(
+    (item) => Number(item.current_stock) <= 0
+  );
+
   /* ── Onboarding flow ─────────────────────────────────────── */
   if (needsOnboarding) {
     return (
@@ -353,6 +367,7 @@ export function DashboardLayout() {
               <div className="space-y-0.5">
                 {section.items.map((item) => {
                   const isNew = item.key === "nav.orders" && hasNewOrders;
+                  const isInventoryAlert = item.key === "nav.inventory" && hasOosItems;
                   return (
                     <NavLink
                       key={item.to}
@@ -377,6 +392,9 @@ export function DashboardLayout() {
                       )}
                       {isNew && (
                         <span className={`shrink-0 rounded-full bg-blue-500 animate-pulse ${sidebarCollapsed ? "absolute right-1 top-1 h-2 w-2" : "h-2.5 w-2.5"}`} aria-hidden="true" />
+                      )}
+                      {isInventoryAlert && (
+                        <span className={`shrink-0 rounded-full bg-red-500 animate-pulse ${sidebarCollapsed ? "absolute right-1 top-1 h-2 w-2" : "h-2.5 w-2.5"}`} aria-hidden="true" />
                       )}
                     </NavLink>
                   );

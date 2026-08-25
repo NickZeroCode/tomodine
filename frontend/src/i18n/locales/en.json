@@ -18,7 +18,8 @@
     "error": "Something went wrong",
     "currency": "৳",
     "language": "Language",
-    "copy": "Copy"
+    "copy": "Copy",
+    "all": "All"
   },
   "auth": {
     "login": "Log in",
