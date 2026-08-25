@@ -711,15 +711,33 @@ export function MenuPage() {
               )}
             </div>
 
-            {/* Variations (modifier groups) — only visible when editing an existing dish */}
-            {editingDish && (
-              <div className="border-t border-ink-100 pt-4">
+            {/* Variations (modifier groups) */}
+            <div className="border-t border-ink-100 pt-4">
+              <p className="mb-3 text-xs text-ink-400">
+                {lang === "bn"
+                  ? "ঐচ্ছিক: এই ডিশের জন্য সাইজ, মশলার মাত্রা বা এক্সট্রা যোগ করুন।"
+                  : "Optional: Add sizes, spice levels, or extras for this dish."}
+              </p>
+              {editingDish ? (
                 <ModifierGroupsEditor
                   dishId={editingDish.id}
                   initialGroups={editingDish.modifier_groups ?? []}
                 />
-              </div>
-            )}
+              ) : (
+                <div className="rounded-lg border border-dashed border-ink-200 bg-ink-50/50 px-4 py-6 text-center">
+                  <p className="text-sm text-ink-500">
+                    {lang === "bn"
+                      ? "ডিশ সংরক্ষণ করুন, তারপর ভ্যারিয়েশন যোগ করতে পারবেন।"
+                      : "Save the dish first, then you can add variations."}
+                  </p>
+                  <p className="mt-1 text-xs text-ink-400">
+                    {lang === "bn"
+                      ? "উপরের তথ্য পূরণ করে সংরক্ষণ করুন।"
+                      : "Fill in the details above and save."}
+                  </p>
+                </div>
+              )}
+            </div>
 
             {nonFieldErrors(dishErrors)}
             {formButtons(saveDish.isPending, () => setDishFormOpen(false))}

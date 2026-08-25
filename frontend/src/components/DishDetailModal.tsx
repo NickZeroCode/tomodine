@@ -326,8 +326,8 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
             </div>
           )}
 
-          {/* Validation errors */}
-          {validationErrors.length > 0 && (
+          {/* Validation errors — only in interactive mode */}
+          {!readOnly && validationErrors.length > 0 && (
             <div className="mt-3 space-y-1">
               {validationErrors.map((err, i) => (
                 <p key={i} className="text-xs text-red-500">{err}</p>
