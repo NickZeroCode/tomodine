@@ -365,6 +365,7 @@ export function CustomerOrderPage() {
         category: "",
         variants: [],
         modifiers: [],
+        modifier_groups: [],
       },
       variant: null,
       quantity: item.quantity,

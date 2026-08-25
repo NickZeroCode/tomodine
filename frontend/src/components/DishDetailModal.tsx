@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatBDT, localized, localizedDescription } from "@/lib/format";
 import { Icon } from "@/components/Icon";
-import type { Dish, DishModifier, ModifierGroup } from "@/types";
+import type { Dish, DishModifier } from "@/types";
 
 interface DishDetailModalProps {
   dish: Dish;

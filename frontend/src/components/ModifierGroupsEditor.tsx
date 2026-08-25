@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Icon } from "@/components/Icon";
-import type { ModifierGroup } from "@/types";
+import type { DishModifier, ModifierGroup } from "@/types";
 
 interface ModifierOptionDraft {
   id?: string; // Existing ID (for edits)
