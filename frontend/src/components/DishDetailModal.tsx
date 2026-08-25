@@ -111,7 +111,7 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
       {/* Panel — scrollable with sticky image and sticky footer */}
-      <div className="relative z-10 flex w-full max-w-lg flex-col rounded-t-2xl bg-white shadow-lift sm:rounded-2xl sm:mx-4" style={{ maxHeight: "90dvh" }}>
+      <div className="relative z-10 flex w-full max-w-lg flex-col overflow-clip rounded-t-2xl bg-white shadow-lift sm:rounded-2xl sm:mx-4" style={{ maxHeight: "90dvh" }}>
 
         {/* Sticky image header */}
         <div className="relative h-48 w-full shrink-0 sm:h-56">
@@ -341,7 +341,7 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
 
         {/* Sticky footer — quantity + add to cart, always visible */}
         {showAddButton && onAddToCart && (
-          <div className="shrink-0 border-t border-ink-100 bg-white px-5 pb-5 pt-3">
+          <div className="shrink-0 border-t border-ink-100 bg-white px-5 pb-5 pt-3" style={{ willChange: "transform", transform: "translateZ(0)" }}>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-ink-600">
                 {lang === "bn" ? "পরিমাণ" : "Quantity"}

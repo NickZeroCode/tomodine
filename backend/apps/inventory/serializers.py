@@ -70,8 +70,8 @@ class StockMovementSerializer(serializers.ModelSerializer):
 class ReceiveStockSerializer(serializers.Serializer):
     """Payload for the receive-stock action (purchase entry)."""
 
-    quantity = serializers.DecimalField(max_digits=12, decimal_places=3, min_value=0.001)
-    unit_price = serializers.DecimalField(max_digits=12, decimal_places=4, min_value=0)
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=3, min_value=Decimal("0.001"))
+    unit_price = serializers.DecimalField(max_digits=12, decimal_places=4, min_value=Decimal(0))
     reference_id = serializers.CharField(required=False, allow_blank=True, default="")
     note = serializers.CharField(required=False, allow_blank=True, default="")
 
