@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { compressImage } from "@/lib/imageCompression";
-import { formatBDT, localized } from "@/lib/format";
+import { formatBDT, localized, localizedDescription } from "@/lib/format";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { Modal } from "@/components/Modal";
@@ -284,170 +284,152 @@ export function MenuPage() {
     );
   }
 
+  // ── KPI Summary ──
+  const totalMenus = menus.length;
+  const totalCategories = menus.reduce((s, m) => s + m.categories.length, 0);
+  const totalDishes = menus.reduce((s, m) => s + m.categories.reduce((cs, c) => cs + c.dishes.length, 0), 0);
+  const featuredDishes = menus.reduce((s, m) => s + m.categories.reduce((cs, c) => cs + c.dishes.filter((d) => d.is_featured).length, 0), 0);
+
   return (
-    <section aria-labelledby="menu-heading">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 id="menu-heading" className="text-lg font-semibold text-ink-900">
-          {t("menu.title")}
-        </h2>
+    <section aria-labelledby="menu-heading" className="space-y-5">
+      {/* ── Header ── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 id="menu-heading" className="text-lg font-semibold text-ink-900">{t("menu.title")}</h2>
+          <p className="mt-0.5 text-xs text-ink-400">
+            {lang === "bn"
+              ? "আপনার রেস্তোরাঁর মেনু, ক্যাটাগরি এবং ডিশ পরিচালনা করুন"
+              : "Manage your restaurant's menus, categories and dishes"}
+          </p>
+        </div>
         <div className="flex gap-2">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              setMenuForm({ name_en: "", name_bn: "" });
-              setMenuErrors({});
-              setMenuFormOpen(true);
-            }}
-          >
+          <button type="button" className="btn-secondary" onClick={() => { setMenuForm({ name_en: "", name_bn: "" }); setMenuErrors({}); setMenuFormOpen(true); }}>
             {t("menu.addMenu")}
           </button>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => openDishCreate()}
-          >
+          <button type="button" className="btn-primary" onClick={() => openDishCreate()}>
             {t("menu.addDish")}
           </button>
         </div>
       </div>
 
+      {/* ── KPI Cards ── */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: lang === "bn" ? "মেনু" : "Menus", value: totalMenus, icon: "menu", color: "brand" },
+          { label: lang === "bn" ? "ক্যাটাগরি" : "Categories", value: totalCategories, icon: "menu", color: "blue" },
+          { label: lang === "bn" ? "ডিশ" : "Dishes", value: totalDishes, icon: "orders", color: "amber" },
+          { label: lang === "bn" ? "বিশেষ" : "Featured", value: featuredDishes, icon: "star", color: "emerald" },
+        ].map((kpi) => (
+          <div key={kpi.label} className="rounded-xl border border-ink-100 bg-white p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-ink-400">{kpi.label}</span>
+              <span className={`flex h-8 w-8 items-center justify-center rounded-lg bg-${kpi.color}-50`}>
+                <Icon name={kpi.icon as "menu" | "orders" | "star"} className={`h-4 w-4 text-${kpi.color}-600`} />
+              </span>
+            </div>
+            <p className="mt-2 font-display text-2xl font-bold tabular-nums text-ink-900">{kpi.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Empty state ── */}
       {menus.length === 0 ? (
         <EmptyState
-          title={t("common.empty")}
-          action={
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => setMenuFormOpen(true)}
-            >
-              {t("menu.addMenu")}
-            </button>
-          }
+          title={lang === "bn" ? "এখনো কোনো মেনু নেই" : "No menus yet"}
+          action={<button type="button" className="btn-primary" onClick={() => setMenuFormOpen(true)}>{t("menu.addMenu")}</button>}
         />
       ) : (
+        /* ── Menu sections ── */
         <div className="space-y-6">
           {menus.map((menu) => (
-            <div key={menu.id} className="card p-4">
-              <h3 className="mb-3 truncate text-base font-semibold text-ink-900">
-                {localized(menu, lang)}
-              </h3>
-              {menu.categories.length === 0 ? (
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm text-ink-500">{t("common.empty")}</p>
-                  <button
-                    type="button"
-                    className="btn-secondary text-xs"
-                    onClick={() => openCategoryCreate(menu.id)}
-                  >
-                    {t("menu.addCategory")}
+            <div key={menu.id} className="card overflow-hidden">
+              {/* Menu header */}
+              <div className="flex items-center justify-between border-b border-ink-100 bg-[#EDF6F5] px-5 py-3">
+                <div className="flex items-center gap-3">
+                  <Icon name="menu" className="h-4 w-4 text-brand-600" />
+                  <h3 className="text-sm font-semibold text-ink-900">{localized(menu, lang)}</h3>
+                  <span className="rounded-full bg-white px-2 py-0.5 text-[0.6rem] font-bold text-ink-500">
+                    {menu.categories.length} {lang === "bn" ? "ক্যাটাগরি" : "categories"}
+                  </span>
+                </div>
+                <div className="flex gap-1.5">
+                  <button type="button" className="rounded-md px-2 py-1 text-[0.65rem] font-semibold text-brand-600 hover:bg-brand-50" onClick={() => openCategoryCreate(menu.id)}>
+                    + {t("menu.addCategory")}
                   </button>
                 </div>
+              </div>
+
+              {menu.categories.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-2 px-5 py-10 text-center">
+                  <Icon name="menu" className="h-8 w-8 text-ink-200" />
+                  <p className="text-sm text-ink-400">{lang === "bn" ? "এই মেনুতে এখনো কোনো ক্যাটাগরি নেই" : "No categories in this menu yet"}</p>
+                  <button type="button" className="btn-secondary text-xs" onClick={() => openCategoryCreate(menu.id)}>{t("menu.addCategory")}</button>
+                </div>
               ) : (
-                <div className="space-y-4">
+                <div className="divide-y divide-ink-50">
                   {menu.categories.map((cat) => (
-                    <div key={cat.id}>
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <h4 className="min-w-0 truncate text-sm font-medium text-ink-700">
-                          {localized(cat, lang)}
-                        </h4>
+                    <div key={cat.id} className="px-5 py-4">
+                      {/* Category header */}
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="h-4 w-0.5 rounded-full bg-brand-500" />
+                          <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-500">{localized(cat, lang)}</h4>
+                          <span className="rounded-full bg-ink-100 px-1.5 py-0.5 text-[0.55rem] font-bold text-ink-400">{cat.dishes.length}</span>
+                        </div>
                         <div className="flex shrink-0 gap-1">
-                          <button
-                            type="button"
-                            className="btn-ghost px-2 py-1 text-xs"
-                            onClick={() => openDishCreate(cat.id)}
-                          >
-                            {t("menu.addDish")}
+                          <button type="button" className="rounded-md px-2 py-1 text-[0.65rem] font-semibold text-brand-600 hover:bg-brand-50" onClick={() => openDishCreate(cat.id)}>
+                            + {t("menu.addDish")}
                           </button>
-                          <button
-                            type="button"
-                            className="btn-ghost px-2 py-1 text-xs"
-                            onClick={() => openCategoryEdit(menu.id, cat)}
-                          >
+                          <button type="button" className="rounded-md px-2 py-1 text-[0.65rem] font-semibold text-ink-500 hover:bg-ink-50" onClick={() => openCategoryEdit(menu.id, cat)}>
                             {t("common.edit")}
                           </button>
-                          <button
-                            type="button"
-                            className="btn-ghost px-2 py-1 text-xs text-red-600"
-                            disabled={removeCategory.isPending}
-                            onClick={async () => {
-                              const ok = await confirm(t("menu.deleteCategoryConfirm"));
-                              if (ok) removeCategory.mutate(cat.id);
-                            }}
-                          >
+                          <button type="button" className="rounded-md px-2 py-1 text-[0.65rem] font-semibold text-red-500 hover:bg-red-50" disabled={removeCategory.isPending} onClick={async () => { const ok = await confirm(t("menu.deleteCategoryConfirm")); if (ok) removeCategory.mutate(cat.id); }}>
                             {t("common.delete")}
                           </button>
                         </div>
                       </div>
+
                       {cat.dishes.length === 0 ? (
-                        <p className="text-sm text-ink-400">{t("common.empty")}</p>
+                        <p className="pl-2.5 text-xs text-ink-300">{lang === "bn" ? "এই ক্যাটাগরিতে এখনো কোনো ডিশ নেই" : "No dishes in this category yet"}</p>
                       ) : (
-                        <div className="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                           {cat.dishes.map((dish) => (
-                            <div
-                              key={dish.id}
-                              className="card group relative flex flex-col overflow-hidden transition-shadow hover:shadow-lift"
-                            >
-                              {/* Dish image — large, prominent */}
-                              <div className="relative h-52 w-full overflow-hidden bg-ink-50">
+                            <div key={dish.id} className="group flex gap-3 rounded-xl border border-ink-100 bg-white p-3 transition-all hover:shadow-lift">
+                              {/* Dish image — compact */}
+                              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-ink-50">
                                 {dish.image ? (
-                                  <img src={dish.image} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
+                                  <img src={dish.image} alt="" className="h-full w-full object-cover" loading="lazy" />
                                 ) : (
-                                  <div className="flex h-full w-full items-center justify-center">
-                                    <Icon name="image" className="h-10 w-10 text-ink-200" />
+                                  <div className="flex h-full w-full items-center justify-center"><Icon name="image" className="h-6 w-6 text-ink-200" /></div>
+                                )}
+                                {!dish.is_available && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                    <span className="rounded-full bg-white/90 px-1.5 py-0.5 text-[8px] font-bold text-ink-700">{lang === "bn" ? "নেই" : "OFF"}</span>
                                   </div>
                                 )}
-                                {/* Status badges overlay */}
-                                <div className="absolute left-2 top-2 flex flex-wrap gap-1">
-                                  {dish.is_featured && (
-                                    <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">{t("menu.featured")}</span>
-                                  )}
-                                  {!dish.is_available && (
-                                    <span className="rounded-full bg-ink-800 px-2 py-0.5 text-[10px] font-semibold text-white">{t("menu.unavailable")}</span>
-                                  )}
-                                  {dish.modifier_groups && dish.modifier_groups.length > 0 && (
-                                    <span className="rounded-full bg-brand-600 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
-                                      {dish.modifier_groups.length} {lang === "bn" ? "ভ্যারিয়েশন" : "variations"}
-                                    </span>
-                                  )}
-                                </div>
                               </div>
-                              {/* Info */}
-                              <div className="flex flex-1 flex-col p-3.5">
-                                <p className="text-sm font-semibold text-ink-900">
-                                  {localized(dish, lang)}
-                                </p>
-                                <div className="mt-1 flex items-center gap-1.5">
-                                  {dish.is_vegetarian && <span className="inline-flex items-center gap-1 text-xs text-emerald-600"><Icon name="vegetarian" className="h-3 w-3" /> {t("menu.vegetarian")}</span>}
-                                  {dish.is_spicy && <span className="inline-flex items-center gap-1 text-xs text-red-500"><Icon name="spicy" className="h-3 w-3" /> {t("menu.spicy")}</span>}
+                              {/* Dish info */}
+                              <div className="flex min-w-0 flex-1 flex-col">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="truncate text-sm font-semibold text-ink-900">{localized(dish, lang)}</p>
+                                  <span className="shrink-0 text-sm font-bold tabular-nums text-brand-700">{formatBDT(dish.price, lang)}</span>
                                 </div>
-                                <p className="mt-auto pt-3 text-base font-bold text-brand-700">{formatBDT(dish.price, lang)}</p>
-                                <div className="mt-2 flex gap-1.5">
-                                  <button
-                                    type="button"
-                                    className="btn-ghost px-2 py-1.5 text-xs"
-                                    onClick={() => setDetailDish(dish)}
-                                  >
-                                    <Icon name="eye" className="mr-1 h-3.5 w-3.5" />{t("common.view")}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="btn-ghost flex-1 px-2 py-1.5 text-xs"
-                                    onClick={() => openDishEdit(dish)}
-                                  >
-                                    {t("common.edit")}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="btn-ghost px-2 py-1.5 text-xs text-red-600"
-                                    disabled={removeDish.isPending}
-                                    onClick={async () => {
-                                      const ok = await confirm(t("menu.deleteDishConfirm"));
-                                      if (ok) removeDish.mutate(dish.id);
-                                    }}
-                                  >
-                                    {t("common.delete")}
-                                  </button>
+                                {/* Description — truncated */}
+                                {localizedDescription(dish, lang) && (
+                                  <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-ink-400">{localizedDescription(dish, lang)}</p>
+                                )}
+                                {/* Badges */}
+                                <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1.5">
+                                  {dish.is_featured && <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">{t("menu.featured")}</span>}
+                                  {dish.is_vegetarian && <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700"><Icon name="vegetarian" className="h-2.5 w-2.5" />{t("menu.vegetarian")}</span>}
+                                  {dish.is_spicy && <span className="inline-flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-bold text-red-600"><Icon name="spicy" className="h-2.5 w-2.5" />{t("menu.spicy")}</span>}
+                                  {dish.modifier_groups && dish.modifier_groups.length > 0 && <span className="rounded-full bg-brand-50 px-1.5 py-0.5 text-[9px] font-bold text-brand-700">{dish.modifier_groups.length} {lang === "bn" ? "ভ্যারিয়েশন" : "var"}</span>}
+                                  {/* Actions */}
+                                  <div className="ml-auto flex gap-1">
+                                    <button type="button" className="rounded-md px-1.5 py-1 text-[0.6rem] font-medium text-ink-400 hover:bg-ink-50 hover:text-ink-600" onClick={() => setDetailDish(dish)}>{t("common.view")}</button>
+                                    <button type="button" className="rounded-md px-1.5 py-1 text-[0.6rem] font-medium text-brand-600 hover:bg-brand-50" onClick={() => openDishEdit(dish)}>{t("common.edit")}</button>
+                                    <button type="button" className="rounded-md px-1.5 py-1 text-[0.6rem] font-medium text-red-500 hover:bg-red-50" disabled={removeDish.isPending} onClick={async () => { const ok = await confirm(t("menu.deleteDishConfirm")); if (ok) removeDish.mutate(dish.id); }}>{t("common.delete")}</button>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -456,15 +438,6 @@ export function MenuPage() {
                       )}
                     </div>
                   ))}
-                  <div>
-                    <button
-                      type="button"
-                      className="btn-secondary text-xs"
-                      onClick={() => openCategoryCreate(menu.id)}
-                    >
-                      {t("menu.addCategory")}
-                    </button>
-                  </div>
                 </div>
               )}
             </div>

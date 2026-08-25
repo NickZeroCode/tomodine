@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
-import { formatBDT, localized } from "@/lib/format";
+import { formatBDT, localized, localizedDescription } from "@/lib/format";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { Modal } from "@/components/Modal";
@@ -245,8 +245,8 @@ export function OffersPage() {
                       ? `${offer.discount_value}%`
                       : formatBDT(offer.discount_value, lang)}
                   </p>
-                  {localized(offer, lang) !== offer.description_en && offer.description_en && (
-                    <p className="mt-1 text-xs text-ink-500">{localized(offer as unknown as { name_en: string; name_bn: string; description_en: string; description_bn: string }, lang)}</p>
+                  {localizedDescription(offer, lang) && (
+                    <p className="mt-1 text-xs text-ink-500">{localizedDescription(offer, lang)}</p>
                   )}
                   <div className="mt-3 flex items-center gap-4 text-xs text-ink-500">
                     {offer.min_order_amount !== "0.00" && (
@@ -272,7 +272,7 @@ export function OffersPage() {
                       }`}
                       onClick={() => toggleActive.mutate(offer)}
                     >
-                      {offer.is_active ? t("offers.inactive") : t("offers.active")}
+                      {offer.is_active ? t("offers.deactivate", "Deactivate") : t("offers.activate", "Activate")}
                     </button>
                     <button
                       type="button"
