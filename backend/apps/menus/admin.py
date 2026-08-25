@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Dish, DishModifier, DishVariant, Menu, MenuCategory
+from .models import Dish, DishModifier, DishVariant, Menu, MenuCategory, ModifierGroup
 
 
 class CategoryInline(admin.TabularInline):
@@ -33,9 +33,22 @@ class ModifierInline(admin.TabularInline):
     extra = 0
 
 
+class ModifierGroupInline(admin.TabularInline):
+    model = ModifierGroup
+    extra = 0
+    show_change_link = True
+
+
+@admin.register(ModifierGroup)
+class ModifierGroupAdmin(admin.ModelAdmin):
+    list_display = ("name_en", "dish", "min_selections", "max_selections", "is_active", "display_order")
+    list_filter = ("is_active",)
+    search_fields = ("name_en", "name_bn")
+
+
 @admin.register(Dish)
 class DishAdmin(admin.ModelAdmin):
     list_display = ("name_en", "restaurant", "category", "price", "is_available")
     list_filter = ("is_available", "is_featured", "is_vegetarian")
     search_fields = ("name_en", "name_bn")
-    inlines = (VariantInline, ModifierInline)
+    inlines = (VariantInline, ModifierGroupInline, ModifierInline)

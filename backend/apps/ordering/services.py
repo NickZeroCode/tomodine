@@ -12,7 +12,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
-from .models import CustomerSession, Order, OrderItem, OrderStatusHistory
+from .models import CartItemModifier, CustomerSession, Order, OrderItem, OrderStatusHistory
 
 # Allowed status transitions for the staff workflow.
 # Simplified pipeline: NEW → PREPARING → READY → SERVED → PAID.
@@ -50,6 +50,12 @@ def create_order_from_cart(session: CustomerSession, customer_note: str = "", or
     if not items:
         raise ValueError(_("The cart is empty."))
 
+    # Pre-fetch all CartItemModifiers for the cart items
+    cart_item_ids = [item.id for item in items]
+    cart_modifiers_by_item: dict = {}
+    for cim in CartItemModifier.objects.filter(cart_item_id__in=cart_item_ids).select_related("modifier"):
+        cart_modifiers_by_item.setdefault(cim.cart_item_id, []).append(cim)
+
     subtotal = Decimal("0")
     order = Order.objects.create(
         restaurant=session.restaurant,
@@ -64,14 +70,25 @@ def create_order_from_cart(session: CustomerSession, customer_note: str = "", or
     for item in items:
         line_total = item.unit_price * item.quantity
         subtotal += line_total
+
+        # Snapshot modifiers into JSONField
+        cims = cart_modifiers_by_item.get(item.id, [])
+        modifier_total = Decimal("0")
+        selected_modifiers = []
+        for cim in cims:
+            modifier_total += cim.price_delta
+            selected_modifiers.append({
+                "id": str(cim.modifier_id),
+                "name_en": cim.modifier.name_en,
+                "name_bn": cim.modifier.name_bn,
+                "price_delta": str(cim.price_delta),
+            })
+
         order_items.append(
             OrderItem(
                 order=order,
                 dish_name_en=item.dish.name_en,
                 dish_name_bn=item.dish.name_bn,
-                # Store the storage-relative name (not a full URL) so the
-                # serializer can resolve it against whatever storage is
-                # active later (S3, local, etc.) without dead links.
                 dish_image=item.dish.image.name if item.dish.image else "",
                 min_prep_time=item.dish.min_prep_time,
                 max_prep_time=item.dish.max_prep_time,
@@ -79,6 +96,8 @@ def create_order_from_cart(session: CustomerSession, customer_note: str = "", or
                 quantity=item.quantity,
                 unit_price=item.unit_price,
                 special_instructions=item.special_instructions,
+                selected_modifiers=selected_modifiers,
+                modifier_total=modifier_total,
             )
         )
     OrderItem.objects.bulk_create(order_items)

@@ -12,7 +12,7 @@ from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.menus.models import Menu
+from apps.menus.models import DishModifier, Menu
 from apps.notifications.services import broadcast_to_restaurant
 from apps.ordering.models import Cart, CartItem, CustomerSession, Order
 from apps.ordering.services import create_order_from_cart
@@ -135,18 +135,44 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
         )
         cart, _ = Cart.objects.get_or_create(restaurant=session.restaurant, session=session)
 
-        unit_price = data["dish"].price
-        if data.get("variant"):
-            unit_price += data["variant"].price_delta
+        # --- Server-side pricing (PRD: never trust client for prices) ---
+        dish = data["dish"]
+        unit_price = dish.price
+        variant = data.get("variant")
+        if variant:
+            unit_price += variant.price_delta
+
+        # Resolve modifiers and sum their price_deltas
+        modifier_ids = data.get("modifier_ids") or []
+        modifiers = []
+        if modifier_ids:
+            modifiers = list(
+                DishModifier.objects.filter(
+                    id__in=modifier_ids, dish=dish, is_available=True
+                )
+            )
+            # Guard: silently drop invalid/unavailable IDs
+            if len(modifiers) != len(modifier_ids):
+                found_ids = {str(m.id) for m in modifiers}
+                modifiers = [m for m in modifiers if str(m.id) in found_ids]
+            unit_price += sum(m.price_delta for m in modifiers)
 
         item = CartItem.objects.create(
             cart=cart,
-            dish=data["dish"],
-            variant=data.get("variant"),
+            dish=dish,
+            variant=variant,
             quantity=data["quantity"],
             special_instructions=data.get("special_instructions", ""),
             unit_price=unit_price,
         )
+
+        # Create CartItemModifier snapshots
+        from apps.ordering.models import CartItemModifier
+        CartItemModifier.objects.bulk_create([
+            CartItemModifier(cart_item=item, modifier=m, price_delta=m.price_delta)
+            for m in modifiers
+        ])
+
         return Response({"id": str(item.id)}, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["post"], url_path="order")

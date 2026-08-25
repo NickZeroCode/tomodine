@@ -13,7 +13,7 @@ from rest_framework import serializers
 logger = logging.getLogger(__name__)
 
 from apps.billing.models import BillingRecord, Offer, Subscription, SubscriptionPlan
-from apps.menus.models import Dish, DishModifier, DishVariant, Menu, MenuCategory
+from apps.menus.models import Dish, DishModifier, DishVariant, Menu, MenuCategory, ModifierGroup
 from apps.notifications.models import Notification
 from apps.ordering.models import CustomerSession, Order, OrderItem, OrderStatusHistory
 from apps.rbac.models import Role
@@ -173,13 +173,23 @@ class DishVariantSerializer(serializers.ModelSerializer):
 class DishModifierSerializer(serializers.ModelSerializer):
     class Meta:
         model = DishModifier
-        fields = ("id", "name_en", "name_bn", "price_delta", "is_available")
+        fields = ("id", "name_en", "name_bn", "price_delta", "is_available", "is_default", "display_order", "group")
+        read_only_fields = ("id",)
+
+
+class ModifierGroupSerializer(serializers.ModelSerializer):
+    options = DishModifierSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = "menus.ModifierGroup"
+        fields = ("id", "name_en", "name_bn", "min_selections", "max_selections", "is_active", "display_order", "options")
         read_only_fields = ("id",)
 
 
 class DishSerializer(serializers.ModelSerializer):
     variants = DishVariantSerializer(many=True, read_only=True)
     modifiers = DishModifierSerializer(many=True, read_only=True)
+    modifier_groups = ModifierGroupSerializer(many=True, read_only=True)
 
     class Meta:
         model = Dish
@@ -187,7 +197,7 @@ class DishSerializer(serializers.ModelSerializer):
             "id", "category", "name_en", "name_bn", "description_en",
             "description_bn", "price", "image", "is_available", "is_featured",
             "is_vegetarian", "is_spicy", "min_prep_time", "max_prep_time",
-            "display_order", "variants", "modifiers",
+            "display_order", "variants", "modifiers", "modifier_groups",
         )
         read_only_fields = ("id",)
 

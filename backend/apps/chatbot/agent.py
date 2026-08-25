@@ -117,6 +117,10 @@ YOUR ROLE:
      * "what should I try", "best sellers", "customer favorites"
      * This uses REAL order data — proven favorites, not guesses
 2. Add items to the customer's order using add_to_cart when they explicitly want to order.
+   - If a dish has modifier groups (toppings, spice level, size, extras), the tool response will list them.
+   - ALWAYS ask the customer which options they want before adding to cart.
+   - Pass the chosen modifier names in modifier_names (e.g. add_to_cart(dish_name="Burger", modifier_names=["Extra Cheese", "Spicy"])).
+   - If the dish has no modifiers, just add it directly.
 3. Call a waiter using trigger_waiter when the customer needs service.
 4. Check order status using check_order_status when the user asks about their order.
 5. Answer questions about the restaurant using get_restaurant_info.
@@ -315,18 +319,21 @@ def _build_structured_from_tools(tool_results: list[tuple[str, str]]) -> dict | 
 
         if tool_name == "search_menu" and "items" in data and isinstance(data["items"], list):
             for item in data["items"]:
-                all_items.append({
+                item_data = {
                     "id": str(item.get("dish_id", "")),
                     "name": item.get("dish_name", item.get("name", "")),
                     "price": float(item.get("price", 0)),
                     "description": item.get("description", ""),
                     "category": item.get("dish_category", ""),
                     "image_url": item.get("image_url", ""),
-                })
+                }
+                if item.get("modifier_groups"):
+                    item_data["modifier_groups"] = item["modifier_groups"]
+                all_items.append(item_data)
 
         elif tool_name == "get_dish" and data.get("found") and "dish" in data:
             d = data["dish"]
-            all_items.append({
+            item_data = {
                 "id": str(d.get("id", "")),
                 "name": d.get("name", ""),
                 "price": float(d.get("price", 0)),
@@ -334,7 +341,10 @@ def _build_structured_from_tools(tool_results: list[tuple[str, str]]) -> dict | 
                 "category": d.get("category", ""),
                 "image_url": d.get("image_url", ""),
                 "badge": "Vegetarian" if d.get("is_vegetarian") else ("Spicy" if d.get("is_spicy") else ""),
-            })
+            }
+            if d.get("modifier_groups"):
+                item_data["modifier_groups"] = d["modifier_groups"]
+            all_items.append(item_data)
 
         elif tool_name == "get_popular_dishes" and "dishes" in data and isinstance(data["dishes"], list):
             for item in data["dishes"]:
@@ -359,6 +369,7 @@ def _build_structured_from_tools(tool_results: list[tuple[str, str]]) -> dict | 
                 "message": data.get("message", ""),
                 "order_total": data.get("order_total", "0"),
                 "order_id": data.get("order_id"),
+                "modifiers": data.get("modifiers", []),
                 "suggest_more": True,
                 "suggest_games": True,
             }

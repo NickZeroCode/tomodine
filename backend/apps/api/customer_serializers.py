@@ -30,12 +30,21 @@ class CustomerDishVariantSerializer(serializers.ModelSerializer):
 class CustomerDishModifierSerializer(serializers.ModelSerializer):
     class Meta:
         model = DishModifier
-        fields = ("id", "name_en", "name_bn", "price_delta")
+        fields = ("id", "name_en", "name_bn", "price_delta", "is_default", "display_order", "group")
+
+
+class CustomerModifierGroupSerializer(serializers.ModelSerializer):
+    options = CustomerDishModifierSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = "menus.ModifierGroup"
+        fields = ("id", "name_en", "name_bn", "min_selections", "max_selections", "options")
 
 
 class CustomerDishSerializer(serializers.ModelSerializer):
     variants = CustomerDishVariantSerializer(many=True, read_only=True)
     modifiers = CustomerDishModifierSerializer(many=True, read_only=True)
+    modifier_groups = CustomerModifierGroupSerializer(many=True, read_only=True)
 
     class Meta:
         model = Dish
@@ -43,6 +52,7 @@ class CustomerDishSerializer(serializers.ModelSerializer):
             "id", "name_en", "name_bn", "description_en", "description_bn",
             "price", "image", "is_available", "is_featured", "is_vegetarian",
             "is_spicy", "min_prep_time", "max_prep_time", "variants", "modifiers",
+            "modifier_groups",
         )
 
     def to_representation(self, instance):
@@ -90,6 +100,12 @@ class AddCartItemSerializer(serializers.Serializer):
     session_token = serializers.CharField()
     dish_id = serializers.UUIDField()
     variant_id = serializers.UUIDField(required=False, allow_null=True)
+    modifier_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        required=False,
+        default=list,
+        help_text="List of DishModifier IDs to attach.",
+    )
     quantity = serializers.IntegerField(min_value=1, max_value=99, default=1)
     special_instructions = serializers.CharField(
         required=False, allow_blank=True, max_length=500, default=""
@@ -128,7 +144,7 @@ class CustomerOrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ("dish_name_en", "dish_name_bn", "dish_image", "min_prep_time", "max_prep_time", "variant_name", "quantity", "unit_price")
+        fields = ("dish_name_en", "dish_name_bn", "dish_image", "min_prep_time", "max_prep_time", "variant_name", "quantity", "unit_price", "selected_modifiers", "modifier_total")
 
     def get_dish_image(self, obj: OrderItem) -> str:
         """Resolve dish image URL."""

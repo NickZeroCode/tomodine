@@ -73,6 +73,26 @@ class CartItem(TimeStampedModel):
         indexes = [models.Index(fields=("cart",))]
 
 
+class CartItemModifier(models.Model):
+    """Links a CartItem to selected DishModifiers.
+
+    Stores the price_delta snapshot at selection time so cart recalculation
+    is deterministic even if the modifier price changes later.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    cart_item = models.ForeignKey(CartItem, on_delete=models.CASCADE, related_name="selected_modifiers")
+    modifier = models.ForeignKey("menus.DishModifier", on_delete=models.CASCADE)
+    price_delta = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        help_text="Snapshot of modifier.price_delta at selection time.",
+    )
+
+    class Meta:
+        unique_together = [["cart_item", "modifier"]]
+        indexes = [models.Index(fields=["cart_item"])]
+
+
 class Order(TimeStampedModel):
     class Status(models.TextChoices):
         NEW = "new", _("New")
@@ -131,6 +151,17 @@ class OrderItem(TimeStampedModel):
     min_prep_time = models.PositiveIntegerField(default=15, help_text="Snapshot of min prep time in minutes.")
     max_prep_time = models.PositiveIntegerField(default=30, help_text="Snapshot of max prep time in minutes.")
     variant_name = models.CharField(max_length=255, blank=True, default="")
+    # Modifier snapshots — historical record of what was selected.
+    # Stored as JSON so orders remain correct even after catalog changes.
+    selected_modifiers = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='[{"name": "Full", "group": "Size", "price_delta": "100.00"}, ...]',
+    )
+    modifier_total = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text="Sum of all modifier price_deltas at order time.",
+    )
     quantity = models.PositiveIntegerField(default=1)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     special_instructions = models.CharField(max_length=500, blank=True, default="")

@@ -96,16 +96,80 @@ class DishVariant(LocalizedNameModel, TimeStampedModel):
 
 
 class DishModifier(LocalizedNameModel, TimeStampedModel):
-    """Add-ons / extras, e.g. Extra Cheese, Extra Spicy."""
+    """Add-ons / extras, e.g. Extra Cheese, Extra Spicy.
+
+    Can optionally belong to a ModifierGroup for grouped selection
+    (e.g. Spice Level → Mild/Medium/Spicy).
+    Modifiers without a group are standalone add-ons (legacy behavior).
+    """
 
     dish = models.ForeignKey(Dish, on_delete=models.CASCADE, related_name="modifiers")
     restaurant = models.ForeignKey(
         "restaurants.Restaurant", on_delete=models.CASCADE, related_name="dish_modifiers"
     )
+    group = models.ForeignKey(
+        "menus.ModifierGroup",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="options",
+        help_text="Optional group this modifier belongs to. Null = standalone add-on.",
+    )
     price_delta = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_available = models.BooleanField(default=True)
+    is_default = models.BooleanField(
+        default=False,
+        help_text="Pre-selected when the customer opens this dish.",
+    )
+    display_order = models.PositiveIntegerField(default=0)
 
     objects = TenantManager()
 
     class Meta:
-        ordering = ("name_en",)
+        ordering = ("display_order", "name_en")
+        indexes = [
+            models.Index(fields=["dish", "group"]),
+        ]
+
+
+class ModifierGroup(TimeStampedModel):
+    """A category of choices for a dish (e.g. Portion Size, Spice Level, Add-ons).
+
+    Selection rules:
+    - min_selections = 0 → optional group
+    - min_selections >= 1 → required group
+    - max_selections = 1 → radio (pick one)
+    - max_selections > 1 → checkbox (pick many)
+    """
+
+    dish = models.ForeignKey(Dish, on_delete=models.CASCADE, related_name="modifier_groups")
+    restaurant = models.ForeignKey(
+        "restaurants.Restaurant", on_delete=models.CASCADE, related_name="modifier_groups"
+    )
+    name_en = models.CharField(max_length=100)
+    name_bn = models.CharField(max_length=100, blank=True, default="")
+    min_selections = models.PositiveIntegerField(
+        default=0,
+        help_text="Minimum options the customer must select. 0 = optional, 1+ = required.",
+    )
+    max_selections = models.PositiveIntegerField(
+        default=1,
+        help_text="Maximum options the customer can select. 1 = radio, 2+ = checkboxes.",
+    )
+    is_active = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
+
+    objects = TenantManager()
+
+    class Meta:
+        ordering = ("display_order", "name_en")
+        indexes = [
+            models.Index(fields=["dish", "is_active"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name_en} ({self.dish_id})"
+
+    @property
+    def is_required(self) -> bool:
+        return self.min_selections > 0
