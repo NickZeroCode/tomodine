@@ -170,8 +170,16 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
             </p>
           )}
 
-          {/* Variations (modifier groups) */}
-          {activeGroups.map((g) => {
+          {/* Variations section */}
+          {(activeGroups.length > 0 || ungroupedModifiers.length > 0) && (
+            <div className="mt-4 border-t border-ink-100 pt-4">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-ink-500">
+                <Icon name="menu" className="h-4 w-4" />
+                {lang === "bn" ? "ভ্যারিয়েশন" : "Variations"}
+              </h3>
+
+              {/* Grouped variations */}
+              {activeGroups.map((g) => {
             const isRadio = g.max_selections === 1;
             const selectedIds = groupSelections[g.id] ?? [];
             return (
@@ -270,6 +278,9 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
                   );
                 })}
               </div>
+            </div>
+          )}
+
             </div>
           )}
 

@@ -30,7 +30,7 @@ class CustomerDishVariantSerializer(serializers.ModelSerializer):
 class CustomerDishModifierSerializer(serializers.ModelSerializer):
     class Meta:
         model = DishModifier
-        fields = ("id", "name_en", "name_bn", "price_delta", "is_default", "display_order", "group")
+        fields = ("id", "name_en", "name_bn", "price_delta", "is_available", "is_default", "display_order", "group")
 
 
 class CustomerModifierGroupSerializer(serializers.ModelSerializer):
