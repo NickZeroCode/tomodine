@@ -327,6 +327,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
         fields = (
             "id", "dish_name_en", "dish_name_bn", "dish_image", "min_prep_time",
             "max_prep_time", "variant_name", "quantity", "unit_price", "special_instructions",
+            "selected_modifiers", "modifier_total",
         )
         read_only_fields = ("id",)
 

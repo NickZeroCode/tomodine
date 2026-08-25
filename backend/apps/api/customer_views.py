@@ -85,7 +85,8 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
         menus = (
             Menu.objects.filter(restaurant=qr.restaurant, is_active=True)
             .prefetch_related(
-                "categories__dishes__variants", "categories__dishes__modifiers"
+                "categories__dishes__variants", "categories__dishes__modifiers",
+                "categories__dishes__modifier_groups__options",
             )
             .order_by("display_order")
         )

@@ -666,13 +666,13 @@ class QRCodeViewSet(TenantScopedViewSet):
 # ---------------------------------------------------------------------------
 class MenuViewSet(TenantScopedViewSet):
     serializer_class = api_serializers.MenuSerializer
-    queryset = Menu.objects.prefetch_related("categories__dishes")
+    queryset = Menu.objects.prefetch_related("categories__dishes__modifier_groups__options", "categories__dishes__modifiers", "categories__dishes__variants")
     required_permission = "menu.manage"
 
 
 class MenuCategoryViewSet(TenantScopedViewSet):
     serializer_class = api_serializers.MenuCategorySerializer
-    queryset = MenuCategory.objects.prefetch_related("dishes")
+    queryset = MenuCategory.objects.prefetch_related("dishes__modifier_groups__options", "dishes__modifiers", "dishes__variants")
     required_permission = "menu.manage"
 
 

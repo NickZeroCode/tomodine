@@ -38,7 +38,7 @@ class CustomerModifierGroupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ModifierGroup
-        fields = ("id", "name_en", "name_bn", "min_selections", "max_selections", "options")
+        fields = ("id", "name_en", "name_bn", "min_selections", "max_selections", "is_active", "display_order", "options")
 
 
 class CustomerDishSerializer(serializers.ModelSerializer):
@@ -79,9 +79,9 @@ class CustomerCategorySerializer(serializers.ModelSerializer):
         fields = ("id", "name_en", "name_bn", "description_en", "description_bn", "dishes")
 
     def get_dishes(self, obj: MenuCategory):
-        return CustomerDishSerializer(
-            obj.dishes.order_by("display_order"), many=True
-        ).data
+        # Use prefetched cache to avoid N+1 on modifier_groups.
+        dishes = sorted(obj.dishes.all(), key=lambda d: d.display_order)
+        return CustomerDishSerializer(dishes, many=True).data
 
 
 class CustomerMenuSerializer(serializers.ModelSerializer):
