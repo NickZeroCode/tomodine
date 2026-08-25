@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Icon } from "@/components/Icon";
+import { showToast } from "@/components/Toast";
 import type { DishModifier, ModifierGroup } from "@/types";
 
 interface ModifierOptionDraft {
@@ -241,6 +242,7 @@ export function ModifierGroupsEditor({ dishId, initialGroups, onSaved }: Props) 
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["menus"] });
+      showToast({ kind: "success", title: lang === "bn" ? "সংরক্ষিত!" : "Saved!", body: lang === "bn" ? "ভ্যারিয়েশন সফলভাবে সংরক্ষিত হয়েছে।" : "Variations saved successfully." });
       onSaved?.();
     },
   });

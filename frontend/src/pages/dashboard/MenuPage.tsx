@@ -9,6 +9,7 @@ import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { Modal } from "@/components/Modal";
 import { Field, TextField } from "@/components/FormField";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { showToast } from "@/components/Toast";
 import { Icon } from "@/components/Icon";
 import { DishDetailModal } from "@/components/DishDetailModal";
 import { ModifierGroupsEditor } from "@/components/ModifierGroupsEditor";
@@ -153,6 +154,7 @@ export function MenuPage() {
       setDishImage(null);
       setRemoveDishImage(false);
       invalidate();
+      showToast({ kind: "success", title: lang === "bn" ? "সংরক্ষিত!" : "Saved!", body: lang === "bn" ? "ডিশ সফলভাবে সংরক্ষিত হয়েছে।" : "Dish saved successfully." });
     },
     onError: onMutError(setDishErrors),
   });

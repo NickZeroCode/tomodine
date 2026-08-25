@@ -110,8 +110,8 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
-      {/* Panel — scrollable with sticky image */}
-      <div className="relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-lift sm:rounded-2xl sm:mx-4" style={{ maxHeight: "90dvh" }}>
+      {/* Panel — scrollable with sticky image and sticky footer */}
+      <div className="relative z-10 flex w-full max-w-lg flex-col rounded-t-2xl bg-white shadow-lift sm:rounded-2xl sm:mx-4" style={{ maxHeight: "90dvh" }}>
 
         {/* Sticky image header */}
         <div className="relative h-48 w-full shrink-0 sm:h-56">
