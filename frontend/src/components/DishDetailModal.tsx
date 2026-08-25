@@ -10,9 +10,10 @@ interface DishDetailModalProps {
   onClose: () => void;
   onAddToCart?: (dish: Dish, selectedModifiers: DishModifier[], quantity: number) => void;
   showAddButton?: boolean;
+  readOnly?: boolean;
 }
 
-export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButton = true }: DishDetailModalProps) {
+export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButton = true, readOnly = false }: DishDetailModalProps) {
   const { t } = useTranslation();
   const [quantity, setQuantity] = useState(1);
 
@@ -109,10 +110,11 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
-      {/* Panel */}
-      <div className="relative z-10 w-full max-w-lg overflow-hidden rounded-t-2xl bg-white shadow-lift sm:rounded-2xl sm:mx-4">
-        {/* Image */}
-        <div className="relative h-56 w-full sm:h-64">
+      {/* Panel — scrollable with sticky image */}
+      <div className="relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-lift sm:rounded-2xl sm:mx-4" style={{ maxHeight: "90dvh" }}>
+
+        {/* Sticky image header */}
+        <div className="relative h-48 w-full shrink-0 sm:h-56">
           {dish.image ? (
             <img src={dish.image} alt={localized(dish, lang)} className="h-full w-full object-cover" />
           ) : (
@@ -137,8 +139,8 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-5">
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-5">
           <h2 className="text-xl font-bold text-ink-900">{localized(dish, lang)}</h2>
 
           {/* Dietary tags */}
@@ -178,109 +180,149 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
                 {lang === "bn" ? "ভ্যারিয়েশন" : "Variations"}
               </h3>
 
-              {/* Grouped variations */}
-              {activeGroups.map((g) => {
-            const isRadio = g.max_selections === 1;
-            const selectedIds = groupSelections[g.id] ?? [];
-            return (
-              <div key={g.id} className="mt-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-ink-800">
-                    {localized(g, lang)}
-                  </h3>
-                  <span className="text-[10px] font-medium text-ink-400">
-                    {g.min_selections > 0
-                      ? (lang === "bn" ? `কমপক্ষে ${g.min_selections}` : `Min ${g.min_selections}`)
-                      : (lang === "bn" ? "ঐচ্ছিক" : "Optional")}
-                    {g.max_selections > 1 && ` · ${lang === "bn" ? "সর্বোচ্চ" : "Max"} ${g.max_selections}`}
-                    {isRadio && ` · ${lang === "bn" ? "একটি বেছে নিন" : "Pick one"}`}
-                  </span>
+              {readOnly ? (
+                /* ── Read-only view (dashboard) ── */
+                <div className="space-y-3">
+                  {activeGroups.map((g) => (
+                    <div key={g.id}>
+                      <p className="text-xs font-semibold text-ink-600">{localized(g, lang)}</p>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {g.options.filter((o) => o.is_available).map((opt) => {
+                          const priceDelta = parseFloat(opt.price_delta || "0");
+                          return (
+                            <span key={opt.id} className="rounded-full border border-ink-200 bg-ink-50 px-2.5 py-1 text-xs text-ink-700">
+                              {localized(opt, lang)}
+                              {priceDelta !== 0 && (
+                                <span className="ml-1 text-brand-600">
+                                  {priceDelta > 0 ? "+" : ""}{formatBDT(opt.price_delta, lang)}
+                                </span>
+                              )}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  {ungroupedModifiers.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-ink-600">{lang === "bn" ? "এক্সট্রা" : "Extras"}</p>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {ungroupedModifiers.map((m) => {
+                          const priceDelta = parseFloat(m.price_delta || "0");
+                          return (
+                            <span key={m.id} className="rounded-full border border-ink-200 bg-ink-50 px-2.5 py-1 text-xs text-ink-700">
+                              {localized(m, lang)}
+                              {priceDelta !== 0 && (
+                                <span className="ml-1 text-brand-600">
+                                  {priceDelta > 0 ? "+" : ""}{formatBDT(m.price_delta, lang)}
+                                </span>
+                              )}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="mt-2 space-y-1.5">
-                  {g.options.filter((o) => o.is_available).map((opt) => {
-                    const isSelected = selectedIds.includes(opt.id);
-                    const priceDelta = parseFloat(opt.price_delta || "0");
+              ) : (
+                /* ── Selectable view (customer) ── */
+                <div className="space-y-4">
+                  {activeGroups.map((g) => {
+                    const isRadio = g.max_selections === 1;
+                    const selectedIds = groupSelections[g.id] ?? [];
                     return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => toggleGroupOption(g.id, opt.id, g.max_selections)}
-                        className={`flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-sm transition-all ${
-                          isSelected
-                            ? "border-brand-500 bg-brand-50 text-brand-800"
-                            : "border-ink-200 bg-white text-ink-700 hover:border-ink-300"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 ${
-                            isRadio ? "rounded-full" : "rounded-[4px]"
-                          } ${isSelected ? "border-brand-600 bg-brand-600" : "border-ink-300"}`}>
-                            {isSelected && (
-                              <svg viewBox="0 0 12 12" fill="none" className="h-2.5 w-2.5 text-white">
-                                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            )}
+                      <div key={g.id}>
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-semibold text-ink-800">{localized(g, lang)}</h4>
+                          <span className="text-[10px] font-medium text-ink-400">
+                            {g.min_selections > 0
+                              ? (lang === "bn" ? `কমপক্ষে ${g.min_selections}` : `Min ${g.min_selections}`)
+                              : (lang === "bn" ? "ঐচ্ছিক" : "Optional")}
+                            {g.max_selections > 1 && ` · ${lang === "bn" ? "সর্বোচ্চ" : "Max"} ${g.max_selections}`}
+                            {isRadio && ` · ${lang === "bn" ? "একটি বেছে নিন" : "Pick one"}`}
                           </span>
-                          <span className="font-medium">{localized(opt, lang)}</span>
                         </div>
-                        {priceDelta !== 0 && (
-                          <span className={`text-xs font-semibold ${isSelected ? "text-brand-700" : "text-ink-500"}`}>
-                            {priceDelta > 0 ? "+" : ""}{formatBDT(opt.price_delta, lang)}
-                          </span>
-                        )}
-                      </button>
+                        <div className="mt-2 space-y-1.5">
+                          {g.options.filter((o) => o.is_available).map((opt) => {
+                            const isSelected = selectedIds.includes(opt.id);
+                            const priceDelta = parseFloat(opt.price_delta || "0");
+                            return (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => toggleGroupOption(g.id, opt.id, g.max_selections)}
+                                className={`flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-sm transition-all ${
+                                  isSelected
+                                    ? "border-brand-500 bg-brand-50 text-brand-800"
+                                    : "border-ink-200 bg-white text-ink-700 hover:border-ink-300"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center ${isRadio ? "rounded-full" : "rounded-[4px]"} border-2 ${isSelected ? "border-brand-600 bg-brand-600" : "border-ink-300"}`}>
+                                    {isSelected && (
+                                      <svg viewBox="0 0 12 12" fill="none" className="h-2.5 w-2.5 text-white">
+                                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                    )}
+                                  </span>
+                                  <span className="font-medium">{localized(opt, lang)}</span>
+                                </div>
+                                {priceDelta !== 0 && (
+                                  <span className={`text-xs font-semibold ${isSelected ? "text-brand-700" : "text-ink-500"}`}>
+                                    {priceDelta > 0 ? "+" : ""}{formatBDT(opt.price_delta, lang)}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     );
                   })}
-                </div>
-              </div>
-            );
-          })}
 
-          {/* Ungrouped modifiers (legacy) */}
-          {ungroupedModifiers.length > 0 && (
-            <div className="mt-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-400">
-                {lang === "bn" ? "এক্সট্রা" : "Extras"}
-              </h3>
-              <div className="mt-2 space-y-1.5">
-                {ungroupedModifiers.map((m) => {
-                  const isSelected = ungroupedSelections.has(m.id);
-                  const priceDelta = parseFloat(m.price_delta || "0");
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => toggleUngrouped(m.id)}
-                      className={`flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-sm transition-all ${
-                        isSelected
-                          ? "border-brand-500 bg-brand-50 text-brand-800"
-                          : "border-ink-200 bg-white text-ink-700 hover:border-ink-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[4px] border-2 ${
-                          isSelected ? "border-brand-600 bg-brand-600" : "border-ink-300"
-                        }`}>
-                          {isSelected && (
-                            <svg viewBox="0 0 12 12" fill="none" className="h-2.5 w-2.5 text-white">
-                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                        </span>
-                        <span className="font-medium">{localized(m, lang)}</span>
+                  {ungroupedModifiers.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-400">
+                        {lang === "bn" ? "এক্সট্রা" : "Extras"}
+                      </h4>
+                      <div className="mt-2 space-y-1.5">
+                        {ungroupedModifiers.map((m) => {
+                          const isSelected = ungroupedSelections.has(m.id);
+                          const priceDelta = parseFloat(m.price_delta || "0");
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => toggleUngrouped(m.id)}
+                              className={`flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-sm transition-all ${
+                                isSelected
+                                  ? "border-brand-500 bg-brand-50 text-brand-800"
+                                  : "border-ink-200 bg-white text-ink-700 hover:border-ink-300"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[4px] border-2 ${isSelected ? "border-brand-600 bg-brand-600" : "border-ink-300"}`}>
+                                  {isSelected && (
+                                    <svg viewBox="0 0 12 12" fill="none" className="h-2.5 w-2.5 text-white">
+                                      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  )}
+                                </span>
+                                <span className="font-medium">{localized(m, lang)}</span>
+                              </div>
+                              {priceDelta !== 0 && (
+                                <span className={`text-xs font-semibold ${isSelected ? "text-brand-700" : "text-ink-500"}`}>
+                                  {priceDelta > 0 ? "+" : ""}{formatBDT(m.price_delta, lang)}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
-                      {priceDelta !== 0 && (
-                        <span className={`text-xs font-semibold ${isSelected ? "text-brand-700" : "text-ink-500"}`}>
-                          {priceDelta > 0 ? "+" : ""}{formatBDT(m.price_delta, lang)}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

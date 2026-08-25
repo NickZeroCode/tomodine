@@ -723,6 +723,7 @@ export function MenuPage() {
           lang={lang}
           onClose={() => setDetailDish(null)}
           showAddButton={false}
+          readOnly
         />
       )}
 
