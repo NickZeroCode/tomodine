@@ -167,7 +167,7 @@ export function OrdersPage() {
     const items = order.items
       .map(
         (item) =>
-          `<tr><td>${item.quantity}× ${item.dish_name_en || item.dish_name_bn}</td><td style="text-align:right">${formatBDT(item.unit_price, lang)}</td></tr>`
+          `<tr><td>${item.quantity}× ${item.dish_name_en || item.dish_name_bn}${item.selected_modifiers?.length ? ` (${item.selected_modifiers.map((m) => m.name_en).join(", ")})` : ""}</td><td style="text-align:right">${formatBDT(item.unit_price, lang)}</td></tr>`
       )
       .join("");
     const tableLabel = order.table_label ? `${t("orders.table")} ${order.table_label}` : "";
@@ -459,6 +459,11 @@ export function OrdersPage() {
                                       <p className="truncate text-sm font-medium text-ink-900">
                                         {lang === "bn" ? item.dish_name_bn || item.dish_name_en : item.dish_name_en || item.dish_name_bn}
                                       </p>
+                                      {item.selected_modifiers?.length > 0 && (
+                                        <p className="text-[0.65rem] text-ink-400">
+                                          {item.selected_modifiers.map((m) => lang === "bn" ? m.name_bn || m.name_en : m.name_en).join(", ")}
+                                        </p>
+                                      )}
                                       <p className="text-xs text-ink-400">
                                         {item.quantity}× {formatBDT(item.unit_price, lang)}
                                         {item.variant_name && ` · ${item.variant_name}`}

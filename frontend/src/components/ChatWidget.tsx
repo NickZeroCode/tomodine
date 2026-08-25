@@ -339,6 +339,40 @@ function StructuredActionsRenderer({
                     <span className="text-xs text-ink-400">{detailItem.min_prep_time}–{detailItem.max_prep_time} min</span>
                   )}
                 </div>
+
+                {/* Modifier groups preview */}
+                {detailItem.modifier_groups && detailItem.modifier_groups.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {detailItem.modifier_groups.map((g, gi) => (
+                      <div key={gi} className="rounded-lg border border-ink-100 bg-ink-50/50 px-3 py-2">
+                        <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-ink-500">
+                          {lang === "bn" && g.group_name_bn ? g.group_name_bn : g.group_name_en}
+                          {g.min_selections > 0 && (
+                            <span className="ml-1 text-brand-600">
+                              ({lang === "bn" ? "বাধ্যতামূলক" : "required"})
+                            </span>
+                          )}
+                        </p>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {g.options.map((opt, oi) => (
+                            <span key={oi} className="rounded-full border border-ink-200 bg-white px-2 py-0.5 text-[0.6rem] text-ink-700">
+                              {lang === "bn" && opt.name_bn ? opt.name_bn : opt.name_en}
+                              {opt.price_delta !== 0 && (
+                                <span className="ml-0.5 text-brand-600">
+                                  {opt.price_delta > 0 ? "+" : ""}{formatBDT(opt.price_delta, lang)}
+                                </span>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    <p className="text-[0.55rem] text-ink-400">
+                      {lang === "bn" ? "অর্ডার করার সময় বিকল্প বেছে নিন" : "Choose options when ordering"}
+                    </p>
+                  </div>
+                )}
+
                 {/* Quantity selector */}
                 <div className="mt-3 flex items-center justify-center gap-3">
                   <button
@@ -413,6 +447,11 @@ function StructuredActionsRenderer({
             <path d="M8 12l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <p className="mt-1.5 text-sm font-semibold text-emerald-800">{actions.message}</p>
+          {actions.modifiers && actions.modifiers.length > 0 && (
+            <p className="mt-0.5 text-[0.65rem] text-emerald-600">
+              {lang === "bn" ? "বিকল্প: " : "Modifiers: "}{actions.modifiers.join(", ")}
+            </p>
+          )}
           {actions.order_total && (
             <p className="mt-0.5 text-xs text-emerald-600">
               {t("chat.orderTotal", "Order total")}: {formatBDT(actions.order_total, lang)}

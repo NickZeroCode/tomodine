@@ -15,7 +15,7 @@ from apps.analytics import services as analytics_services
 from apps.api import serializers as api_serializers
 from apps.billing.models import BillingRecord, Offer, Subscription, SubscriptionPlan
 from apps.core.permissions import HasRestaurantPermission, IsRestaurantMember
-from apps.menus.models import Dish, Menu, MenuCategory
+from apps.menus.models import Dish, DishModifier, Menu, MenuCategory, ModifierGroup
 from apps.notifications.models import Notification
 from apps.notifications.services import broadcast_to_restaurant
 from apps.ordering.models import Order, OrderStatusHistory
@@ -678,7 +678,7 @@ class MenuCategoryViewSet(TenantScopedViewSet):
 
 class DishViewSet(TenantScopedViewSet):
     serializer_class = api_serializers.DishSerializer
-    queryset = Dish.objects.prefetch_related("variants", "modifiers")
+    queryset = Dish.objects.prefetch_related("variants", "modifiers", "modifier_groups")
     required_permission = "menu.manage"
     filterset_fields = ("category", "is_available", "is_featured")
     search_fields = ("name_en", "name_bn", "description_en", "description_bn")
@@ -697,6 +697,30 @@ class DishViewSet(TenantScopedViewSet):
             logger.warning("Dish limit exceeded: %s", exc)
             raise PermissionDenied(str(exc))
         super().perform_create(serializer)
+
+
+class ModifierGroupViewSet(TenantScopedViewSet):
+    serializer_class = api_serializers.ModifierGroupSerializer
+    queryset = ModifierGroup.objects.prefetch_related("options")
+    required_permission = "menu.manage"
+    filterset_fields = ("dish", "is_active")
+
+    def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return api_serializers.ModifierGroupWriteSerializer
+        return super().get_serializer_class()
+
+
+class DishModifierViewSet(TenantScopedViewSet):
+    serializer_class = api_serializers.DishModifierSerializer
+    queryset = DishModifier.objects.all()
+    required_permission = "menu.manage"
+    filterset_fields = ("dish", "group", "is_available")
+
+    def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return api_serializers.DishModifierWriteSerializer
+        return super().get_serializer_class()
 
 
 # ---------------------------------------------------------------------------

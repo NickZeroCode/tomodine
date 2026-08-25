@@ -14,7 +14,7 @@ import { MiniGames } from "@/components/games/MiniGames";
 import { ChatWidget } from "@/components/ChatWidget";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
-import type { Dish, DishVariant, Offer, Order } from "@/types";
+import type { Dish, DishModifier, DishVariant, Offer, Order } from "@/types";
 
 const DEVICE_KEY = "bhojon.device_id";
 const SESSION_PREFIX = "bhojon.session.";
@@ -63,6 +63,7 @@ interface CustomerMenuResponse {
 interface CartLine {
   dish: Dish;
   variant: DishVariant | null;
+  modifiers: DishModifier[];
   quantity: number;
   offerPrice: number | null;
 }
@@ -195,6 +196,7 @@ export function CustomerOrderPage() {
           session_token: session!.session_token,
           dish_id: line.dish.id,
           variant_id: line.variant?.id ?? null,
+          modifier_ids: line.modifiers.map((m) => m.id),
           quantity: line.quantity,
         });
       }
@@ -235,9 +237,12 @@ export function CustomerOrderPage() {
   });
 
   function printReceipt(order: Order) {
-    const items = order.items.map((item) =>
-      `<tr><td>${item.quantity}× ${lang === "bn" ? item.dish_name_bn || item.dish_name_en : item.dish_name_en || item.dish_name_bn}</td><td style="text-align:right">${formatBDT(item.unit_price, lang)}</td></tr>`
-    ).join("");
+    const items = order.items.map((item) => {
+      const mods = item.selected_modifiers?.length
+        ? ` (${item.selected_modifiers.map((m) => lang === "bn" ? m.name_bn || m.name_en : m.name_en).join(", ")})`
+        : "";
+      return `<tr><td>${item.quantity}× ${lang === "bn" ? item.dish_name_bn || item.dish_name_en : item.dish_name_en || item.dish_name_bn}${mods}</td><td style="text-align:right">${formatBDT(item.unit_price, lang)}</td></tr>`;
+    }).join("");
     const html = `<!doctype html><html><head><title>${t("receipt.title")}</title>
       <style>body{font-family:monospace;max-width:320px;margin:40px auto;padding:0 10px}
       table{width:100%;border-collapse:collapse}td{padding:4px 0;font-size:13px}
@@ -282,10 +287,12 @@ export function CustomerOrderPage() {
   const cartTotal = useMemo(
     () =>
       cart.reduce((sum, line) => {
+        const modifierSum = line.modifiers.reduce((s, m) => s + parseFloat(m.price_delta || "0"), 0);
         const unit =
           line.offerPrice ??
           parseFloat(line.dish.price) +
-          (line.variant ? parseFloat(line.variant.price_delta) : 0);
+          (line.variant ? parseFloat(line.variant.price_delta) : 0) +
+          modifierSum;
         return sum + unit * line.quantity;
       }, 0),
     [cart]
@@ -298,32 +305,43 @@ export function CustomerOrderPage() {
 
   // ── Cart helpers ─────────────────────────────────────────────
 
-  function addToCart(dish: Dish) {
+  function addToCart(dish: Dish, selectedModifiers: DishModifier[] = []) {
     const offer = dishOffers.get(dish.id);
     const price = parseFloat(dish.price);
+    const modifierTotal = selectedModifiers.reduce((s, m) => s + parseFloat(m.price_delta || "0"), 0);
     const offerPrice = offer
       ? offer.discount_type === "percentage"
-        ? price * (1 - parseFloat(offer.discount_value) / 100)
-        : Math.max(0, price - parseFloat(offer.discount_value))
+        ? (price + modifierTotal) * (1 - parseFloat(offer.discount_value) / 100)
+        : Math.max(0, price + modifierTotal - parseFloat(offer.discount_value))
       : null;
 
+    // Create a modifier key for deduplication (same dish + same modifiers = same line).
+    const modKey = selectedModifiers.map((m) => m.id).sort().join(",");
+
     setCart((prev) => {
-      const existing = prev.find((l) => l.dish.id === dish.id && l.variant === null);
+      const existing = prev.find(
+        (l) => l.dish.id === dish.id && l.variant === null &&
+          l.modifiers.map((m) => m.id).sort().join(",") === modKey
+      );
       if (existing) {
         return prev.map((l) =>
-          l.dish.id === dish.id && l.variant === null
-            ? { ...l, quantity: l.quantity + 1 }
-            : l
+          l === existing ? { ...l, quantity: l.quantity + 1 } : l
         );
       }
-      return [...prev, { dish, variant: null, quantity: 1, offerPrice }];
+      return [...prev, { dish, variant: null, modifiers: selectedModifiers, quantity: 1, offerPrice }];
     });
   }
 
-  function updateQuantity(dishId: string, delta: number) {
+  function updateQuantity(dishId: string, delta: number, modifierIds: string[] = []) {
+    const modKey = modifierIds.sort().join(",");
     setCart((prev) =>
       prev
-        .map((l) => (l.dish.id === dishId ? { ...l, quantity: l.quantity + delta } : l))
+        .map((l) => {
+          const lineModKey = l.modifiers.map((m) => m.id).sort().join(",");
+          return l.dish.id === dishId && lineModKey === modKey
+            ? { ...l, quantity: l.quantity + delta }
+            : l;
+        })
         .filter((l) => l.quantity > 0)
     );
   }
@@ -757,14 +775,22 @@ export function CustomerOrderPage() {
                                 <span className="shrink-0 rounded-full bg-ink-100 px-2.5 py-1 text-[0.6rem] font-medium text-ink-400">
                                   {t("menu.unavailable")}
                                 </span>
-                              ) : inCart ? (
+                              ) : inCart && !(dish.modifier_groups?.length || dish.modifiers?.filter((m) => !m.group).length) ? (
                                 <div className="flex shrink-0 items-center gap-0.5">
                                   <button type="button" className="flex h-7 w-7 items-center justify-center rounded-full border border-ink-200 text-sm font-bold text-ink-500 transition-colors active:bg-ink-100" onClick={(e) => { e.stopPropagation(); updateQuantity(dish.id, -1); }}>−</button>
                                   <span className="w-5 text-center text-xs font-bold tabular-nums text-ink-800">{inCart.quantity}</span>
                                   <button type="button" className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 text-sm font-bold text-white shadow-sm transition-all active:scale-95" onClick={(e) => { e.stopPropagation(); addToCart(dish); }}>+</button>
                                 </div>
                               ) : (
-                                <button type="button" className="shrink-0 rounded-full bg-orange-500 px-3 py-1.5 text-[0.65rem] font-semibold text-white shadow-sm transition-all hover:bg-orange-600 active:scale-95" onClick={(e) => { e.stopPropagation(); addToCart(dish); }}>
+                                <button type="button" className="shrink-0 rounded-full bg-orange-500 px-3 py-1.5 text-[0.65rem] font-semibold text-white shadow-sm transition-all hover:bg-orange-600 active:scale-95" onClick={(e) => {
+                                  e.stopPropagation();
+                                  // If dish has modifiers, open detail modal for selection.
+                                  if (dish.modifier_groups?.length || dish.modifiers?.filter((m) => !m.group).length) {
+                                    setDetailDish(dish);
+                                  } else {
+                                    addToCart(dish);
+                                  }
+                                }}>
                                   {t("cart.addToCart")}
                                 </button>
                               )}
@@ -795,12 +821,14 @@ export function CustomerOrderPage() {
             ) : (
               <>
                 <ul className="space-y-3">
-                  {cart.map((line) => {
-                    const baseUnit = parseFloat(line.dish.price) + (line.variant ? parseFloat(line.variant.price_delta) : 0);
+                  {cart.map((line, lineIdx) => {
+                    const modifierSum = line.modifiers.reduce((s, m) => s + parseFloat(m.price_delta || "0"), 0);
+                    const baseUnit = parseFloat(line.dish.price) + (line.variant ? parseFloat(line.variant.price_delta) : 0) + modifierSum;
                     const unit = line.offerPrice ?? baseUnit;
                     const hasOffer = line.offerPrice !== null;
+                    const lineKey = `${line.dish.id}-${line.modifiers.map((m) => m.id).sort().join(",")}-${lineIdx}`;
                     return (
-                      <li key={line.dish.id} className="flex items-center gap-3 rounded-xl border border-ink-100 p-3">
+                      <li key={lineKey} className="flex items-center gap-3 rounded-xl border border-ink-100 p-3">
                         {line.dish.image ? (
                           <img src={line.dish.image} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
                         ) : (
@@ -808,6 +836,11 @@ export function CustomerOrderPage() {
                         )}
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-ink-900">{localized(line.dish, lang)}</p>
+                          {line.modifiers.length > 0 && (
+                            <p className="truncate text-[0.65rem] text-ink-400">
+                              {line.modifiers.map((m) => localized(m, lang)).join(", ")}
+                            </p>
+                          )}
                           <div className="flex items-center gap-1.5">
                             {hasOffer && (
                               <span className="text-xs text-ink-400 line-through tabular-nums">{formatBDT(baseUnit * line.quantity, lang)}</span>
@@ -818,9 +851,9 @@ export function CustomerOrderPage() {
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-1.5">
-                          <button type="button" className="flex h-7 w-7 items-center justify-center rounded-full border border-ink-200 text-sm font-bold text-ink-600" onClick={() => updateQuantity(line.dish.id, -1)}>−</button>
+                          <button type="button" className="flex h-7 w-7 items-center justify-center rounded-full border border-ink-200 text-sm font-bold text-ink-600" onClick={() => updateQuantity(line.dish.id, -1, line.modifiers.map((m) => m.id))}>−</button>
                           <span className="w-5 text-center text-xs font-bold tabular-nums">{line.quantity}</span>
-                          <button type="button" className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 text-sm font-bold text-white" onClick={() => updateQuantity(line.dish.id, 1)}>+</button>
+                          <button type="button" className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 text-sm font-bold text-white" onClick={() => updateQuantity(line.dish.id, 1, line.modifiers.map((m) => m.id))}>+</button>
                         </div>
                       </li>
                     );
@@ -899,6 +932,11 @@ export function CustomerOrderPage() {
                             )}
                             <span className="min-w-0 flex-1 truncate">
                               {item.quantity}× {lang === "bn" ? item.dish_name_bn || item.dish_name_en : item.dish_name_en || item.dish_name_bn}
+                              {item.selected_modifiers?.length > 0 && (
+                                <span className="block text-[0.6rem] text-ink-400">
+                                  {item.selected_modifiers.map((m) => lang === "bn" ? m.name_bn || m.name_en : m.name_en).join(", ")}
+                                </span>
+                              )}
                               <span className="ml-1 text-[0.6rem] text-ink-400">
                                 ({t("order.prepTime", { min: item.min_prep_time ?? 15, max: item.max_prep_time ?? 30 })})
                               </span>

@@ -11,6 +11,7 @@ import { Field, TextField } from "@/components/FormField";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
 import { DishDetailModal } from "@/components/DishDetailModal";
+import { ModifierGroupsEditor } from "@/components/ModifierGroupsEditor";
 import type { ApiError, Dish, Menu, MenuCategory } from "@/types";
 
 interface DishFormState {
@@ -402,6 +403,11 @@ export function MenuPage() {
                                   {!dish.is_available && (
                                     <span className="rounded-full bg-ink-800 px-2 py-0.5 text-[10px] font-semibold text-white">{t("menu.unavailable")}</span>
                                   )}
+                                  {dish.modifier_groups && dish.modifier_groups.length > 0 && (
+                                    <span className="rounded-full bg-brand-600 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                                      {dish.modifier_groups.length} {lang === "bn" ? "গ্রুপ" : "groups"}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               {/* Info */}
@@ -693,6 +699,17 @@ export function MenuPage() {
                 setDishForm((f) => ({ ...f, is_spicy: v }))
               )}
             </div>
+
+            {/* Modifier Groups — only visible when editing an existing dish */}
+            {editingDish && (
+              <div className="border-t border-ink-100 pt-4">
+                <ModifierGroupsEditor
+                  dishId={editingDish.id}
+                  initialGroups={editingDish.modifier_groups ?? []}
+                />
+              </div>
+            )}
+
             {nonFieldErrors(dishErrors)}
             {formButtons(saveDish.isPending, () => setDishFormOpen(false))}
           </form>

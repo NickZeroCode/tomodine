@@ -17,9 +17,11 @@ from .customer_views import CustomerOrderingViewSet
 from .views import (
     AnalyticsViewSet,
     BillingRecordViewSet,
+    DishModifierViewSet,
     DishViewSet,
     MenuCategoryViewSet,
     MenuViewSet,
+    ModifierGroupViewSet,
     NotificationViewSet,
     OfferViewSet,
     OrderViewSet,
@@ -47,6 +49,8 @@ router.register("qr-codes", QRCodeViewSet, basename="qrcode")
 router.register("menus", MenuViewSet, basename="menu")
 router.register("menu-categories", MenuCategoryViewSet, basename="menu-category")
 router.register("dishes", DishViewSet, basename="dish")
+router.register("modifier-groups", ModifierGroupViewSet, basename="modifier-group")
+router.register("dish-modifiers", DishModifierViewSet, basename="dish-modifier")
 router.register("orders", OrderViewSet, basename="order")
 router.register("subscription-plans", SubscriptionPlanViewSet, basename="subscription-plan")
 router.register("subscriptions", SubscriptionViewSet, basename="subscription")

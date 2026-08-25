@@ -832,6 +832,11 @@ export function TablesPage() {
                         ) : null}
                         <span className="min-w-0 flex-1 truncate">
                           {item.quantity}× {item.dish_name_en || item.dish_name_bn}
+                          {item.selected_modifiers?.length > 0 && (
+                            <span className="block text-[0.6rem] text-ink-400">
+                              {item.selected_modifiers.map((m) => m.name_en).join(", ")}
+                            </span>
+                          )}
                         </span>
                         <span className="shrink-0 tabular-nums">{formatBDT(item.unit_price, lang)}</span>
                       </li>

@@ -88,6 +88,20 @@ export interface DishModifier extends LocalizedName {
   id: string;
   price_delta: string;
   is_available: boolean;
+  is_default: boolean;
+  display_order: number;
+  group: string | null;
+}
+
+export interface ModifierGroup {
+  id: string;
+  name_en: string;
+  name_bn: string;
+  min_selections: number;
+  max_selections: number;
+  is_active: boolean;
+  display_order: number;
+  options: DishModifier[];
 }
 
 export interface Dish extends LocalizedName {
@@ -105,6 +119,7 @@ export interface Dish extends LocalizedName {
   category: string;
   variants: DishVariant[];
   modifiers: DishModifier[];
+  modifier_groups: ModifierGroup[];
 }
 
 export interface MenuCategory extends LocalizedName {
@@ -140,6 +155,13 @@ export interface OrderItem {
   unit_price: string;
   line_total: string;
   special_instructions: string;
+  selected_modifiers: Array<{
+    id: string;
+    name_en: string;
+    name_bn: string;
+    price_delta: string;
+  }>;
+  modifier_total: string;
 }
 
 export interface Order {

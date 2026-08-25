@@ -186,6 +186,45 @@ class ModifierGroupSerializer(serializers.ModelSerializer):
         read_only_fields = ("id",)
 
 
+class ModifierGroupWriteSerializer(serializers.ModelSerializer):
+    """Create/update a modifier group on a dish."""
+    class Meta:
+        model = ModifierGroup
+        fields = ("id", "dish", "name_en", "name_bn", "min_selections", "max_selections", "is_active", "display_order")
+        read_only_fields = ("id",)
+
+    def validate_dish(self, value):
+        request = self.context.get("request")
+        restaurant = getattr(request, "restaurant", None)
+        if restaurant and value.restaurant_id != restaurant.pk:
+            raise serializers.ValidationError("Dish does not belong to this restaurant.")
+        return value
+
+
+class DishModifierWriteSerializer(serializers.ModelSerializer):
+    """Create/update a modifier option."""
+    class Meta:
+        model = DishModifier
+        fields = ("id", "dish", "group", "name_en", "name_bn", "price_delta", "is_available", "is_default", "display_order")
+        read_only_fields = ("id",)
+
+    def validate_dish(self, value):
+        request = self.context.get("request")
+        restaurant = getattr(request, "restaurant", None)
+        if restaurant and value.restaurant_id != restaurant.pk:
+            raise serializers.ValidationError("Dish does not belong to this restaurant.")
+        return value
+
+    def validate_group(self, value):
+        if value is None:
+            return value
+        request = self.context.get("request")
+        restaurant = getattr(request, "restaurant", None)
+        if restaurant and value.restaurant_id != restaurant.pk:
+            raise serializers.ValidationError("Group does not belong to this restaurant.")
+        return value
+
+
 class DishSerializer(serializers.ModelSerializer):
     variants = DishVariantSerializer(many=True, read_only=True)
     modifiers = DishModifierSerializer(many=True, read_only=True)

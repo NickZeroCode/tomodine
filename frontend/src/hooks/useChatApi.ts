@@ -32,10 +32,23 @@ export interface StructuredActions {
     is_spicy?: boolean;
     min_prep_time?: number;
     max_prep_time?: number;
+    modifier_groups?: Array<{
+      group_name_en: string;
+      group_name_bn?: string;
+      min_selections: number;
+      max_selections: number;
+      options: Array<{
+        name_en: string;
+        name_bn?: string;
+        price_delta: number;
+        is_default: boolean;
+      }>;
+    }>;
   }>;
   message?: string;
   order_total?: string;
   order_id?: string;
+  modifiers?: string[];
   quick_replies?: string[];
   suggest_more?: boolean;
   suggest_games?: boolean;
