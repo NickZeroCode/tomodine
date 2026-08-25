@@ -249,7 +249,7 @@ export function ModifierGroupsEditor({ dishId, initialGroups, onSaved }: Props) 
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-ink-700">
-          {lang === "bn" ? "মডিফায়ার গ্রুপ" : "Modifier Groups"}
+          {lang === "bn" ? "ভ্যারিয়েশন" : "Variations"}
         </label>
         <button
           type="button"
@@ -257,7 +257,7 @@ export function ModifierGroupsEditor({ dishId, initialGroups, onSaved }: Props) 
           onClick={addGroup}
         >
           <Icon name="plus" className="mr-1 h-3 w-3 inline" />
-          {lang === "bn" ? "গ্রুপ যোগ করুন" : "Add Group"}
+          {lang === "bn" ? "গ্রুপ যোগ করুন" : "Add Variation"}
         </button>
       </div>
 
@@ -474,7 +474,7 @@ export function ModifierGroupsEditor({ dishId, initialGroups, onSaved }: Props) 
         >
           {saveMutation.isPending
             ? (lang === "bn" ? "সংরক্ষণ হচ্ছে..." : "Saving...")
-            : (lang === "bn" ? "মডিফায়ার সংরক্ষণ করুন" : "Save Modifiers")}
+            : (lang === "bn" ? "ভ্যারিয়েশন সংরক্ষণ করুন" : "Save Variations")}
         </button>
       )}
 

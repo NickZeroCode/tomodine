@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from apps.menus.models import Dish, DishModifier, DishVariant, Menu, MenuCategory
+from apps.menus.models import Dish, DishModifier, DishVariant, Menu, MenuCategory, ModifierGroup
 from apps.ordering.models import CustomerSession, Order, OrderItem
 
 
@@ -37,7 +37,7 @@ class CustomerModifierGroupSerializer(serializers.ModelSerializer):
     options = CustomerDishModifierSerializer(many=True, read_only=True)
 
     class Meta:
-        model = "menus.ModifierGroup"
+        model = ModifierGroup
         fields = ("id", "name_en", "name_bn", "min_selections", "max_selections", "options")
 
 

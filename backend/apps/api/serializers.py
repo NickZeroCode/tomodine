@@ -196,7 +196,7 @@ class ModifierGroupSerializer(serializers.ModelSerializer):
     options = DishModifierSerializer(many=True, read_only=True)
 
     class Meta:
-        model = "menus.ModifierGroup"
+        model = ModifierGroup
         fields = ("id", "name_en", "name_bn", "min_selections", "max_selections", "is_active", "display_order", "options")
         read_only_fields = ("id",)
 

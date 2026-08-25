@@ -169,28 +169,7 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
             </p>
           )}
 
-          {/* Variants */}
-          {dish.variants && dish.variants.length > 0 && (
-            <div className="mt-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-400">
-                {t("menu.category")}
-              </h3>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {dish.variants.map((v) => (
-                  <span key={v.id} className="rounded-full border border-ink-200 bg-ink-50 px-3 py-1 text-xs font-medium text-ink-700">
-                    {localized(v, lang)}
-                    {parseFloat(v.price_delta) !== 0 && (
-                      <span className="ml-1 text-brand-600">
-                        {parseFloat(v.price_delta) > 0 ? "+" : ""}{formatBDT(v.price_delta, lang)}
-                      </span>
-                    )}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Modifier Groups */}
+          {/* Variations (modifier groups) */}
           {activeGroups.map((g) => {
             const isRadio = g.max_selections === 1;
             const selectedIds = groupSelections[g.id] ?? [];

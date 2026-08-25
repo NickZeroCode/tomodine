@@ -12,7 +12,6 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
 import { DishDetailModal } from "@/components/DishDetailModal";
 import { ModifierGroupsEditor } from "@/components/ModifierGroupsEditor";
-import { VariantsEditor } from "@/components/VariantsEditor";
 import type { ApiError, Dish, Menu, MenuCategory } from "@/types";
 
 interface DishFormState {
@@ -404,14 +403,9 @@ export function MenuPage() {
                                   {!dish.is_available && (
                                     <span className="rounded-full bg-ink-800 px-2 py-0.5 text-[10px] font-semibold text-white">{t("menu.unavailable")}</span>
                                   )}
-                                  {dish.variants && dish.variants.length > 0 && (
-                                    <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
-                                      {dish.variants.length} {lang === "bn" ? "সাইজ" : "sizes"}
-                                    </span>
-                                  )}
                                   {dish.modifier_groups && dish.modifier_groups.length > 0 && (
                                     <span className="rounded-full bg-brand-600 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
-                                      {dish.modifier_groups.length} {lang === "bn" ? "গ্রুপ" : "groups"}
+                                      {dish.modifier_groups.length} {lang === "bn" ? "ভ্যারিয়েশন" : "variations"}
                                     </span>
                                   )}
                                 </div>
@@ -706,17 +700,7 @@ export function MenuPage() {
               )}
             </div>
 
-            {/* Variants — only visible when editing an existing dish */}
-            {editingDish && (
-              <div className="border-t border-ink-100 pt-4">
-                <VariantsEditor
-                  dishId={editingDish.id}
-                  initialVariants={editingDish.variants ?? []}
-                />
-              </div>
-            )}
-
-            {/* Modifier Groups — only visible when editing an existing dish */}
+            {/* Variations (modifier groups) — only visible when editing an existing dish */}
             {editingDish && (
               <div className="border-t border-ink-100 pt-4">
                 <ModifierGroupsEditor

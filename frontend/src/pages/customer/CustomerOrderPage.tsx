@@ -780,9 +780,9 @@ export function CustomerOrderPage() {
                                   )}
                                   {dish.is_spicy && <span className="inline-flex items-center rounded-full bg-red-50 px-1.5 py-0.5 text-red-500"><Icon name="spicy" /></span>}
                                   {dish.is_vegetarian && <span className="inline-flex items-center rounded-full bg-green-50 px-1.5 py-0.5 text-green-600"><Icon name="vegetarian" /></span>}
-                                  {dish.variants && dish.variants.length > 0 && (
-                                    <span className="inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[0.55rem] font-medium text-blue-600">
-                                      {dish.variants.length} {lang === "bn" ? "সাইজ" : "sizes"}
+                                  {dish.modifier_groups && dish.modifier_groups.length > 0 && (
+                                    <span className="inline-flex items-center rounded-full bg-brand-50 px-1.5 py-0.5 text-[0.55rem] font-medium text-brand-600">
+                                      {dish.modifier_groups.length} {lang === "bn" ? "ভ্যারিয়েশন" : "variations"}
                                     </span>
                                   )}
                                 </div>
