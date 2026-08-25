@@ -335,9 +335,14 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
             </div>
           )}
 
-          {/* Quantity selector */}
-          {showAddButton && onAddToCart && (
-            <div className="mt-4 flex items-center justify-between">
+          {/* Bottom padding so content isn't hidden behind sticky footer */}
+          {showAddButton && onAddToCart && <div className="h-2" />}
+        </div>
+
+        {/* Sticky footer — quantity + add to cart, always visible */}
+        {showAddButton && onAddToCart && (
+          <div className="shrink-0 border-t border-ink-100 bg-white px-5 pb-5 pt-3">
+            <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-ink-600">
                 {lang === "bn" ? "পরিমাণ" : "Quantity"}
               </span>
@@ -359,10 +364,6 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
                 </button>
               </div>
             </div>
-          )}
-
-          {/* Add to cart button */}
-          {showAddButton && onAddToCart && (
             <button
               type="button"
               disabled={validationErrors.length > 0}
@@ -380,8 +381,8 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
                 </span>
               )}
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
