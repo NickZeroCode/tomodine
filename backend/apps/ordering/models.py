@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import secrets
+import uuid
 from decimal import Decimal
 
 from django.db import models
