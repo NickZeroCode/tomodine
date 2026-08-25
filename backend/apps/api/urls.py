@@ -18,6 +18,7 @@ from .views import (
     AnalyticsViewSet,
     BillingRecordViewSet,
     DishModifierViewSet,
+    DishVariantViewSet,
     DishViewSet,
     MenuCategoryViewSet,
     MenuViewSet,
@@ -51,6 +52,7 @@ router.register("menu-categories", MenuCategoryViewSet, basename="menu-category"
 router.register("dishes", DishViewSet, basename="dish")
 router.register("modifier-groups", ModifierGroupViewSet, basename="modifier-group")
 router.register("dish-modifiers", DishModifierViewSet, basename="dish-modifier")
+router.register("dish-variants", DishVariantViewSet, basename="dish-variant")
 router.register("orders", OrderViewSet, basename="order")
 router.register("subscription-plans", SubscriptionPlanViewSet, basename="subscription-plan")
 router.register("subscriptions", SubscriptionViewSet, basename="subscription")

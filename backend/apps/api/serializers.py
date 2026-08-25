@@ -170,6 +170,21 @@ class DishVariantSerializer(serializers.ModelSerializer):
         read_only_fields = ("id",)
 
 
+class DishVariantWriteSerializer(serializers.ModelSerializer):
+    """Create/update a dish variant (portion/size option)."""
+    class Meta:
+        model = DishVariant
+        fields = ("id", "dish", "name_en", "name_bn", "price_delta", "is_default", "display_order")
+        read_only_fields = ("id",)
+
+    def validate_dish(self, value):
+        request = self.context.get("request")
+        restaurant = getattr(request, "restaurant", None)
+        if restaurant and value.restaurant_id != restaurant.pk:
+            raise serializers.ValidationError("Dish does not belong to this restaurant.")
+        return value
+
+
 class DishModifierSerializer(serializers.ModelSerializer):
     class Meta:
         model = DishModifier

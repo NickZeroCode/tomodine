@@ -82,6 +82,7 @@ export interface DishVariant extends LocalizedName {
   id: string;
   price_delta: string;
   is_default: boolean;
+  display_order: number;
 }
 
 export interface DishModifier extends LocalizedName {

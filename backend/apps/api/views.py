@@ -15,7 +15,7 @@ from apps.analytics import services as analytics_services
 from apps.api import serializers as api_serializers
 from apps.billing.models import BillingRecord, Offer, Subscription, SubscriptionPlan
 from apps.core.permissions import HasRestaurantPermission, IsRestaurantMember
-from apps.menus.models import Dish, DishModifier, Menu, MenuCategory, ModifierGroup
+from apps.menus.models import Dish, DishModifier, DishVariant, Menu, MenuCategory, ModifierGroup
 from apps.notifications.models import Notification
 from apps.notifications.services import broadcast_to_restaurant
 from apps.ordering.models import Order, OrderStatusHistory
@@ -720,6 +720,18 @@ class DishModifierViewSet(TenantScopedViewSet):
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):
             return api_serializers.DishModifierWriteSerializer
+        return super().get_serializer_class()
+
+
+class DishVariantViewSet(TenantScopedViewSet):
+    serializer_class = api_serializers.DishVariantSerializer
+    queryset = DishVariant.objects.all()
+    required_permission = "menu.manage"
+    filterset_fields = ("dish", "is_default")
+
+    def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return api_serializers.DishVariantWriteSerializer
         return super().get_serializer_class()
 
 
