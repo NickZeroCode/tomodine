@@ -412,12 +412,28 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
                 continue
             seen.add(bid)
             dish = assoc.dish_b
+
+            # Build image URL inline (same logic as _abs_url in menu method).
+            image_url = None
+            if dish.image:
+                from django.conf import settings
+                if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
+                    try:
+                        image_url = dish.image.url
+                    except ValueError:
+                        pass
+                else:
+                    try:
+                        image_url = request.build_absolute_uri(dish.image.url)
+                    except ValueError:
+                        pass
+
             results.append({
                 "dish_id": bid,
                 "name_en": dish.name_en,
                 "name_bn": dish.name_bn,
                 "price": str(dish.price),
-                "image": _abs_url(request, dish.image),
+                "image": image_url,
                 "because_of": assoc.dish_a.name_en,
             })
             if len(results) >= 3:
