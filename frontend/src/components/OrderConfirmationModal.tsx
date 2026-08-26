@@ -54,10 +54,15 @@ export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPend
   }, [qrToken, items.length]);
 
   function updateQty(idx: number, delta: number) {
-    setItems((prev) =>
-      prev
-        .map((line, i) => (i === idx ? { ...line, quantity: Math.max(1, Math.min(20, line.quantity + delta)) } : line))
-    );
+    setItems((prev) => {
+      const updated = prev.map((line, i) => {
+        if (i !== idx) return line;
+        const newQty = line.quantity + delta;
+        return { ...line, quantity: newQty };
+      });
+      // Auto-remove items that reach 0.
+      return updated.filter((line) => line.quantity > 0);
+    });
   }
 
   function removeItem(idx: number) {
