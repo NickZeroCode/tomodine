@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatBDT, localized, localizedDescription } from "@/lib/format";
 import { Icon } from "@/components/Icon";
-import type { Dish, DishModifier } from "@/types";
+import type { Dish, DishModifier, Offer } from "@/types";
 
 interface DishDetailModalProps {
   dish: Dish;
@@ -11,9 +11,10 @@ interface DishDetailModalProps {
   onAddToCart?: (dish: Dish, selectedModifiers: DishModifier[], quantity: number, specialInstructions: string) => void;
   showAddButton?: boolean;
   readOnly?: boolean;
+  offer?: Offer | null;
 }
 
-export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButton = true, readOnly = false }: DishDetailModalProps) {
+export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButton = true, readOnly = false, offer = null }: DishDetailModalProps) {
   const { t } = useTranslation();
   const [quantity, setQuantity] = useState(1);
   const [specialInstructions, setSpecialInstructions] = useState("");
@@ -104,7 +105,15 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
     return errors;
   }, [activeGroups, groupSelections, lang]);
 
-  const totalPrice = parseFloat(dish.price) + modifierTotal;
+  // Apply offer discount to the base price for display.
+  const basePrice = parseFloat(dish.price);
+  const effectiveBasePrice = offer
+    ? offer.discount_type === "percentage"
+      ? basePrice * (1 - parseFloat(offer.discount_value) / 100)
+      : Math.max(0, basePrice - parseFloat(offer.discount_value))
+    : basePrice;
+  const hasOffer = offer !== null;
+  const effectiveTotal = effectiveBasePrice + modifierTotal;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
@@ -137,9 +146,16 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
           </button>
           {/* Price badge */}
           <div className="absolute bottom-3 right-3">
-            <span className="rounded-full bg-white/95 px-4 py-1.5 text-lg font-bold text-brand-700 shadow-soft backdrop-blur-sm">
-              {formatBDT(dish.price, lang)}
-            </span>
+            {hasOffer ? (
+              <div className="flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 shadow-soft backdrop-blur-sm">
+                <span className="text-xs font-medium text-ink-400 line-through">{formatBDT(dish.price, lang)}</span>
+                <span className="text-lg font-bold text-orange-600">{formatBDT(effectiveBasePrice, lang)}</span>
+              </div>
+            ) : (
+              <span className="rounded-full bg-white/95 px-4 py-1.5 text-lg font-bold text-brand-700 shadow-soft backdrop-blur-sm">
+                {formatBDT(dish.price, lang)}
+              </span>
+            )}
           </div>
         </div>
 
@@ -396,10 +412,10 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
                   : "bg-orange-500 hover:bg-orange-600"
               }`}
             >
-              {t("cart.addToCart")} · {formatBDT(totalPrice * quantity, lang)}
+              {t("cart.addToCart")} · {formatBDT(effectiveTotal * quantity, lang)}
               {modifierTotal > 0 && (
                 <span className="ml-1 text-xs font-normal opacity-80">
-                  ({formatBDT(dish.price, lang)} + {formatBDT(modifierTotal, lang)})
+                  ({formatBDT(effectiveBasePrice, lang)} + {formatBDT(modifierTotal, lang)})
                 </span>
               )}
             </button>

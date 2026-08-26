@@ -1159,6 +1159,7 @@ export function CustomerOrderPage() {
           lang={lang}
           onClose={() => setDetailDish(null)}
           onAddToCart={addToCart}
+          offer={dishOffers.get(detailDish.id) ?? null}
         />
       )}
 
