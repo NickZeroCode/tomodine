@@ -114,9 +114,10 @@ def _compute_for_restaurant(restaurant_id: str) -> int:
                 WHERE (SELECT n FROM total_orders) > 0
             )
             INSERT INTO menus_dishassociation (
-                restaurant_id, dish_a_id, dish_b_id, support, confidence, lift, created_at, updated_at
+                id, restaurant_id, dish_a_id, dish_b_id, support, confidence, lift, created_at, updated_at
             )
             SELECT
+                gen_random_uuid(),
                 %(rid)s::uuid,
                 da.id,
                 db.id,
