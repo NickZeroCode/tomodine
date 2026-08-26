@@ -95,43 +95,6 @@ export function CustomerOrderPage() {
   const [navVisible, setNavVisible] = useState(true);
   const notifSound = useNotificationSound();
 
-  // Hide bottom nav on scroll down, show on scroll up.
-  // Uses direction counting to avoid jitter from small scroll movements.
-  useEffect(() => {
-    let lastY = window.scrollY;
-    let downCount = 0;
-    let upCount = 0;
-    let ticking = false;
-    function onScroll() {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const y = window.scrollY;
-        const delta = y - lastY;
-        lastY = y;
-
-        if (delta > 3) {
-          downCount++;
-          upCount = 0;
-        } else if (delta < -3) {
-          upCount++;
-          downCount = 0;
-        }
-
-        if (downCount >= 4) {
-          setNavVisible(false);
-          downCount = 0;
-        } else if (upCount >= 3) {
-          setNavVisible(true);
-          upCount = 0;
-        }
-        ticking = false;
-      });
-    }
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
   // Show games prompt after 10 seconds on order confirmation
   useEffect(() => {
     if (!justPlaced) { setShowGamesPrompt(false); return; }
@@ -141,6 +104,41 @@ export function CustomerOrderPage() {
   const [showOrderType, setShowOrderType] = useState(false);
   const [orderType, setOrderType] = useState<"dine_in" | "take_away">("dine_in");
   const catScrollRef = useRef<HTMLDivElement>(null);
+
+  // Hide bottom nav on scroll down, show on scroll up.
+  // Completely disabled when any modal is open to prevent jitter.
+  const isModalOpen = !!detailDish || showConfirmModal || showOrderType || showGames;
+  useEffect(() => {
+    if (isModalOpen) { setNavVisible(false); return; }
+    let lastY = window.scrollY;
+    let dir: "up" | "down" | "none" = "none";
+    let sameDirCount = 0;
+    let locked = false;
+    let ticking = false;
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const delta = y - lastY;
+        lastY = y;
+        if (Math.abs(delta) < 5) { ticking = false; return; }
+        const newDir = delta > 0 ? "down" : "up";
+        if (newDir === dir) { sameDirCount++; } else { dir = newDir; sameDirCount = 1; }
+        if (!locked && sameDirCount >= 6) {
+          if (dir === "down" && y > 120) {
+            setNavVisible(false); locked = true; setTimeout(() => { locked = false; }, 400);
+          } else if (dir === "up") {
+            setNavVisible(true); locked = true; setTimeout(() => { locked = false; }, 400);
+          }
+          sameDirCount = 0;
+        }
+        ticking = false;
+      });
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isModalOpen]);
 
   // ── Queries ──────────────────────────────────────────────────
 

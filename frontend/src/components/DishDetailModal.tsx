@@ -120,12 +120,9 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
       {/* Panel — anchored to bottom on mobile, centered on desktop */}
-      <div className="absolute inset-x-0 bottom-0 top-0 z-10 mx-auto flex w-full max-w-lg flex-col bg-white shadow-lift sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:max-h-[90dvh] sm:bottom-auto" style={{ borderTopLeftRadius: "1rem", borderTopRightRadius: "1rem" }}>
+      <div className="absolute inset-x-0 bottom-0 top-0 z-10 mx-auto w-full max-w-lg overflow-y-auto bg-white shadow-lift sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:max-h-[90dvh] sm:bottom-auto" style={{ borderTopLeftRadius: "1rem", borderTopRightRadius: "1rem" }}>
 
-        {/* Scrollable content — image scrolls away naturally */}
-        <div className="flex-1 min-h-0 overflow-y-auto">
-
-        {/* Dish image — scrolls with content, no sticky behavior */}
+        {/* Dish image — scrolls away naturally */}
         <div className="relative h-48 w-full sm:h-56">
           {dish.image ? (
             <img src={dish.image} alt={localized(dish, lang)} className="h-full w-full object-cover" />
@@ -357,11 +354,10 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
           {/* Bottom padding so content isn't hidden behind sticky footer */}
           {showAddButton && onAddToCart && <div className="h-2" />}
         </div>
-        </div>
 
-        {/* Sticky footer — always pinned at bottom, never moves */}
+        {/* Sticky footer — position:sticky inside the scroll container, never jitters */}
         {showAddButton && onAddToCart && (
-          <div className="shrink-0 border-t border-ink-100 bg-white px-5 pb-5 pt-3">
+          <div className="sticky bottom-0 border-t border-ink-100 bg-white px-5 pb-5 pt-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-ink-600">
                 {lang === "bn" ? "পরিমাণ" : "Quantity"}

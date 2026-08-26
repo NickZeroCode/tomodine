@@ -46,7 +46,7 @@ export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPend
     <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
-      <div className="absolute inset-x-0 bottom-0 top-0 z-10 mx-auto flex w-full max-w-lg flex-col bg-white shadow-lift sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:max-h-[85dvh] sm:bottom-auto" style={{ borderTopLeftRadius: "1rem", borderTopRightRadius: "1rem" }}>
+      <div className="absolute inset-x-0 bottom-0 top-0 z-10 mx-auto w-full max-w-lg overflow-y-auto bg-white shadow-lift sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:max-h-[85dvh] sm:bottom-auto" style={{ borderTopLeftRadius: "1rem", borderTopRightRadius: "1rem" }}>
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-ink-100 px-5 py-3">
           <div>
@@ -154,7 +154,7 @@ export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPend
 
         {/* Sticky footer */}
         {items.length > 0 && (
-          <div className="shrink-0 border-t border-ink-100 bg-white px-5 pb-5 pt-3" style={{ willChange: "transform", transform: "translateZ(0)" }}>
+          <div className="sticky bottom-0 border-t border-ink-100 bg-white px-5 pb-5 pt-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-ink-600">
                 {lang === "bn" ? "মোট" : "Total"}
@@ -167,7 +167,7 @@ export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPend
               type="button"
               disabled={isPending}
               onClick={() => onConfirm(items, customerNote)}
-              className="mt-3 w-full rounded-xl bg-emerald-600 py-3 text-base font-bold text-white shadow-soft transition-colors hover:bg-emerald-700 disabled:opacity-50"
+              className="mt-3 w-full rounded-xl bg-orange-500 py-3 text-base font-bold text-white shadow-soft transition-colors hover:bg-orange-600 disabled:opacity-50"
             >
               {isPending
                 ? (lang === "bn" ? "অর্ডার হচ্ছে..." : "Placing order...")
