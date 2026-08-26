@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatBDT, localized, localizedDescription } from "@/lib/format";
 import { Icon } from "@/components/Icon";
+import { ImageWithFallback } from "@/components/ImageWithFallback";
 import type { Dish, DishModifier, Offer } from "@/types";
 
 interface DishDetailModalProps {
@@ -119,18 +120,19 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
-      {/* Panel — anchored to bottom on mobile, centered on desktop */}
-      <div className="absolute inset-x-0 bottom-0 top-0 z-10 mx-auto w-full max-w-lg overflow-y-auto bg-white shadow-lift sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:max-h-[90dvh] sm:bottom-auto" style={{ borderTopLeftRadius: "1rem", borderTopRightRadius: "1rem" }}>
+      {/* Panel — full screen on mobile, centered with margin on desktop */}
+      <div className="absolute inset-x-0 bottom-0 top-0 z-10 mx-auto flex w-full max-w-lg flex-col bg-white shadow-lift sm:inset-4 sm:bottom-4 sm:mx-auto sm:rounded-2xl" style={{ borderTopLeftRadius: "1rem", borderTopRightRadius: "1rem" }}>
 
+        {/* Scrollable area — image + content */}
+        <div className="flex-1 overflow-y-auto min-h-0">
         {/* Dish image — scrolls away naturally */}
         <div className="relative h-48 w-full sm:h-56">
-          {dish.image ? (
-            <img src={dish.image} alt={localized(dish, lang)} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-100 to-brand-200">
-              <Icon name="image" className="h-16 w-16 text-brand-400" />
-            </div>
-          )}
+          <ImageWithFallback
+            src={dish.image ?? undefined}
+            alt={localized(dish, lang)}
+            className="h-full w-full object-cover"
+            placeholder="dish"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
           <button
             type="button"
@@ -351,13 +353,14 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
             </div>
           )}
 
-          {/* Bottom padding so content isn't hidden behind sticky footer */}
+          {/* Bottom padding */}
           {showAddButton && onAddToCart && <div className="h-2" />}
         </div>
+        </div> {/* end scrollable area */}
 
-        {/* Sticky footer — position:sticky inside the scroll container, never jitters */}
+        {/* Footer — always pinned to bottom, never jitters */}
         {showAddButton && onAddToCart && (
-          <div className="sticky bottom-0 border-t border-ink-100 bg-white px-5 pb-5 pt-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+          <div className="shrink-0 border-t border-ink-100 bg-white px-5 pb-5 pt-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-ink-600">
                 {lang === "bn" ? "পরিমাণ" : "Quantity"}

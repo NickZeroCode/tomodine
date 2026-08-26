@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { formatBDT, localized } from "@/lib/format";
 import { Icon } from "@/components/Icon";
+import { ImageWithFallback } from "@/components/ImageWithFallback";
 import type { DishModifier, DishVariant, Dish } from "@/types";
 
 export interface ConfirmationCartLine {
@@ -46,7 +47,7 @@ export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPend
     <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
-      <div className="absolute inset-x-0 bottom-0 top-0 z-10 mx-auto w-full max-w-lg overflow-y-auto bg-white shadow-lift sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:max-h-[85dvh] sm:bottom-auto" style={{ borderTopLeftRadius: "1rem", borderTopRightRadius: "1rem" }}>
+      <div className="absolute inset-x-0 bottom-0 top-0 z-10 mx-auto flex w-full max-w-lg flex-col bg-white shadow-lift sm:inset-4 sm:bottom-4 sm:mx-auto sm:rounded-2xl" style={{ borderTopLeftRadius: "1rem", borderTopRightRadius: "1rem" }}>
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-ink-100 px-5 py-3">
           <div>
@@ -65,7 +66,7 @@ export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPend
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
+        <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4">
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <Icon name="orders" className="h-10 w-10 text-ink-200" />
@@ -78,14 +79,13 @@ export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPend
               {items.map((line, idx) => (
                 <div key={`${line.dish.id}-${idx}`} className="flex items-start gap-3 rounded-xl border border-ink-100 p-3">
                   {/* Dish image */}
-                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-ink-50">
-                    {line.dish.image ? (
-                      <img src={line.dish.image} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <Icon name="image" className="h-5 w-5 text-ink-200" />
-                      </div>
-                    )}
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg">
+                    <ImageWithFallback
+                      src={line.dish.image ?? undefined}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      placeholder="dish"
+                    />
                   </div>
 
                   {/* Info */}
@@ -152,9 +152,9 @@ export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPend
           )}
         </div>
 
-        {/* Sticky footer */}
+        {/* Footer — always pinned to bottom */}
         {items.length > 0 && (
-          <div className="sticky bottom-0 border-t border-ink-100 bg-white px-5 pb-5 pt-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+          <div className="shrink-0 border-t border-ink-100 bg-white px-5 pb-5 pt-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-ink-600">
                 {lang === "bn" ? "মোট" : "Total"}
