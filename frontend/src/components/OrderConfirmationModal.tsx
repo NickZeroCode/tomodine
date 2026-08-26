@@ -186,7 +186,7 @@ export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPend
           {/* Order note */}
           {items.length > 0 && (
             <div className="mt-4">
-              <label className="text-xs font-medium text-ink-500">
+              <label className="text-[0.65rem] font-semibold uppercase tracking-wider text-ink-400">
                 {lang === "bn" ? "বিশেষ নির্দেশনা (ঐচ্ছিক)" : "Special instructions (optional)"}
               </label>
               <textarea
@@ -224,8 +224,8 @@ export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPend
                       <p className="text-sm font-medium text-ink-900">{lang === "bn" ? sug.name_bn || sug.name_en : sug.name_en}</p>
                       <p className="text-[0.65rem] text-ink-400">
                         {lang === "bn"
-                          ? `${sug.because_of}-এর সাথে জনপ্রিয়`
-                          : `Frequently ordered with ${sug.because_of}`}
+                          ? `${sug.because_of}-এর সাথে কেনা হয়`
+                          : `Frequently bought together with ${sug.because_of}`}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">

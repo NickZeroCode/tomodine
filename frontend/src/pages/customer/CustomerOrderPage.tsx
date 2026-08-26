@@ -1203,15 +1203,38 @@ export function CustomerOrderPage() {
         </div>
       </nav>
       {/* Dish detail modal */}
-      {detailDish && (
-        <DishDetailModal
-          dish={detailDish}
-          lang={lang}
-          onClose={() => setDetailDish(null)}
-          onAddToCart={addToCart}
-          offer={dishOffers.get(detailDish.id) ?? null}
-        />
-      )}
+      {detailDish && (() => {
+        // Find the cart line for this dish (if already in cart).
+        const cartLine = cart.find((l) => l.dish.id === detailDish.id);
+        return (
+          <DishDetailModal
+            dish={detailDish}
+            lang={lang}
+            onClose={() => setDetailDish(null)}
+            onAddToCart={(dish, mods, qty) => {
+              // Remove existing cart line for this dish, then add with new state.
+              setCart((prev) => {
+                const filtered = prev.filter((l) => l.dish.id !== dish.id);
+                const offer = dishOffers.get(dish.id);
+                const price = parseFloat(dish.price);
+                const modifierTotal = mods.reduce((s, m) => s + parseFloat(m.price_delta || "0"), 0);
+                const offerPrice = offer
+                  ? offer.discount_type === "percentage"
+                    ? (price + modifierTotal) * (1 - parseFloat(offer.discount_value) / 100)
+                    : Math.max(0, price + modifierTotal - parseFloat(offer.discount_value))
+                  : null;
+                return [...filtered, { dish, variant: null, modifiers: mods, quantity: qty, offerPrice }];
+              });
+            }}
+            onRemoveFromCart={(dish) => {
+              setCart((prev) => prev.filter((l) => l.dish.id !== dish.id));
+            }}
+            offer={dishOffers.get(detailDish.id) ?? null}
+            initialQuantity={cartLine?.quantity ?? 0}
+            initialModifiers={cartLine?.modifiers ?? []}
+          />
+        );
+      })()}
 
       {/* Order confirmation modal */}
       {showConfirmModal && (

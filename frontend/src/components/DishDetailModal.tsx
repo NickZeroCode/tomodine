@@ -10,28 +10,41 @@ interface DishDetailModalProps {
   lang: "en" | "bn";
   onClose: () => void;
   onAddToCart?: (dish: Dish, selectedModifiers: DishModifier[], quantity: number) => void;
+  onRemoveFromCart?: (dish: Dish) => void;
   showAddButton?: boolean;
   readOnly?: boolean;
   offer?: Offer | null;
+  initialQuantity?: number;
+  initialModifiers?: DishModifier[];
 }
 
-export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButton = true, readOnly = false, offer = null }: DishDetailModalProps) {
+export function DishDetailModal({ dish, lang, onClose, onAddToCart, onRemoveFromCart, showAddButton = true, readOnly = false, offer = null, initialQuantity = 0, initialModifiers = [] }: DishDetailModalProps) {
   const { t } = useTranslation();
-  const [quantity, setQuantity] = useState(1);
+  const isInCart = initialQuantity > 0;
+  const [quantity, setQuantity] = useState(initialQuantity || 1);
 
   // Track selected modifiers by group ID (for grouped) and as a set (for ungrouped).
+  // If the dish is already in the cart, pre-select the cart's modifiers.
+  const initialModIds = new Set(initialModifiers.map((m) => m.id));
   const [groupSelections, setGroupSelections] = useState<Record<string, string[]>>(() => {
     const initial: Record<string, string[]> = {};
-    // Pre-select defaults.
     for (const g of dish.modifier_groups ?? []) {
-      const defaults = g.options.filter((o) => o.is_default).map((o) => o.id);
-      initial[g.id] = defaults.length > 0 ? defaults : [];
+      // If we have cart modifiers, use those; otherwise use defaults.
+      if (initialModIds.size > 0) {
+        const selected = g.options.filter((o) => initialModIds.has(o.id)).map((o) => o.id);
+        initial[g.id] = selected;
+      } else {
+        const defaults = g.options.filter((o) => o.is_default).map((o) => o.id);
+        initial[g.id] = defaults.length > 0 ? defaults : [];
+      }
     }
     return initial;
   });
   const [ungroupedSelections, setUngroupedSelections] = useState<Set<string>>(() => {
-    const defs = (dish.modifiers ?? []).filter((m) => !m.group && m.is_default).map((m) => m.id);
-    return new Set(defs);
+    if (initialModIds.size > 0) {
+      return new Set((dish.modifiers ?? []).filter((m) => !m.group && initialModIds.has(m.id)).map((m) => m.id));
+    }
+    return new Set((dish.modifiers ?? []).filter((m) => !m.group && m.is_default).map((m) => m.id));
   });
 
   const activeGroups = useMemo(
@@ -368,7 +381,10 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  onClick={() => setQuantity((q) => {
+                    if (isInCart) return Math.max(0, q - 1); // allow 0 when editing cart
+                    return Math.max(1, q - 1);
+                  })}
                   className="flex h-8 w-8 items-center justify-center rounded-full border border-ink-200 text-ink-600 transition hover:bg-ink-50 active:scale-90"
                 >
                   <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path fillRule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
@@ -385,16 +401,30 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
             </div>
             <button
               type="button"
-              disabled={validationErrors.length > 0}
-              onClick={() => { onAddToCart(dish, allSelectedModifiers, quantity); onClose(); }}
+              disabled={validationErrors.length > 0 || (isInCart && quantity === 0)}
+              onClick={() => {
+                if (quantity === 0 && isInCart && onRemoveFromCart) {
+                  onRemoveFromCart(dish);
+                } else {
+                  onAddToCart?.(dish, allSelectedModifiers, quantity);
+                }
+                onClose();
+              }}
               className={`mt-3 w-full rounded-xl py-3 text-base font-bold text-white shadow-soft transition-colors ${
-                validationErrors.length > 0
+                (validationErrors.length > 0 || (isInCart && quantity === 0))
                   ? "bg-ink-300 cursor-not-allowed"
-                  : "bg-orange-500 hover:bg-orange-600"
+                  : quantity === 0
+                    ? "bg-red-500 hover:bg-red-600"
+                    : "bg-orange-500 hover:bg-orange-600"
               }`}
             >
-              {t("cart.addToCart")} · {formatBDT(effectiveTotal * quantity, lang)}
-              {modifierTotal > 0 && (
+              {quantity === 0 && isInCart
+                ? (lang === "bn" ? "কার্ট থেকে সরান" : "Remove from Cart")
+                : isInCart
+                  ? `${lang === "bn" ? "কার্ট আপডেট করুন" : "Update Cart"} · ${formatBDT(effectiveTotal * quantity, lang)}`
+                  : `${t("cart.addToCart")} · ${formatBDT(effectiveTotal * quantity, lang)}`
+              }
+              {quantity > 0 && modifierTotal > 0 && (
                 <span className="ml-1 text-xs font-normal opacity-80">
                   ({formatBDT(effectiveBasePrice, lang)} + {formatBDT(modifierTotal, lang)})
                 </span>
