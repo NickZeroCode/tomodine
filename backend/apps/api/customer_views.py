@@ -371,3 +371,56 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
             metadata={"table": table_label},
         )
         return Response({"detail": "Waiter notified."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"], url_path="suggestions")
+    def list_suggestions(self, request):
+        """Return frequently-bought-together suggestions for cart dish IDs.
+
+        Uses precomputed DishAssociation table (Apriori k=2).
+        Returns top 3 dishes NOT already in the cart.
+        """
+        token = request.query_params.get("qr_token", "")
+        dish_ids = request.query_params.get("dish_ids", "")
+        qr = _resolve_qr(token)
+
+        if not dish_ids:
+            return Response({"suggestions": []})
+
+        cart_dish_ids = [d.strip() for d in dish_ids.split(",") if d.strip()]
+        if not cart_dish_ids:
+            return Response({"suggestions": []})
+
+        from apps.menus.models import DishAssociation
+
+        # Find dishes associated with any cart dish, excluding cart dishes themselves.
+        suggestions = (
+            DishAssociation.objects.filter(
+                restaurant=qr.restaurant,
+                dish_a_id__in=cart_dish_ids,
+            )
+            .exclude(dish_b_id__in=cart_dish_ids)
+            .select_related("dish_b", "dish_a")
+            .order_by("-confidence")[:6]
+        )
+
+        # Deduplicate by dish_b, keeping the highest confidence.
+        seen = set()
+        results = []
+        for assoc in suggestions:
+            bid = str(assoc.dish_b_id)
+            if bid in seen:
+                continue
+            seen.add(bid)
+            dish = assoc.dish_b
+            results.append({
+                "dish_id": bid,
+                "name_en": dish.name_en,
+                "name_bn": dish.name_bn,
+                "price": str(dish.price),
+                "image": _abs_url(request, dish.image),
+                "because_of": assoc.dish_a.name_en,
+            })
+            if len(results) >= 3:
+                break
+
+        return Response({"suggestions": results})

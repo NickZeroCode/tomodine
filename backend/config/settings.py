@@ -409,6 +409,12 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Asia/Dhaka"
+CELERY_BEAT_SCHEDULE = {
+    "compute-frequently-bought-together": {
+        "task": "apps.menus.tasks.compute_frequently_bought_together",
+        "schedule": 6 * 60 * 60,  # every 6 hours
+    },
+}
 
 # ---------------------------------------------------------------------------
 # Logging

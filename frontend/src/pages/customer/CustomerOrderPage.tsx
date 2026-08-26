@@ -1230,6 +1230,7 @@ export function CustomerOrderPage() {
             placeOrder.mutate({ lines, customerNote });
           }}
           isPending={placeOrder.isPending}
+          qrToken={qrToken}
         />
       )}
 

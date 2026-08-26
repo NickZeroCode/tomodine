@@ -3,7 +3,7 @@
  * Displays order summary, lets them adjust quantities, add a note, and confirm.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatBDT, localized } from "@/lib/format";
 import { Icon } from "@/components/Icon";
 import { ImageWithFallback } from "@/components/ImageWithFallback";
@@ -14,7 +14,16 @@ export interface ConfirmationCartLine {
   variant: DishVariant | null;
   modifiers: DishModifier[];
   quantity: number;
-  unitPrice: number; // effective price per unit (with offer + modifiers)
+  unitPrice: number;
+}
+
+interface Suggestion {
+  dish_id: string;
+  name_en: string;
+  name_bn: string;
+  price: string;
+  image: string | null;
+  because_of: string;
 }
 
 interface Props {
@@ -23,11 +32,26 @@ interface Props {
   onClose: () => void;
   onConfirm: (lines: ConfirmationCartLine[], customerNote: string) => void;
   isPending: boolean;
+  qrToken?: string;
 }
 
-export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPending }: Props) {
+export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPending, qrToken }: Props) {
   const [items, setItems] = useState<ConfirmationCartLine[]>(lines);
   const [customerNote, setCustomerNote] = useState("");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  // Fetch suggestions when modal opens.
+  useEffect(() => {
+    if (!qrToken || items.length === 0) return;
+    const dishIds = items.map((l) => l.dish.id).join(",");
+    setLoadingSuggestions(true);
+    fetch(`/api/v1/public/suggestions/?qr_token=${encodeURIComponent(qrToken)}&dish_ids=${dishIds}`)
+      .then((r) => r.json())
+      .then((data) => setSuggestions(data.suggestions ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingSuggestions(false));
+  }, [qrToken, items.length]);
 
   function updateQty(idx: number, delta: number) {
     setItems((prev) =>
@@ -38,6 +62,31 @@ export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPend
 
   function removeItem(idx: number) {
     setItems((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function addSuggestion(sug: Suggestion) {
+    // Create a minimal Dish-like object for the suggestion.
+    const dish = {
+      id: sug.dish_id,
+      name_en: sug.name_en,
+      name_bn: sug.name_bn,
+      price: sug.price,
+      image: sug.image,
+      description_en: "",
+      description_bn: "",
+      is_available: true,
+      is_featured: false,
+      is_vegetarian: false,
+      is_spicy: false,
+      min_prep_time: 15,
+      max_prep_time: 30,
+      category: "",
+      variants: [],
+      modifiers: [],
+      modifier_groups: [],
+    } as Dish;
+    setItems((prev) => [...prev, { dish, variant: null, modifiers: [], quantity: 1, unitPrice: parseFloat(sug.price) }]);
+    setSuggestions((prev) => prev.filter((s) => s.dish_id !== sug.dish_id));
   }
 
   const subtotal = items.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
@@ -148,6 +197,57 @@ export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPend
                 value={customerNote}
                 onChange={(e) => setCustomerNote(e.target.value)}
               />
+            </div>
+          )}
+
+          {/* Frequently bought together suggestions */}
+          {suggestions.length > 0 && (
+            <div className="mt-5 border-t border-ink-100 pt-4">
+              <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-400">
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-orange-500">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+                {lang === "bn" ? "সাথে সাথে জনপ্রিয়" : "Frequently bought together"}
+              </h3>
+              <div className="space-y-2">
+                {suggestions.map((sug) => (
+                  <div key={sug.dish_id} className="flex items-center gap-3 rounded-lg border border-ink-100 bg-ink-50/50 p-2.5">
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg">
+                      <ImageWithFallback
+                        src={sug.image ?? undefined}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        placeholder="dish"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-ink-900">{lang === "bn" ? sug.name_bn || sug.name_en : sug.name_en}</p>
+                      <p className="text-[0.65rem] text-ink-400">
+                        {lang === "bn"
+                          ? `${sug.because_of}-এর সাথে জনপ্রিয়`
+                          : `Frequently ordered with ${sug.because_of}`}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="text-xs font-bold tabular-nums text-ink-700">{formatBDT(sug.price, lang)}</span>
+                      <button
+                        type="button"
+                        onClick={() => addSuggestion(sug)}
+                        className="rounded-lg bg-orange-500 px-2.5 py-1 text-xs font-bold text-white transition-colors hover:bg-orange-600"
+                      >
+                        {lang === "bn" ? "যোগ" : "Add"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {loadingSuggestions && (
+            <div className="mt-4 flex items-center gap-2 text-xs text-ink-400">
+              <div className="h-3 w-3 animate-spin rounded-full border-2 border-ink-200 border-t-orange-500" />
+              {lang === "bn" ? "পরামর্শ লোড হচ্ছে..." : "Loading suggestions..."}
             </div>
           )}
         </div>

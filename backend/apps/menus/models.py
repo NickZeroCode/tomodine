@@ -173,3 +173,44 @@ class ModifierGroup(TimeStampedModel):
     @property
     def is_required(self) -> bool:
         return self.min_selections > 0
+
+
+class DishAssociation(TimeStampedModel):
+    """Frequently-bought-together association between two dishes.
+
+    Computed via Apriori k=2 (co-occurrence in the same order).
+    Directional: dish_a → dish_b with confidence and lift scores.
+    """
+
+    restaurant = models.ForeignKey(
+        "restaurants.Restaurant", on_delete=models.CASCADE, related_name="dish_associations"
+    )
+    dish_a = models.ForeignKey(
+        Dish, on_delete=models.CASCADE, related_name="associations_as_a"
+    )
+    dish_b = models.ForeignKey(
+        Dish, on_delete=models.CASCADE, related_name="associations_as_b"
+    )
+    support = models.PositiveIntegerField(
+        default=0, help_text="Number of orders containing both dishes."
+    )
+    confidence = models.DecimalField(
+        max_digits=5, decimal_places=3, default=0,
+        help_text="P(dish_b | dish_a) = support / orders_with_a.",
+    )
+    lift = models.DecimalField(
+        max_digits=6, decimal_places=2, default=1,
+        help_text="confidence / P(dish_b). >1 = real association.",
+    )
+
+    objects = TenantManager()
+
+    class Meta:
+        unique_together = [("restaurant", "dish_a", "dish_b")]
+        indexes = [
+            models.Index(fields=["restaurant", "dish_a", "-confidence"]),
+            models.Index(fields=["restaurant", "dish_b"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.dish_a_id} → {self.dish_b_id} (conf={self.confidence})"
