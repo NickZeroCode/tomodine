@@ -8,7 +8,7 @@ interface DishDetailModalProps {
   dish: Dish;
   lang: "en" | "bn";
   onClose: () => void;
-  onAddToCart?: (dish: Dish, selectedModifiers: DishModifier[], quantity: number) => void;
+  onAddToCart?: (dish: Dish, selectedModifiers: DishModifier[], quantity: number, specialInstructions: string) => void;
   showAddButton?: boolean;
   readOnly?: boolean;
 }
@@ -16,6 +16,7 @@ interface DishDetailModalProps {
 export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButton = true, readOnly = false }: DishDetailModalProps) {
   const { t } = useTranslation();
   const [quantity, setQuantity] = useState(1);
+  const [specialInstructions, setSpecialInstructions] = useState("");
 
   // Track selected modifiers by group ID (for grouped) and as a set (for ungrouped).
   const [groupSelections, setGroupSelections] = useState<Record<string, string[]>>(() => {
@@ -110,11 +111,14 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
-      {/* Panel — scrollable with sticky image and sticky footer */}
+      {/* Panel — scrollable with sticky footer */}
       <div className="relative z-10 flex w-full max-w-lg flex-col overflow-clip rounded-t-2xl bg-white shadow-lift sm:rounded-2xl sm:mx-4" style={{ maxHeight: "90dvh" }}>
 
-        {/* Sticky image header */}
-        <div className="relative h-48 w-full shrink-0 sm:h-56">
+        {/* Scrollable content (image + details) */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+
+        {/* Dish image — scrolls with content */}
+        <div className="relative h-40 w-full shrink-0 sm:h-48">
           {dish.image ? (
             <img src={dish.image} alt={localized(dish, lang)} className="h-full w-full object-cover" />
           ) : (
@@ -140,8 +144,8 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto overscroll-contain p-5">
-          <h2 className="text-xl font-bold text-ink-900">{localized(dish, lang)}</h2>
+        <div className="p-4">
+          <h2 className="text-lg font-bold text-ink-900">{localized(dish, lang)}</h2>
 
           {/* Dietary tags */}
           <div className="mt-2 flex flex-wrap gap-2">
@@ -326,6 +330,23 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
             </div>
           )}
 
+          {/* Special instructions — only in interactive mode */}
+          {!readOnly && showAddButton && onAddToCart && (
+            <div className="mt-3">
+              <label className="text-xs font-medium text-ink-500">
+                {lang === "bn" ? "বিশেষ নির্দেশনা (ঐচ্ছিক)" : "Special instructions (optional)"}
+              </label>
+              <textarea
+                className="mt-1 w-full rounded-lg border border-ink-200 px-3 py-2 text-sm text-ink-800 placeholder:text-ink-300 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                rows={2}
+                maxLength={500}
+                placeholder={lang === "bn" ? "যেমন: কম মশলা, আলাদা সস..." : "e.g. Less spicy, sauce on the side..."}
+                value={specialInstructions}
+                onChange={(e) => setSpecialInstructions(e.target.value)}
+              />
+            </div>
+          )}
+
           {/* Validation errors — only in interactive mode */}
           {!readOnly && validationErrors.length > 0 && (
             <div className="mt-3 space-y-1">
@@ -338,6 +359,7 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
           {/* Bottom padding so content isn't hidden behind sticky footer */}
           {showAddButton && onAddToCart && <div className="h-2" />}
         </div>
+        </div> {/* end scrollable wrapper */}
 
         {/* Sticky footer — quantity + add to cart, always visible */}
         {showAddButton && onAddToCart && (
@@ -367,7 +389,7 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
             <button
               type="button"
               disabled={validationErrors.length > 0}
-              onClick={() => { onAddToCart(dish, allSelectedModifiers, quantity); onClose(); }}
+              onClick={() => { onAddToCart(dish, allSelectedModifiers, quantity, specialInstructions); onClose(); }}
               className={`mt-3 w-full rounded-xl py-3 text-base font-bold text-white shadow-soft transition-colors ${
                 validationErrors.length > 0
                   ? "bg-ink-300 cursor-not-allowed"

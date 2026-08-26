@@ -158,6 +158,29 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
                 modifiers = [m for m in modifiers if str(m.id) in found_ids]
             unit_price += sum(m.price_delta for m in modifiers)
 
+        # Apply active offer discount (server-side, never trust client).
+        from django.db.models import Q
+        from django.utils import timezone
+        from apps.billing.models import Offer
+
+        now = timezone.now()
+        offer = Offer.objects.filter(
+            restaurant=session.restaurant,
+            is_active=True,
+            dish=dish,
+        ).filter(
+            Q(start_date__isnull=True) | Q(start_date__lte=now),
+        ).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=now),
+        ).first()
+
+        if offer:
+            from decimal import Decimal as D
+            if offer.discount_type == "percentage":
+                unit_price = unit_price * (1 - D(str(offer.discount_value)) / D("100"))
+            else:
+                unit_price = max(D("0"), unit_price - D(str(offer.discount_value)))
+
         item = CartItem.objects.create(
             cart=cart,
             dish=dish,
@@ -249,11 +272,13 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
         if not session:
             return Response([])
 
+        from django.utils import timezone
+
         orders = (
             Order.objects.filter(
                 restaurant=session.restaurant,
                 table=session.table,
-                created_at__date=session.created_at.date(),
+                created_at__date=timezone.localdate(),
             )
             .prefetch_related("items")
             .exclude(status="rejected")

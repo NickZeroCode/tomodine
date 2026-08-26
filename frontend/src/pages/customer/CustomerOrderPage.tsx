@@ -66,6 +66,7 @@ interface CartLine {
   modifiers: DishModifier[];
   quantity: number;
   offerPrice: number | null;
+  specialInstructions: string;
 }
 
 type Tab = "menu" | "cart" | "orders" | "games";
@@ -198,6 +199,7 @@ export function CustomerOrderPage() {
           variant_id: line.variant?.id ?? null,
           modifier_ids: line.modifiers.map((m) => m.id),
           quantity: line.quantity,
+          special_instructions: line.specialInstructions || "",
         });
       }
       const { data } = await publicApi.post<Order>("/order/", {
@@ -305,7 +307,7 @@ export function CustomerOrderPage() {
 
   // ── Cart helpers ─────────────────────────────────────────────
 
-  function addToCart(dish: Dish, selectedModifiers: DishModifier[] = [], qty: number = 1) {
+  function addToCart(dish: Dish, selectedModifiers: DishModifier[] = [], qty: number = 1, specialInstructions: string = "") {
     const offer = dishOffers.get(dish.id);
     const price = parseFloat(dish.price);
     const modifierTotal = selectedModifiers.reduce((s, m) => s + parseFloat(m.price_delta || "0"), 0);
@@ -328,7 +330,7 @@ export function CustomerOrderPage() {
           l === existing ? { ...l, quantity: l.quantity + qty } : l
         );
       }
-      return [...prev, { dish, variant: null, modifiers: selectedModifiers, quantity: qty, offerPrice }];
+      return [...prev, { dish, variant: null, modifiers: selectedModifiers, quantity: qty, offerPrice, specialInstructions }];
     });
   }
 
@@ -380,6 +382,7 @@ export function CustomerOrderPage() {
         group: null,
       })) ?? [],
       offerPrice: null,
+      specialInstructions: "",
     }));
     setCart(newLines);
     setTab("cart");
