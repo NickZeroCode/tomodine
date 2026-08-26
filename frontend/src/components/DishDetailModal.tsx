@@ -8,7 +8,7 @@ interface DishDetailModalProps {
   dish: Dish;
   lang: "en" | "bn";
   onClose: () => void;
-  onAddToCart?: (dish: Dish, selectedModifiers: DishModifier[], quantity: number, specialInstructions: string) => void;
+  onAddToCart?: (dish: Dish, selectedModifiers: DishModifier[], quantity: number) => void;
   showAddButton?: boolean;
   readOnly?: boolean;
   offer?: Offer | null;
@@ -17,7 +17,6 @@ interface DishDetailModalProps {
 export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButton = true, readOnly = false, offer = null }: DishDetailModalProps) {
   const { t } = useTranslation();
   const [quantity, setQuantity] = useState(1);
-  const [specialInstructions, setSpecialInstructions] = useState("");
 
   // Track selected modifiers by group ID (for grouped) and as a set (for ungrouped).
   const [groupSelections, setGroupSelections] = useState<Record<string, string[]>>(() => {
@@ -127,7 +126,7 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
         <div className="flex-1 overflow-y-auto overscroll-contain">
 
         {/* Dish image — scrolls with content */}
-        <div className="relative h-40 w-full shrink-0 sm:h-48">
+        <div className="relative h-48 w-full shrink-0 sm:h-56">
           {dish.image ? (
             <img src={dish.image} alt={localized(dish, lang)} className="h-full w-full object-cover" />
           ) : (
@@ -346,23 +345,6 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
             </div>
           )}
 
-          {/* Special instructions — only in interactive mode */}
-          {!readOnly && showAddButton && onAddToCart && (
-            <div className="mt-3">
-              <label className="text-xs font-medium text-ink-500">
-                {lang === "bn" ? "বিশেষ নির্দেশনা (ঐচ্ছিক)" : "Special instructions (optional)"}
-              </label>
-              <textarea
-                className="mt-1 w-full rounded-lg border border-ink-200 px-3 py-2 text-sm text-ink-800 placeholder:text-ink-300 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                rows={2}
-                maxLength={500}
-                placeholder={lang === "bn" ? "যেমন: কম মশলা, আলাদা সস..." : "e.g. Less spicy, sauce on the side..."}
-                value={specialInstructions}
-                onChange={(e) => setSpecialInstructions(e.target.value)}
-              />
-            </div>
-          )}
-
           {/* Validation errors — only in interactive mode */}
           {!readOnly && validationErrors.length > 0 && (
             <div className="mt-3 space-y-1">
@@ -405,7 +387,7 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
             <button
               type="button"
               disabled={validationErrors.length > 0}
-              onClick={() => { onAddToCart(dish, allSelectedModifiers, quantity, specialInstructions); onClose(); }}
+              onClick={() => { onAddToCart(dish, allSelectedModifiers, quantity); onClose(); }}
               className={`mt-3 w-full rounded-xl py-3 text-base font-bold text-white shadow-soft transition-colors ${
                 validationErrors.length > 0
                   ? "bg-ink-300 cursor-not-allowed"

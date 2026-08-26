@@ -12,6 +12,7 @@ import { DishDetailModal } from "@/components/DishDetailModal";
 import { OfferBanner } from "@/components/OfferBanner";
 import { MiniGames } from "@/components/games/MiniGames";
 import { ChatWidget } from "@/components/ChatWidget";
+import { OrderConfirmationModal, type ConfirmationCartLine } from "@/components/OrderConfirmationModal";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
 import type { Dish, DishModifier, DishVariant, Offer, Order } from "@/types";
@@ -66,7 +67,6 @@ interface CartLine {
   modifiers: DishModifier[];
   quantity: number;
   offerPrice: number | null;
-  specialInstructions: string;
 }
 
 type Tab = "menu" | "cart" | "orders" | "games";
@@ -89,9 +89,33 @@ export function CustomerOrderPage() {
   const [detailDish, setDetailDish] = useState<Dish | null>(null);
   const [catSidebarOpen, setCatSidebarOpen] = useState(false);
   const [justPlaced, setJustPlaced] = useState<Order | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showGames, setShowGames] = useState(false);
   const [showGamesPrompt, setShowGamesPrompt] = useState(false);
+  const [navVisible, setNavVisible] = useState(true);
   const notifSound = useNotificationSound();
+
+  // Hide bottom nav on scroll down, show on scroll up.
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let ticking = false;
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        if (y > lastY + 10 && y > 80) {
+          setNavVisible(false); // scrolling down
+        } else if (y < lastY - 5) {
+          setNavVisible(true); // scrolling up
+        }
+        lastY = y;
+        ticking = false;
+      });
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Show games prompt after 10 seconds on order confirmation
   useEffect(() => {
@@ -191,20 +215,20 @@ export function CustomerOrderPage() {
   // ── Mutations ────────────────────────────────────────────────
 
   const placeOrder = useMutation({
-    mutationFn: async () => {
-      for (const line of cart) {
+    mutationFn: async ({ lines, customerNote }: { lines: ConfirmationCartLine[]; customerNote: string }) => {
+      for (const line of lines) {
         await publicApi.post("/cart/items/", {
           session_token: session!.session_token,
           dish_id: line.dish.id,
           variant_id: line.variant?.id ?? null,
           modifier_ids: line.modifiers.map((m) => m.id),
           quantity: line.quantity,
-          special_instructions: line.specialInstructions || "",
         });
       }
       const { data } = await publicApi.post<Order>("/order/", {
         session_token: session!.session_token,
         order_type: orderType,
+        customer_note: customerNote,
       });
       return data;
     },
@@ -307,7 +331,7 @@ export function CustomerOrderPage() {
 
   // ── Cart helpers ─────────────────────────────────────────────
 
-  function addToCart(dish: Dish, selectedModifiers: DishModifier[] = [], qty: number = 1, specialInstructions: string = "") {
+  function addToCart(dish: Dish, selectedModifiers: DishModifier[] = [], qty: number = 1) {
     const offer = dishOffers.get(dish.id);
     const price = parseFloat(dish.price);
     const modifierTotal = selectedModifiers.reduce((s, m) => s + parseFloat(m.price_delta || "0"), 0);
@@ -330,7 +354,7 @@ export function CustomerOrderPage() {
           l === existing ? { ...l, quantity: l.quantity + qty } : l
         );
       }
-      return [...prev, { dish, variant: null, modifiers: selectedModifiers, quantity: qty, offerPrice, specialInstructions }];
+      return [...prev, { dish, variant: null, modifiers: selectedModifiers, quantity: qty, offerPrice }];
     });
   }
 
@@ -382,7 +406,6 @@ export function CustomerOrderPage() {
         group: null,
       })) ?? [],
       offerPrice: null,
-      specialInstructions: "",
     }));
     setCart(newLines);
     setTab("cart");
@@ -1052,7 +1075,7 @@ export function CustomerOrderPage() {
                 <button
                   key={opt.key}
                   type="button"
-                  onClick={() => { setOrderType(opt.key); setShowOrderType(false); placeOrder.mutate(); }}
+                  onClick={() => { setOrderType(opt.key); setShowOrderType(false); setShowConfirmModal(true); }}
                   className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-colors ${
                     orderType === opt.key
                       ? "border-orange-500 bg-orange-50"
@@ -1081,7 +1104,7 @@ export function CustomerOrderPage() {
           <button
             type="button"
             disabled={placeOrder.isPending}
-            onClick={() => setShowOrderType(true)}
+            onClick={() => setShowConfirmModal(true)}
             className="flex w-full items-center justify-between rounded-xl bg-orange-500 px-4 py-3.5 text-white shadow-lg transition-colors hover:bg-orange-600 disabled:opacity-60"
           >
             <span className="flex items-center gap-2">
@@ -1113,8 +1136,11 @@ export function CustomerOrderPage() {
         </p>
       </div>
 
-      {/* ── Bottom nav ──────────────────────────────────────── */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-ink-100 bg-white pb-[env(safe-area-inset-bottom)]">
+      {/* ── Bottom nav — hides on scroll down ──────────────── */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-ink-100 bg-white pb-[env(safe-area-inset-bottom)] transition-transform duration-300"
+        style={{ transform: navVisible ? "translateY(0)" : "translateY(100%)" }}
+      >
         <div className="mx-auto flex max-w-lg">
           {([
             { key: "menu" as Tab, label: t("customer.browseMenu"), icon: <Icon name="menu" className="h-5 w-5" /> },
@@ -1160,6 +1186,26 @@ export function CustomerOrderPage() {
           onClose={() => setDetailDish(null)}
           onAddToCart={addToCart}
           offer={dishOffers.get(detailDish.id) ?? null}
+        />
+      )}
+
+      {/* Order confirmation modal */}
+      {showConfirmModal && (
+        <OrderConfirmationModal
+          lines={cart.map((line) => ({
+            dish: line.dish,
+            variant: line.variant,
+            modifiers: line.modifiers,
+            quantity: line.quantity,
+            unitPrice: line.offerPrice ?? (parseFloat(line.dish.price) + line.modifiers.reduce((s, m) => s + parseFloat(m.price_delta || "0"), 0)),
+          }))}
+          lang={lang}
+          onClose={() => setShowConfirmModal(false)}
+          onConfirm={(lines, customerNote) => {
+            setShowConfirmModal(false);
+            placeOrder.mutate({ lines, customerNote });
+          }}
+          isPending={placeOrder.isPending}
         />
       )}
 
