@@ -43,10 +43,10 @@ export function OrderConfirmationModal({ lines, lang, onClose, onConfirm, isPend
   const totalItems = items.reduce((sum, line) => sum + line.quantity, 0);
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
-      <div className="relative z-10 flex w-full max-w-lg flex-col overflow-clip rounded-t-2xl bg-white shadow-lift sm:rounded-2xl sm:mx-4" style={{ maxHeight: "85dvh" }}>
+      <div className="absolute inset-x-0 bottom-0 top-0 z-10 mx-auto flex w-full max-w-lg flex-col bg-white shadow-lift sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:max-h-[85dvh] sm:bottom-auto" style={{ borderTopLeftRadius: "1rem", borderTopRightRadius: "1rem" }}>
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-ink-100 px-5 py-3">
           <div>

@@ -96,20 +96,35 @@ export function CustomerOrderPage() {
   const notifSound = useNotificationSound();
 
   // Hide bottom nav on scroll down, show on scroll up.
+  // Uses direction counting to avoid jitter from small scroll movements.
   useEffect(() => {
     let lastY = window.scrollY;
+    let downCount = 0;
+    let upCount = 0;
     let ticking = false;
     function onScroll() {
       if (ticking) return;
       ticking = true;
       requestAnimationFrame(() => {
         const y = window.scrollY;
-        if (y > lastY + 10 && y > 80) {
-          setNavVisible(false); // scrolling down
-        } else if (y < lastY - 5) {
-          setNavVisible(true); // scrolling up
-        }
+        const delta = y - lastY;
         lastY = y;
+
+        if (delta > 3) {
+          downCount++;
+          upCount = 0;
+        } else if (delta < -3) {
+          upCount++;
+          downCount = 0;
+        }
+
+        if (downCount >= 4) {
+          setNavVisible(false);
+          downCount = 0;
+        } else if (upCount >= 3) {
+          setNavVisible(true);
+          upCount = 0;
+        }
         ticking = false;
       });
     }
@@ -1098,13 +1113,20 @@ export function CustomerOrderPage() {
         </div>
       )}
 
-      {/* ── Persistent orange cart bar — always "Place Order" ───── */}
+      {/* ── Persistent orange cart bar — anchors above nav when visible ── */}
       {cartCount > 0 && (
-        <div className="fixed inset-x-0 bottom-14 z-20 mx-auto max-w-lg px-3 pb-[env(safe-area-inset-bottom)]">
+        <div
+          className="fixed inset-x-0 z-20 mx-auto max-w-lg px-3 pb-[env(safe-area-inset-bottom)]"
+          style={{
+            bottom: navVisible ? "3.5rem" : "0px",
+            transition: "bottom 250ms ease-out",
+            willChange: "bottom",
+          }}
+        >
           <button
             type="button"
             disabled={placeOrder.isPending}
-            onClick={() => setShowConfirmModal(true)}
+            onClick={() => setShowOrderType(true)}
             className="flex w-full items-center justify-between rounded-xl bg-orange-500 px-4 py-3.5 text-white shadow-lg transition-colors hover:bg-orange-600 disabled:opacity-60"
           >
             <span className="flex items-center gap-2">
@@ -1138,8 +1160,12 @@ export function CustomerOrderPage() {
 
       {/* ── Bottom nav — hides on scroll down ──────────────── */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-ink-100 bg-white pb-[env(safe-area-inset-bottom)] transition-transform duration-300"
-        style={{ transform: navVisible ? "translateY(0)" : "translateY(100%)" }}
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-ink-100 bg-white pb-[env(safe-area-inset-bottom)]"
+        style={{
+          transform: navVisible ? "translateY(0)" : "translateY(100%)",
+          transition: "transform 250ms ease-out",
+          willChange: "transform",
+        }}
       >
         <div className="mx-auto flex max-w-lg">
           {([

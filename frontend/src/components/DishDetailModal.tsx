@@ -115,18 +115,18 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
   const effectiveTotal = effectiveBasePrice + modifierTotal;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
-      {/* Panel — scrollable with sticky footer */}
-      <div className="relative z-10 flex w-full max-w-lg flex-col overflow-clip rounded-t-2xl bg-white shadow-lift sm:rounded-2xl sm:mx-4" style={{ maxHeight: "90dvh" }}>
+      {/* Panel — anchored to bottom on mobile, centered on desktop */}
+      <div className="absolute inset-x-0 bottom-0 top-0 z-10 mx-auto flex w-full max-w-lg flex-col bg-white shadow-lift sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:max-h-[90dvh] sm:bottom-auto" style={{ borderTopLeftRadius: "1rem", borderTopRightRadius: "1rem" }}>
 
-        {/* Scrollable content (image + details) */}
-        <div className="flex-1 overflow-y-auto overscroll-contain">
+        {/* Scrollable content — image scrolls away naturally */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
 
-        {/* Dish image — scrolls with content */}
-        <div className="relative h-48 w-full shrink-0 sm:h-56">
+        {/* Dish image — scrolls with content, no sticky behavior */}
+        <div className="relative h-48 w-full sm:h-56">
           {dish.image ? (
             <img src={dish.image} alt={localized(dish, lang)} className="h-full w-full object-cover" />
           ) : (
@@ -357,11 +357,11 @@ export function DishDetailModal({ dish, lang, onClose, onAddToCart, showAddButto
           {/* Bottom padding so content isn't hidden behind sticky footer */}
           {showAddButton && onAddToCart && <div className="h-2" />}
         </div>
-        </div> {/* end scrollable wrapper */}
+        </div>
 
-        {/* Sticky footer — quantity + add to cart, always visible */}
+        {/* Sticky footer — always pinned at bottom, never moves */}
         {showAddButton && onAddToCart && (
-          <div className="shrink-0 border-t border-ink-100 bg-white px-5 pb-5 pt-3" style={{ willChange: "transform", transform: "translateZ(0)" }}>
+          <div className="shrink-0 border-t border-ink-100 bg-white px-5 pb-5 pt-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-ink-600">
                 {lang === "bn" ? "পরিমাণ" : "Quantity"}
