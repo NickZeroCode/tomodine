@@ -16,7 +16,7 @@ export interface ToastData {
   kind: "success" | "warning" | "info" | "error";
   title: string;
   body?: string;
-  duration?: number; // ms, default 6000
+  duration?: number; // ms, default 6000. Set to 0 or omit for persistent (manual dismiss only).
 }
 
 interface InternalToast extends ToastData {
@@ -34,6 +34,10 @@ export function showToast(toast: ToastData) {
   window.dispatchEvent(new CustomEvent("bhojon:toast", { detail: toast }));
 }
 
+export function dismissToast(id: string) {
+  window.dispatchEvent(new CustomEvent("bhojon:toast:dismiss", { detail: { id } }));
+}
+
 export function ToastContainer() {
   const [toasts, setToasts] = useState<InternalToast[]>([]);
 
@@ -47,10 +51,22 @@ export function ToastContainer() {
       const id = data.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const toast: InternalToast = { ...data, id };
       setToasts((prev) => [...prev.slice(-4), toast]); // max 5 toasts
-      setTimeout(() => remove(id), data.duration ?? 6000);
+      // Auto-dismiss only if duration is a positive number.
+      const dur = data.duration ?? 6000;
+      if (dur > 0) {
+        setTimeout(() => remove(id), dur);
+      }
+    }
+    function dismissHandler(e: Event) {
+      const { id } = (e as CustomEvent<{ id: string }>).detail;
+      remove(id);
     }
     window.addEventListener("bhojon:toast", handler);
-    return () => window.removeEventListener("bhojon:toast", handler);
+    window.addEventListener("bhojon:toast:dismiss", dismissHandler);
+    return () => {
+      window.removeEventListener("bhojon:toast", handler);
+      window.removeEventListener("bhojon:toast:dismiss", dismissHandler);
+    };
   }, [remove]);
 
   if (toasts.length === 0) return null;

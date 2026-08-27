@@ -4,20 +4,24 @@
  */
 
 import { useEffect } from "react";
-import { showToast } from "@/components/Toast";
+import { showToast, dismissToast } from "@/components/Toast";
+
+const OFFLINE_TOAST_ID = "network-offline";
 
 export function NetworkStatusToast() {
   useEffect(() => {
     function handleOffline() {
       showToast({
+        id: OFFLINE_TOAST_ID,
         kind: "warning",
         title: "No internet connection",
         body: "You're offline. Changes will sync when your connection is restored.",
-        duration: 10000,
+        duration: 0,
       });
     }
 
     function handleOnline() {
+      dismissToast(OFFLINE_TOAST_ID);
       showToast({
         kind: "success",
         title: "Back online",
