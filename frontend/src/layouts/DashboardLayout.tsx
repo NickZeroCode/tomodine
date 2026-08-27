@@ -11,6 +11,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
 import { LoadingState } from "@/components/States";
 import { ToastContainer } from "@/components/Toast";
+import { NetworkStatusToast } from "@/components/NetworkStatusToast";
 import type { ApiError, Order } from "@/types";
 
 /* ── Inline SVG icon wrapper ────────────────────────────────── */
@@ -677,6 +678,7 @@ export function DashboardLayout() {
 
       {/* Toast notifications */}
       <ToastContainer />
+      <NetworkStatusToast />
     </div>
   );
 }

@@ -14,7 +14,9 @@ import { OfferBanner } from "@/components/OfferBanner";
 import { MiniGames } from "@/components/games/MiniGames";
 import { ChatWidget } from "@/components/ChatWidget";
 import { ImageWithFallback } from "@/components/ImageWithFallback";
+import { NetworkStatusToast } from "@/components/NetworkStatusToast";
 import { OrderConfirmationModal, type ConfirmationCartLine } from "@/components/OrderConfirmationModal";
+import { ToastContainer } from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
 import type { Dish, DishModifier, DishVariant, Offer, Order } from "@/types";
@@ -1296,6 +1298,8 @@ export function CustomerOrderPage() {
       <ChatWidget tableId={qrToken} restaurantSlug={menuQuery.data?.restaurant.slug} sessionToken={session?.session_token} onPlayGames={() => setShowGames(true)} />
 
       {confirmDialog}
+      <ToastContainer />
+      <NetworkStatusToast />
     </div>
   );
 }
