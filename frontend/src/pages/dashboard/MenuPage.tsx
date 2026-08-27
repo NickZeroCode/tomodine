@@ -13,6 +13,7 @@ import { showToast } from "@/components/Toast";
 import { Icon } from "@/components/Icon";
 import { DishDetailModal } from "@/components/DishDetailModal";
 import { ModifierGroupsEditor } from "@/components/ModifierGroupsEditor";
+import { ImageWithFallback } from "@/components/ImageWithFallback";
 import type { ApiError, Dish, Menu, MenuCategory } from "@/types";
 
 interface DishFormState {
@@ -419,11 +420,13 @@ export function MenuPage() {
                             <div key={dish.id} className="card group overflow-hidden transition-all hover:shadow-lift">
                               {/* Dish image — large, prominent */}
                               <div className="relative h-40 w-full overflow-hidden bg-ink-50">
-                                {dish.image ? (
-                                  <img src={dish.image} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center"><Icon name="image" className="h-10 w-10 text-ink-200" /></div>
-                                )}
+                                <ImageWithFallback
+                                  src={dish.image ?? undefined}
+                                  alt=""
+                                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                  loading="lazy"
+                                  placeholder="dish"
+                                />
                                 {/* Status overlay */}
                                 {!dish.is_available && (
                                   <div className="absolute inset-0 flex items-center justify-center bg-black/50">

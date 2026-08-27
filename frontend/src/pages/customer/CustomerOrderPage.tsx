@@ -13,6 +13,7 @@ import { DishDetailModal } from "@/components/DishDetailModal";
 import { OfferBanner } from "@/components/OfferBanner";
 import { MiniGames } from "@/components/games/MiniGames";
 import { ChatWidget } from "@/components/ChatWidget";
+import { ImageWithFallback } from "@/components/ImageWithFallback";
 import { OrderConfirmationModal, type ConfirmationCartLine } from "@/components/OrderConfirmationModal";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
@@ -452,7 +453,7 @@ export function CustomerOrderPage() {
       <header className="relative shrink-0 overflow-hidden">
         <div className="relative h-40 w-full">
           {rest?.cover_image ? (
-            <img src={rest.cover_image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <ImageWithFallback src={rest.cover_image} alt="" className="absolute inset-0 h-full w-full object-cover" placeholder="cover" />
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800" />
           )}
@@ -470,7 +471,7 @@ export function CustomerOrderPage() {
           </div>
           <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-4">
             {rest?.logo ? (
-              <img src={rest.logo} alt="" className="h-14 w-14 shrink-0 rounded-xl border-2 border-white/70 object-cover shadow-soft" />
+              <ImageWithFallback src={rest.logo} alt="" className="h-14 w-14 shrink-0 rounded-xl border-2 border-white/70 object-cover shadow-soft" placeholder="logo" />
             ) : (
               <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border-2 border-white/70 bg-white/90 text-xl font-bold text-brand-700 shadow-soft">
                 {(rest?.name ?? "R").charAt(0)}
@@ -780,20 +781,15 @@ export function CustomerOrderPage() {
                               className={`group flex items-center gap-3 rounded-xl bg-white p-2.5 transition-all ${dish.is_available ? "cursor-pointer active:scale-[0.99]" : "opacity-50"}`}
                               onClick={() => dish.is_available && setDetailDish(dish)}
                             >
-                              {dish.image ? (
-                                <span className="h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-lg">
-                                  <img
-                                    src={dish.image}
-                                    alt={localized(dish, lang)}
-                                    loading="lazy"
-                                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                  />
-                                </span>
-                              ) : (
-                                <span className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-50 to-ink-50">
-                                  <Icon name="image" className="h-5 w-5 text-brand-300" />
-                                </span>
-                              )}
+                              <span className="h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-lg">
+                                <ImageWithFallback
+                                  src={dish.image ?? undefined}
+                                  alt={localized(dish, lang)}
+                                  loading="lazy"
+                                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                  placeholder="dish"
+                                />
+                              </span>
                               <div className="min-w-0 flex-1">
                                 <p className="text-[0.8rem] font-semibold leading-tight text-ink-900">{localized(dish, lang)}</p>
                                 {localizedDescription(dish, lang) && (
@@ -883,11 +879,14 @@ export function CustomerOrderPage() {
                     const lineKey = `${line.dish.id}-${line.modifiers.map((m) => m.id).sort().join(",")}-${lineIdx}`;
                     return (
                       <li key={lineKey} className="flex items-center gap-3 rounded-xl border border-ink-100 p-3">
-                        {line.dish.image ? (
-                          <img src={line.dish.image} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
-                        ) : (
-                          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-ink-50 text-ink-300"><Icon name="menu" className="h-6 w-6" /></span>
-                        )}
+                        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg">
+                          <ImageWithFallback
+                            src={line.dish.image ?? undefined}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            placeholder="dish"
+                          />
+                        </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-ink-900">{localized(line.dish, lang)}</p>
                           {line.modifiers.length > 0 && (
@@ -977,13 +976,14 @@ export function CustomerOrderPage() {
                       <ul className="mt-2 space-y-0.5">
                         {order.items.map((item, i) => (
                           <li key={i} className="flex items-center gap-2 text-xs text-ink-600">
-                            {item.dish_image ? (
-                              <img src={item.dish_image} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
-                            ) : (
-                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ink-50 text-ink-300">
-                                <Icon name="image" className="h-3.5 w-3.5" />
-                              </span>
-                            )}
+                            <div className="h-8 w-8 shrink-0 overflow-hidden rounded-lg">
+                              <ImageWithFallback
+                                src={item.dish_image || undefined}
+                                alt=""
+                                className="h-full w-full object-cover"
+                                placeholder="dish"
+                              />
+                            </div>
                             <span className="min-w-0 flex-1 truncate">
                               {item.quantity}× {lang === "bn" ? item.dish_name_bn || item.dish_name_en : item.dish_name_en || item.dish_name_bn}
                               {item.selected_modifiers?.length > 0 && (

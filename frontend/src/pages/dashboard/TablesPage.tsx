@@ -8,6 +8,7 @@ import { useRestaurantSocket } from "@/hooks/useRestaurantSocket";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { FloorMap } from "@/components/FloorMap";
 import { KanbanSidebar } from "@/components/KanbanSidebar";
+import { ImageWithFallback } from "@/components/ImageWithFallback";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { Modal } from "@/components/Modal";
 import { Icon } from "@/components/Icon";
@@ -161,7 +162,25 @@ export function TablesPage() {
   const transition = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: OrderStatus }) =>
       api.post(`/orders/${id}/transition/`, { status: status.toLowerCase() }),
-    onSuccess: () => {
+    onMutate: async ({ id, status: newStatus }) => {
+      // Optimistic update: immediately update order status in all relevant caches.
+      await queryClient.cancelQueries({ queryKey: ["table-orders"] });
+      await queryClient.cancelQueries({ queryKey: ["orders"] });
+      const prevTableOrders = queryClient.getQueryData(["table-orders", ordersForTable?.id]);
+      const prevOrders = queryClient.getQueryData(["orders"]);
+      queryClient.setQueryData(["table-orders", ordersForTable?.id], (old: Order[] | undefined) =>
+        (old ?? []).map((o) => (o.id === id ? { ...o, status: newStatus } : o))
+      );
+      queryClient.setQueryData(["orders"], (old: Order[] | undefined) =>
+        (old ?? []).map((o) => (o.id === id ? { ...o, status: newStatus } : o))
+      );
+      return { prevTableOrders, prevOrders };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prevTableOrders) queryClient.setQueryData(["table-orders", ordersForTable?.id], context.prevTableOrders);
+      if (context?.prevOrders) queryClient.setQueryData(["orders"], context.prevOrders);
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["table-orders"] });
       void queryClient.invalidateQueries({ queryKey: tablesKey });
       void queryClient.invalidateQueries({ queryKey: ["orders"] });
@@ -827,9 +846,9 @@ export function TablesPage() {
                   <ul className="mt-1.5 space-y-0.5">
                     {order.items.map((item) => (
                       <li key={item.id} className="flex items-center gap-2 text-xs text-ink-600">
-                        {item.dish_image ? (
-                          <img src={item.dish_image} alt="" className="h-6 w-6 shrink-0 rounded object-cover" />
-                        ) : null}
+                        <div className="h-6 w-6 shrink-0 overflow-hidden rounded">
+                          <ImageWithFallback src={item.dish_image || undefined} alt="" className="h-full w-full object-cover" placeholder="dish" />
+                        </div>
                         <span className="min-w-0 flex-1 truncate">
                           {item.quantity}× {item.dish_name_en || item.dish_name_bn}
                           {item.selected_modifiers?.length > 0 && (

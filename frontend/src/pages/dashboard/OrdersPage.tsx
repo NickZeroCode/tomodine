@@ -16,6 +16,7 @@ import { formatBDT } from "@/lib/format";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { useRestaurantSocket } from "@/hooks/useRestaurantSocket";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
+import { ImageWithFallback } from "@/components/ImageWithFallback";
 import type { Order, OrderStatus } from "@/types";
 
 /* ── Constants ──────────────────────────────────────────────── */
@@ -121,8 +122,26 @@ export function OrdersPage() {
   const transition = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: OrderStatus }) =>
       api.post(`/orders/${id}/transition/`, { status: status.toLowerCase() }),
-    onSuccess: () =>
-      void queryClient.invalidateQueries({ queryKey: ["orders", restaurant?.slug] }),
+    onMutate: async ({ id, status: newStatus }) => {
+      // Optimistic update: immediately update the order status in cache.
+      const key = ["orders", restaurant?.slug];
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<Order[]>(key);
+      queryClient.setQueryData<Order[]>(key, (old) =>
+        (old ?? []).map((o) => (o.id === id ? { ...o, status: newStatus } : o))
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      // Roll back on error.
+      if (context?.previous) {
+        queryClient.setQueryData(["orders", restaurant?.slug], context.previous);
+      }
+    },
+    onSettled: () => {
+      // Refetch to ensure consistency after the round-trip.
+      void queryClient.invalidateQueries({ queryKey: ["orders", restaurant?.slug] });
+    },
   });
 
   /* ── Derived ── */
@@ -450,11 +469,9 @@ export function OrdersPage() {
                               <ul className="space-y-2">
                                 {order.items.map((item) => (
                                   <li key={item.id} className="flex items-center gap-3">
-                                    {item.dish_image ? (
-                                      <img src={item.dish_image} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
-                                    ) : (
-                                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink-100 text-ink-300 text-xs">🍽</span>
-                                    )}
+                                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg">
+                                      <ImageWithFallback src={item.dish_image || undefined} alt="" className="h-full w-full object-cover" placeholder="dish" />
+                                    </div>
                                     <div className="min-w-0 flex-1">
                                       <p className="truncate text-sm font-medium text-ink-900">
                                         {lang === "bn" ? item.dish_name_bn || item.dish_name_en : item.dish_name_en || item.dish_name_bn}

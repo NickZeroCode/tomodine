@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { useChatApi, type ChatMessage, type StructuredActions } from "@/hooks/useChatApi";
 import { formatBDT } from "@/lib/format";
 import { stripMarkdown } from "@/lib/stripMarkdown";
+import { ImageWithFallback } from "@/components/ImageWithFallback";
 
 interface Props {
   tableId?: string;
@@ -275,7 +276,7 @@ function StructuredActionsRenderer({
                 className="flex w-36 shrink-0 snap-start cursor-pointer flex-col overflow-hidden rounded-xl border border-ink-100 bg-white text-left transition-all hover:shadow-md active:scale-[0.98]"
               >
                 {item.image_url ? (
-                  <img src={item.image_url} alt={item.name} className="h-24 w-full object-cover" />
+                  <ImageWithFallback src={item.image_url} alt={item.name} className="h-24 w-full object-cover" placeholder="dish" />
                 ) : (
                   <div className="flex h-28 items-center justify-center bg-gradient-to-br from-ink-50 to-ink-100">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="h-8 w-8 text-ink-200">
@@ -312,9 +313,7 @@ function StructuredActionsRenderer({
           {detailItem && (
             <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center" onClick={() => setDetailItem(null)}>
               <div className="w-full max-w-sm rounded-t-2xl bg-white p-5 shadow-lift sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
-                {detailItem.image_url && (
-                  <img src={detailItem.image_url} alt={detailItem.name} className="mb-4 h-48 w-full rounded-xl object-cover" />
-                )}
+                <ImageWithFallback src={detailItem.image_url} alt={detailItem.name} className="mb-4 h-48 w-full rounded-xl object-cover" placeholder="dish" />
                 <h3 className="text-lg font-bold text-ink-900">{detailItem.name}</h3>
                 {detailItem.category && (
                   <p className="mt-0.5 text-xs text-ink-400">{detailItem.category}</p>
