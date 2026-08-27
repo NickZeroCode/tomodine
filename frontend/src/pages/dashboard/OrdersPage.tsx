@@ -121,8 +121,21 @@ export function OrdersPage() {
   });
 
   const transition = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: OrderStatus }) =>
-      api.post(`/orders/${id}/transition/`, { status: status.toLowerCase() }),
+    mutationFn: async ({ id, status }: { id: string; status: OrderStatus }) => {
+      // Fail fast if browser reports offline — don't let the request hang.
+      if (!navigator.onLine) {
+        throw new Error("offline");
+      }
+      // Wrap the request with a timeout so it doesn't hang when the
+      // network silently drops (browser queues the request indefinitely).
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      try {
+        await api.post(`/orders/${id}/transition/`, { status: status.toLowerCase() }, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeout);
+      }
+    },
     onMutate: async ({ id, status: newStatus }) => {
       // Optimistic update: immediately update the order status in cache.
       const key = ["orders", restaurant?.slug];

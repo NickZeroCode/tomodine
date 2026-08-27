@@ -161,8 +161,16 @@ export function TablesPage() {
   });
 
   const transition = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: OrderStatus }) =>
-      api.post(`/orders/${id}/transition/`, { status: status.toLowerCase() }),
+    mutationFn: async ({ id, status }: { id: string; status: OrderStatus }) => {
+      if (!navigator.onLine) throw new Error("offline");
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      try {
+        await api.post(`/orders/${id}/transition/`, { status: status.toLowerCase() }, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeout);
+      }
+    },
     onMutate: async ({ id, status: newStatus }) => {
       // Optimistic update: immediately update order status in all relevant caches.
       await queryClient.cancelQueries({ queryKey: ["table-orders"] });
