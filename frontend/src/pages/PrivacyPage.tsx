@@ -45,7 +45,7 @@ If you do not agree with the practices described in this Policy, please do not u
       list: [
         "Account Information — when you register, we collect your name, email address, phone number, restaurant name, restaurant type, branch locations, and business details.",
         "Restaurant Data — menu items (names, descriptions, prices, images, categories, dietary tags), table layouts, staff profiles, roles, and permissions you configure on the Platform.",
-        "Customer Data Collected by Restaurants — when customers place orders via QR code scanning, the restaurant's instance of the Platform may collect the customer's device identifier, order history, table number, and session data. This data belongs to the restaurant and is processed on their behalf.",
+        "Customer Data Collected by Restaurants — when customers place orders via QR code scanning, the restaurant's instance of the Platform may collect the customer's device fingerprint (a non-unique hash generated from browser characteristics such as screen size, timezone, and browser type — no personal data is collected), order history, table number, and session data. The device fingerprint is used solely to maintain session continuity and order isolation between devices at the same table. This data belongs to the restaurant and is processed on their behalf.",
         "Usage Data — pages visited, features used, actions taken, session duration, search queries within the Platform, and interaction patterns with the AI Concierge chatbot.",
         "Device and Technical Information — browser type and version, operating system, device type, screen resolution, IP address, referring URL, and approximate geographic location (city-level).",
         "Payment Information — subscription payments are processed by third-party payment gateways (bKash, Nagad, SSLCommerz). We do not store credit or debit card numbers on our servers. We receive and store only transaction references, payment status, and masked payment identifiers.",
@@ -59,7 +59,7 @@ If you do not agree with the practices described in this Policy, please do not u
       list: [
         "অ্যাকাউন্ট তথ্য — নিবন্ধনের সময়, আমরা আপনার নাম, ইমেইল ঠিকানা, ফোন নম্বর, রেস্তোরাঁর নাম, রেস্তোরাঁর ধরন, শাখার অবস্থান এবং ব্যবসায়িক বিবরণ সংগ্রহ করি।",
         "রেস্তোরাঁ ডেটা — মেনু আইটেম (নাম, বিবরণ, মূল্য, ছবি, ক্যাটাগরি, ডায়েটারি ট্যাগ), টেবিল লেআউট, স্টাফ প্রোফাইল, ভূমিকা এবং অনুমতি যা আপনি প্ল্যাটফর্মে কনফিগার করেন।",
-        "রেস্তোরাঁ দ্বারা সংগৃহীত গ্রাহক ডেটা — QR কোড স্ক্যান করে গ্রাহকরা অর্ডার দিলে, প্ল্যাটফর্মের রেস্তোরাঁর ইনস্ট্যান্স গ্রাহকের ডিভাইস আইডেন্টিফায়ার, অর্ডার ইতিহাস, টেবিল নম্বর এবং সেশন ডেটা সংগ্রহ করতে পারে। এই ডেটা রেস্তোরাঁর এবং তাদের পক্ষে প্রক্রিয়া করা হয়।",
+        "রেস্তোরাঁ দ্বারা সংগৃহীত গ্রাহক ডেটা — QR কোড স্ক্যান করে গ্রাহকরা অর্ডার দিলে, প্ল্যাটফর্মের রেস্তোরাঁর ইনস্ট্যান্স গ্রাহকের ডিভাইস ফিঙ্গারপ্রিন্ট (স্ক্রিন সাইজ, টাইমজোন, ব্রাউজারের ধরন ইত্যাদি ব্রাউজার বৈশিষ্ট্য থেকে তৈরি একটি অ-অনন্ত হ্যাশ — কোনো ব্যক্তিগত তথ্য সংগ্রহ করা হয় না), অর্ডার ইতিহাস, টেবিল নম্বর এবং সেশন ডেটা সংগ্রহ করতে পারে। ডিভাইস ফিঙ্গারপ্রিন্ট শুধুমাত্র একই টেবিলে বিভিন্ন ডিভাইসের মধ্যে সেশন ধারাবাহিকতা এবং অর্ডার আইসোলেশন বজায় রাখতে ব্যবহৃত হয়। এই ডেটা রেস্তোরাঁর এবং তাদের পক্ষে প্রক্রিয়া করা হয়।",
         "ব্যবহার ডেটা — পরিদর্শিত পৃষ্ঠা, ব্যবহৃত বৈশিষ্ট্য, নেওয়া ক্রিয়াকলাপ, সেশনের সময়কাল, প্ল্যাটফর্মের মধ্যে অনুসন্ধান ক্যোয়েরি এবং AI কনসিয়ার্জ চ্যাটবটের সাথে ইন্টারেকশন প্যাটার্ন।",
         "ডিভাইস ও প্রযুক্তিগত তথ্য — ব্রাউজারের ধরন এবং সংস্করণ, অপারেটিং সিস্টেম, ডিভাইসের ধরন, স্ক্রিন রেজোলিউশন, IP ঠিকানা, রেফারিং URL এবং আনুমানিক ভৌগোলিক অবস্থান (শহর-স্তর)।",
         "পেমেন্ট তথ্য — সাবস্ক্রিপশন পেমেন্ট তৃতীয় পক্ষের পেমেন্ট গেটওয়ে (bKash, Nagad, SSLCommerz) দ্বারা প্রক্রিয়া করা হয়। আমরা আমাদের সার্ভারে ক্রেডিট বা ডেবিট কার্ড নম্বর সংরক্ষণ করি না। আমরা শুধুমাত্র লেনদেন রেফারেন্স, পেমেন্ট স্ট্যাটাস এবং মাস্কড পেমেন্ট আইডেন্টিফায়ার গ্রহণ এবং সংরক্ষণ করি।",
@@ -245,6 +245,7 @@ If you do not agree with the practices described in this Policy, please do not u
         "Functional Cookies — remember your preferences such as language selection, theme, and display settings to provide a personalised experience.",
         "Analytics Cookies — help us understand how users interact with the Platform by collecting anonymised usage data. This helps us improve the Platform's performance and usability.",
         "Third-Party Cookies — our payment processors and analytics providers may set their own cookies. These are governed by the respective third party's privacy policy.",
+        "Device Fingerprinting — for QR code ordering, we generate a device fingerprint by hashing non-personal browser characteristics (screen resolution, timezone, browser type, language). This hash is used to maintain session continuity and ensure that each device at a shared table has its own isolated orders and chat history. The fingerprint contains no personal data, cannot identify you across websites, and is not used for advertising or tracking purposes.",
       ],
       after: `You can manage your cookie preferences through your browser settings or through our Cookie Settings page. Disabling essential cookies may affect the functionality of the Platform. For more details, please visit our Cookie Settings page.`,
     },
@@ -256,6 +257,7 @@ If you do not agree with the practices described in this Policy, please do not u
         "কার্যকরী কুকি — ভাষা নির্বাচন, থিম এবং প্রদর্শন সেটিংসের মতো আপনার পছন্দগুলি মনে রাখে ব্যক্তিগতকৃত অভিজ্ঞতা প্রদান করতে।",
         "বিশ্লেষণ কুকি — বেনামী ব্যবহার ডেটা সংগ্রহ করে ব্যবহারকারীরা কীভাবে প্ল্যাটফর্মের সাথে ইন্টার্যাক্ট করে তা বুঝতে সাহায্য করে। এটি প্ল্যাটফর্মের কার্যকারিতা এবং ব্যবহারযোগ্যতা উন্নত করতে সাহায্য করে।",
         "তৃতীয় পক্ষের কুকি — আমাদের পেমেন্ট প্রসেসর এবং বিশ্লেষণ প্রদানকারীরা তাদের নিজস্ব কুকি সেট করতে পারে। এগুলি সংশ্লিষ্ট তৃতীয় পক্ষের গোপনীয়তা নীতি দ্বারা নিয়ন্ত্রিত।",
+        "ডিভাইস ফিঙ্গারপ্রিন্টিং — QR কোড অর্ডারিংয়ের জন্য, আমরা অ-ব্যক্তিগত ব্রাউজার বৈশিষ্ট্য (স্ক্রিন রেজোলিউশন, টাইমজোন, ব্রাউজারের ধরন, ভাষা) হ্যাশ করে একটি ডিভাইস ফিঙ্গারপ্রিন্ট তৈরি করি। এই হ্যাশ সেশন ধারাবাহিকতা বজায় রাখতে এবং একটি শেয়ার্ড টেবিলে প্রতিটি ডিভাইসের নিজস্ব আলাদা অর্ডার এবং চ্যাট ইতিহাস নিশ্চিত করতে ব্যবহৃত হয়। ফিঙ্গারপ্রিন্টে কোনো ব্যক্তিগত তথ্য নেই, ওয়েবসাইট জুড়ে আপনাকে শনাক্ত করতে পারে না এবং বিজ্ঞাপন বা ট্র্যাকিং উদ্দেশ্যে ব্যবহৃত হয় না।",
       ],
       after: `আপনি আপনার ব্রাউজার সেটিংস বা আমাদের কুকি সেটিংস পৃষ্ঠার মাধ্যমে আপনার কুকি পছন্দ পরিচালনা করতে পারেন। অত্যাবশ্যক কুকি নিষ্ক্রিয় করলে প্ল্যাটফর্মের কার্যকারিতা প্রভাবিত হতে পারে। আরও বিস্তারিত জানতে, অনুগ্রহ করে আমাদের কুকি সেটিংস পৃষ্ঠায় যান।`,
     },

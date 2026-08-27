@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { formatBDT, localized, localizedDescription } from "@/lib/format";
+import { getStableDeviceId } from "@/lib/fingerprint";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { LoadingState, ErrorState } from "@/components/States";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
@@ -17,17 +18,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { useNotificationSound } from "@/hooks/useNotificationSound";
 import type { Dish, DishModifier, DishVariant, Offer, Order } from "@/types";
 
-const DEVICE_KEY = "bhojon.device_id";
-const SESSION_PREFIX = "bhojon.session.";
-
-function getDeviceId(): string {
-  let id = localStorage.getItem(DEVICE_KEY);
-  if (!id) {
-    id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    localStorage.setItem(DEVICE_KEY, id);
-  }
-  return id;
-}
+const SESSION_PREFIX = "tomodine.session.";
 
 /* ── Types ──────────────────────────────────────────────────── */
 
@@ -145,7 +136,7 @@ export function CustomerOrderPage() {
   const sessionQuery = useQuery({
     queryKey: ["customer-session", qrToken],
     queryFn: async () => {
-      const deviceId = getDeviceId();
+      const deviceId = await getStableDeviceId();
       const { data } = await publicApi.post<SessionInfo>("/session/", {
         qr_token: qrToken,
         device_id: deviceId,
