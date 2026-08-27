@@ -10,6 +10,7 @@ import { FloorMap } from "@/components/FloorMap";
 import { KanbanSidebar } from "@/components/KanbanSidebar";
 import { ImageWithFallback } from "@/components/ImageWithFallback";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
+import { showToast } from "@/components/Toast";
 import { Modal } from "@/components/Modal";
 import { Icon } from "@/components/Icon";
 import { TextField } from "@/components/FormField";
@@ -179,6 +180,7 @@ export function TablesPage() {
     onError: (_err, _vars, context) => {
       if (context?.prevTableOrders) queryClient.setQueryData(["table-orders", ordersForTable?.id], context.prevTableOrders);
       if (context?.prevOrders) queryClient.setQueryData(["orders"], context.prevOrders);
+      showToast({ kind: "error", title: t("common.error"), body: "Could not update order status. Please check your connection and try again." });
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["table-orders"] });

@@ -16,6 +16,7 @@ import { formatBDT } from "@/lib/format";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { useRestaurantSocket } from "@/hooks/useRestaurantSocket";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
+import { showToast } from "@/components/Toast";
 import { ImageWithFallback } from "@/components/ImageWithFallback";
 import type { Order, OrderStatus } from "@/types";
 
@@ -137,6 +138,7 @@ export function OrdersPage() {
       if (context?.previous) {
         queryClient.setQueryData(["orders", restaurant?.slug], context.previous);
       }
+      showToast({ kind: "error", title: t("common.error"), body: "Could not update order status. Please check your connection and try again." });
     },
     onSettled: () => {
       // Refetch to ensure consistency after the round-trip.
