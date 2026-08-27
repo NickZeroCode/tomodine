@@ -460,11 +460,11 @@ def make_get_restaurant_info(restaurant):
     return get_restaurant_info
 
 
-def make_add_to_cart(restaurant_id: str, table_id: str | None):
+def make_add_to_cart(restaurant_id: str, table_id: str | None, customer_session_token: str | None = None):
     """Create a branch-scoped add_to_cart tool.
 
-    Uses the Cart/CartItem pipeline so modifier pricing is always server-validated.
-    Falls back to direct OrderItem creation for legacy flows.
+    Uses the customer's own session (via customer_session_token) for complete
+    device isolation. Falls back to table-level session lookup for backward compat.
     """
 
     def add_to_cart(dish_name: str, quantity: int = 1, modifier_names: list[str] | None = None) -> str:
@@ -499,10 +499,14 @@ def make_add_to_cart(restaurant_id: str, table_id: str | None):
         if not table:
             return json.dumps({"success": False, "error": "Table not found."})
 
-        # Get or create session.
-        session = CustomerSession.objects.filter(
-            restaurant_id=restaurant_id, table=table, is_active=True,
-        ).first()
+        # Get session — prefer the customer's own session for device isolation.
+        session = None
+        if customer_session_token:
+            session = CustomerSession.objects.filter(token=customer_session_token, is_active=True).first()
+        if not session:
+            session = CustomerSession.objects.filter(
+                restaurant_id=restaurant_id, table=table, is_active=True,
+            ).first()
         if not session:
             session = CustomerSession.objects.create(
                 restaurant_id=restaurant_id, table=table, is_active=True,
@@ -623,29 +627,44 @@ def make_add_to_cart(restaurant_id: str, table_id: str | None):
     return add_to_cart
 
 
-def make_check_order_status(restaurant_id: str, table_id: str | None):
-    """Create a branch-scoped check_order_status tool."""
+def make_check_order_status(restaurant_id: str, table_id: str | None, customer_session_token: str | None = None):
+    """Create a branch-scoped check_order_status tool.
+
+    If customer_session_token is provided, only returns orders from that session
+    (complete device isolation). Falls back to table-level for backward compat.
+    """
 
     def check_order_status() -> str:
         if not table_id:
             return json.dumps({"orders": [], "message": "No table associated with this session."})
 
-        from datetime import date
         from apps.ordering.models import Order
-        from apps.tables.models import Table
 
-        table = Table.objects.filter(pk=table_id, restaurant_id=restaurant_id).first()
-        if not table:
-            return json.dumps({"orders": [], "message": "Table not found."})
+        base_qs = Order.objects.filter(
+            restaurant_id=restaurant_id,
+        ).exclude(status__in=["cancelled", "rejected"])
 
-        today = date.today()
+        # Session-scoped: only this device's orders.
+        if customer_session_token:
+            from apps.ordering.models import CustomerSession
+            session = CustomerSession.objects.filter(token=customer_session_token).first()
+            if session:
+                base_qs = base_qs.filter(session=session)
+            else:
+                # Fallback to table-level if session not found.
+                from apps.tables.models import Table
+                table = Table.objects.filter(pk=table_id, restaurant_id=restaurant_id).first()
+                if table:
+                    base_qs = base_qs.filter(table=table)
+        else:
+            from apps.tables.models import Table
+            table = Table.objects.filter(pk=table_id, restaurant_id=restaurant_id).first()
+            if not table:
+                return json.dumps({"orders": [], "message": "Table not found."})
+            base_qs = base_qs.filter(table=table)
+
         orders = (
-            Order.objects.filter(
-                restaurant_id=restaurant_id,
-                table=table,
-                created_at__date=today,
-            )
-            .exclude(status__in=["cancelled", "rejected"])
+            base_qs
             .order_by("-created_at")
             .values("id", "order_number", "status", "total", "created_at")[:5]
         )
@@ -805,7 +824,7 @@ def make_get_offers(restaurant_id: str):
     return get_offers
 
 
-def build_all_tools(restaurant, table_id: str | None, query_vector_fn) -> dict[str, callable]:
+def build_all_tools(restaurant, table_id: str | None, query_vector_fn, customer_session_token: str | None = None) -> dict[str, callable]:
     """Build all branch-scoped tools and return as {name: fn} dict."""
     rid = str(restaurant.id)
     tools = {
@@ -818,8 +837,8 @@ def build_all_tools(restaurant, table_id: str | None, query_vector_fn) -> dict[s
     }
 
     if table_id:
-        tools["add_to_cart"] = make_add_to_cart(rid, table_id)
-        tools["check_order_status"] = make_check_order_status(rid, table_id)
+        tools["add_to_cart"] = make_add_to_cart(rid, table_id, customer_session_token)
+        tools["check_order_status"] = make_check_order_status(rid, table_id, customer_session_token)
         tools["trigger_waiter"] = make_trigger_waiter(rid, table_id)
 
     return tools

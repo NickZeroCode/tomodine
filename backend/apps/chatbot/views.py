@@ -56,6 +56,7 @@ class ChatAPIView(APIView):
         message = serializer.validated_data["message"]
         session_id = serializer.validated_data.get("session_id") or str(uuid.uuid4())
         table_id_raw = serializer.validated_data.get("table_id") or None
+        session_token = serializer.validated_data.get("session_token") or None
 
         # Resolve the branch/restaurant and normalise table_id to a UUID.
         restaurant, table_id = self._resolve(request, table_id_raw)
@@ -90,6 +91,7 @@ class ChatAPIView(APIView):
                 session_id=session_id,
                 user_message=message,
                 table_id=table_id,
+                customer_session_token=session_token,
             )
         except Exception:
             logger.exception("Chat agent error")

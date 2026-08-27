@@ -106,9 +106,10 @@ function guessStructuredActions(response: string, sentText: string): StructuredA
 interface Props {
   tableId?: string;
   restaurantSlug?: string;
+  sessionToken?: string;
 }
 
-export function useChatApi({ tableId, restaurantSlug }: Props = {}): UseChatApiReturn {
+export function useChatApi({ tableId, restaurantSlug, sessionToken }: Props = {}): UseChatApiReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -135,6 +136,7 @@ export function useChatApi({ tableId, restaurantSlug }: Props = {}): UseChatApiR
         };
         if (sessionIdRef.current) payload.session_id = sessionIdRef.current;
         if (tableId) payload.table_id = tableId;
+        if (sessionToken) payload.session_token = sessionToken;
 
         const headers: Record<string, string> = {};
         if (restaurantSlug) headers["X-Restaurant-Slug"] = restaurantSlug;

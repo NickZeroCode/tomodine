@@ -1302,7 +1302,7 @@ export function CustomerOrderPage() {
       )}
 
       {/* ── AI Concierge ── */}
-      <ChatWidget tableId={qrToken} restaurantSlug={menuQuery.data?.restaurant.slug} onPlayGames={() => setShowGames(true)} />
+      <ChatWidget tableId={qrToken} restaurantSlug={menuQuery.data?.restaurant.slug} sessionToken={session?.session_token} onPlayGames={() => setShowGames(true)} />
 
       {confirmDialog}
     </div>

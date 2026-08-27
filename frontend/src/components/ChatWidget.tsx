@@ -15,15 +15,16 @@ import { stripMarkdown } from "@/lib/stripMarkdown";
 interface Props {
   tableId?: string;
   restaurantSlug?: string;
+  sessionToken?: string;
   onPlayGames?: () => void;
 }
 
 /* ── Main widget ─────────────────────────────────────────────── */
 
-export function ChatWidget({ tableId, restaurantSlug, onPlayGames }: Props) {
+export function ChatWidget({ tableId, restaurantSlug, sessionToken, onPlayGames }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const { messages, isLoading, sendMessage, resetSession } = useChatApi({ tableId, restaurantSlug });
+  const { messages, isLoading, sendMessage, resetSession } = useChatApi({ tableId, restaurantSlug, sessionToken });
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);

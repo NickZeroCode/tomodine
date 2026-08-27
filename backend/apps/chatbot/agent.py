@@ -166,6 +166,7 @@ def chat(
     session_id: str,
     user_message: str,
     table_id: str | None = None,
+    customer_session_token: str | None = None,
 ) -> dict[str, Any]:
     """Process a user message through the AI Concierge agent.
 
@@ -190,7 +191,7 @@ def chat(
 
     # 3. Build tools with branch context injected.
     if restaurant:
-        tools_map = build_all_tools(restaurant, table_id, generate_embedding)
+        tools_map = build_all_tools(restaurant, table_id, generate_embedding, customer_session_token)
     else:
         # System-info mode — no tools needed.
         tools_map = {}

@@ -260,11 +260,11 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=["get"], url_path="orders")
     def list_orders(self, request):
-        """Return all orders for this table today (most recent first).
+        """Return orders placed by THIS session only (most recent first).
 
-        Uses the session to resolve the table, then returns ALL orders
-        at that table today — so bot-placed orders also appear.
-        Falls back gracefully if the session is inactive.
+        Each device gets its own session via the QR scan + device_id.
+        This ensures complete isolation: a customer only sees and tracks
+        their own orders, never another device's orders at the same table.
         """
         session_token = request.query_params.get("session_token", "")
         session = CustomerSession.objects.filter(token=session_token).first()
@@ -272,13 +272,9 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
         if not session:
             return Response([])
 
-        from django.utils import timezone
-
         orders = (
             Order.objects.filter(
-                restaurant=session.restaurant,
-                table=session.table,
-                created_at__date=timezone.localdate(),
+                session=session,
             )
             .prefetch_related("items")
             .exclude(status="rejected")
