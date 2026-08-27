@@ -43,7 +43,7 @@ export function LoginPage() {
           className="pointer-events-none absolute left-1/2 top-1/2 w-3/4 -translate-x-1/2 -translate-y-1/2 object-contain opacity-[0.18]"
         />
         <Link to="/" className="relative flex items-center gap-3">
-          <img src="/images/logos/tomodine-logo-desk.jpg" alt="TomoDine" className="h-10 object-contain" />
+          <img src="/images/logos/tomodine-logo-desk.png" alt="TomoDine" className="h-10 object-contain" />
         </Link>
         <div className="relative space-y-6">
           <h1 className="font-display text-3xl font-bold leading-snug text-white xl:text-4xl">{t("auth.loginSubtitle")}</h1>

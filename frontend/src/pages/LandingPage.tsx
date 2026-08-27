@@ -573,7 +573,7 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5">
             <img src="/images/logos/tomodine-logo-mobile.jpg" alt="TomoDine" className="h-8 w-8 rounded-lg object-contain sm:hidden" />
-            <img src="/images/logos/tomodine-logo-desk.jpg" alt="TomoDine" className="hidden h-10 object-contain sm:block" />
+            <img src="/images/logos/tomodine-logo-desk.png" alt="TomoDine" className="hidden h-10 object-contain sm:block" />
           </Link>
           <nav className="hidden items-center gap-7 lg:flex">
             <a href="#solution" className="text-sm font-medium text-ink-600 transition-colors hover:text-ink-900">{t("landing.navSolution")}</a>
