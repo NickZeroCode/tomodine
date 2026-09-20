@@ -31,7 +31,9 @@ export default {
         bangla: ["'Hind Siliguri'", "'Noto Sans Bengali'", "sans-serif"],
       },
       borderRadius: {
-        card: "4px",
+        // Canonical radii per DESIGN_SYSTEM.md: cards xl, controls lg.
+        card: "0.75rem",
+        control: "0.5rem",
       },
       boxShadow: {
         soft: "0 1px 2px rgb(16 20 24 / 0.05), 0 4px 16px -4px rgb(16 20 24 / 0.08)",

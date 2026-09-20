@@ -17,11 +17,10 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
       text-sm font-semibold transition-all duration-150 active:scale-[0.98]
       focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500
       focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
-    border-radius: 4px;
   }
   .btn-primary {
     @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700
@@ -35,8 +34,7 @@
     @apply btn text-ink-700 hover:bg-ink-100;
   }
   .card {
-    @apply border border-ink-100/80 bg-white shadow-[0_1px_3px_rgba(16,20,24,0.04),0_4px_12px_-2px_rgba(16,20,24,0.06)];
-    border-radius: 4px;
+    @apply rounded-xl border border-ink-100/80 bg-white shadow-[0_1px_3px_rgba(16,20,24,0.04),0_4px_12px_-2px_rgba(16,20,24,0.06)];
   }
   .card:hover {
     @apply shadow-[0_2px_6px_rgba(16,20,24,0.06),0_8px_24px_-4px_rgba(16,20,24,0.1)];
@@ -54,10 +52,9 @@
     }
   }
   .input {
-    @apply block w-full border border-ink-100 bg-white px-3.5 py-2.5
+    @apply block w-full rounded-lg border border-ink-100 bg-white px-3.5 py-2.5
       text-sm text-ink-900 shadow-sm placeholder:text-ink-300 focus:border-brand-500
       focus:outline-none focus:ring-1 focus:ring-brand-500 focus:shadow-md transition-shadow;
-    border-radius: 4px;
   }
   .label {
     @apply mb-1.5 block text-sm font-medium text-ink-700;
