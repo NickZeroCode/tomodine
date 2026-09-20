@@ -4,7 +4,8 @@ import { api } from "@/lib/api";
 import { formatBDT } from "@/lib/format";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
-import { PlanGate } from "@/components/PlanGate";
+import { PlanGate, LockedState } from "@/components/PlanGate";
+import { useAnalyticsEntitlement } from "@/hooks/useAnalyticsEntitlement";
 import { isPlanUpgradeRequired } from "@/types";
 import type { AnalyticsOverview, OrdersOverTimePoint, PopularDish, PeakHour } from "@/types";
 
@@ -19,34 +20,41 @@ export function ReportsPage() {
   const lang = i18n.language === "bn" ? "bn" : "en";
   const { restaurant } = useRestaurant();
   const slug = restaurant?.slug;
+  const entitlement = useAnalyticsEntitlement();
+  const entitled = entitlement.state === "entitled";
 
   const overviewQuery = useQuery({
     queryKey: ["analytics", "overview", slug],
     queryFn: async () => (await api.get<AnalyticsOverview>("/analytics/overview/")).data,
-    enabled: !!restaurant,
+    enabled: !!restaurant && entitled,
   });
 
   const trendQuery = useQuery({
     queryKey: ["analytics", "orders-over-time-30", slug],
     queryFn: async () =>
       (await api.get<OrdersOverTimePoint[]>("/analytics/orders_over_time/?days=30")).data,
-    enabled: !!restaurant,
+    enabled: !!restaurant && entitled,
   });
 
   const dishesQuery = useQuery({
     queryKey: ["analytics", "popular-dishes", slug],
     queryFn: async () => (await api.get<PopularDish[]>("/analytics/popular_dishes/")).data,
-    enabled: !!restaurant,
+    enabled: !!restaurant && entitled,
   });
 
   const hoursQuery = useQuery({
     queryKey: ["analytics", "peak-hours", slug],
     queryFn: async () => (await api.get<PeakHour[]>("/analytics/peak_hours/?days=30")).data,
-    enabled: !!restaurant,
+    enabled: !!restaurant && entitled,
   });
 
   if (!restaurant) return <EmptyState />;
+  // Proactive: validate plan before firing analytics queries.
+  if (entitlement.state === "validating") return <LoadingState label={t("planGate.validating", "Checking your plan…")} />;
+  if (entitlement.state === "locked")
+    return <LockedState feature={t("nav.reports", "Reports")} planName={entitlement.planName} />;
   if (overviewQuery.isLoading) return <LoadingState />;
+  // Reactive fail-safe (backend is authoritative).
   if (overviewQuery.isError && isPlanUpgradeRequired(overviewQuery.error))
     return <PlanGate error={overviewQuery.error} />;
   if (overviewQuery.isError) return <ErrorState onRetry={() => void overviewQuery.refetch()} />;

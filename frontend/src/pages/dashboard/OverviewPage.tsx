@@ -10,7 +10,8 @@ import { useRestaurantSocket } from "@/hooks/useRestaurantSocket";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { SophiaInsights } from "@/components/SophiaInsights";
 import { DemandForecast } from "@/components/DemandForecast";
-import { PlanGate } from "@/components/PlanGate";
+import { PlanGate, LockedState } from "@/components/PlanGate";
+import { useAnalyticsEntitlement } from "@/hooks/useAnalyticsEntitlement";
 import { isPlanUpgradeRequired } from "@/types";
 import type {
   AnalyticsOverview,
@@ -147,38 +148,40 @@ export function OverviewPage() {
   const slug = restaurant?.slug;
   const queryClient = useQueryClient();
   const canViewAnalytics = hasPermission(PERM.analyticsView);
+  const entitlement = useAnalyticsEntitlement();
+  const entitled = canViewAnalytics && entitlement.state === "entitled";
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["analytics", "overview", slug],
     queryFn: async () => (await api.get<AnalyticsOverview>("/analytics/overview/")).data,
-    enabled: !!restaurant && canViewAnalytics,
+    enabled: !!restaurant && entitled,
   });
 
   const enhancedQuery = useQuery({
     queryKey: ["analytics", "enhanced-overview", slug],
     queryFn: async () => (await api.get<EnhancedOverview>("/analytics/enhanced_overview/")).data,
-    enabled: !!restaurant && canViewAnalytics,
+    enabled: !!restaurant && entitled,
   });
 
   const trendQuery = useQuery({
     queryKey: ["analytics", "orders-over-time", slug],
     queryFn: async () =>
       (await api.get<OrdersOverTimePoint[]>("/analytics/orders_over_time/?days=14")).data,
-    enabled: !!restaurant && canViewAnalytics,
+    enabled: !!restaurant && entitled,
   });
 
   const dishesQuery = useQuery({
     queryKey: ["analytics", "popular-dishes", slug],
     queryFn: async () =>
       (await api.get<PopularDish[]>("/analytics/popular_dishes/")).data,
-    enabled: !!restaurant && canViewAnalytics,
+    enabled: !!restaurant && entitled,
   });
 
   const hoursQuery = useQuery({
     queryKey: ["analytics", "peak-hours", slug],
     queryFn: async () =>
       (await api.get<PeakHour[]>("/analytics/peak_hours/?days=30")).data,
-    enabled: !!restaurant && canViewAnalytics,
+    enabled: !!restaurant && entitled,
   });
 
   // Live updates — new orders refresh the overview in real time.
@@ -224,7 +227,14 @@ export function OverviewPage() {
         </div>
       </div>
     );
+  // Proactive: validate plan before firing analytics queries. The role-based
+  // landing above handles analytics.view; this handles the plan's analytics flag.
+  if (entitlement.state === "validating")
+    return <LoadingState label={t("planGate.validating", "Checking your plan…")} />;
+  if (entitlement.state === "locked")
+    return <LockedState feature={t("nav.overview", "Overview")} planName={entitlement.planName} />;
   if (isLoading) return <LoadingState />;
+  // Reactive fail-safe (backend is authoritative).
   if (isError && isPlanUpgradeRequired(error)) return <PlanGate error={error} />;
   if (isError || !data) return <ErrorState onRetry={() => void refetch()} />;
 

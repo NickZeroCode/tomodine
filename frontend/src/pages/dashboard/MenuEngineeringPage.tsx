@@ -4,7 +4,8 @@ import { api } from "@/lib/api";
 import { useRestaurant } from "@/context/RestaurantContext";
 import { formatBDT } from "@/lib/format";
 import { LoadingState, ErrorState } from "@/components/States";
-import { PlanGate } from "@/components/PlanGate";
+import { PlanGate, LockedState } from "@/components/PlanGate";
+import { useAnalyticsEntitlement } from "@/hooks/useAnalyticsEntitlement";
 import { isPlanUpgradeRequired } from "@/types";
 import type { MenuEngineering as METype, MenuEngineeringItem } from "@/types";
 
@@ -63,14 +64,21 @@ export function MenuEngineeringPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language === "bn" ? "bn" : "en";
   const { restaurant } = useRestaurant();
+  const entitlement = useAnalyticsEntitlement();
+  const entitled = entitlement.state === "entitled";
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["analytics", "menu-engineering", restaurant?.slug],
     queryFn: async () => (await api.get<METype>("/analytics/menu_engineering/")).data,
-    enabled: !!restaurant,
+    enabled: !!restaurant && entitled,
   });
 
+  // Proactive: validate plan before firing analytics queries.
+  if (entitlement.state === "validating") return <LoadingState label={t("planGate.validating", "Checking your plan…")} />;
+  if (entitlement.state === "locked")
+    return <LockedState feature={t("dashboard.menuEngineering", "Menu engineering")} planName={entitlement.planName} />;
   if (isLoading) return <LoadingState />;
+  // Reactive fail-safe (backend is authoritative).
   if (isError && isPlanUpgradeRequired(error)) return <PlanGate error={error} />;
   if (isError || !data) return <ErrorState onRetry={() => void refetch()} />;
 

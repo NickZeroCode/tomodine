@@ -429,6 +429,7 @@
     "owner": "Owner",
     "active": "Active",
     "inactive": "Inactive",
+    "pending": "Pending invitation",
     "remove": "Remove",
     "removeConfirm": "Remove this staff member?",
     "noStaff": "No staff yet",
@@ -567,7 +568,11 @@
   },
   "planGate": {
     "title": "Upgrade your plan",
-    "upgrade": "View plans"
+    "upgrade": "View plans",
+    "currentPlan": "your current plan",
+    "validating": "Checking your plan…",
+    "lockedFeature": "{{feature}} isn't included on your current plan ({{plan}}). Upgrade to unlock it.",
+    "lockedGeneric": "This feature isn't included on your current plan ({{plan}}). Upgrade to unlock it."
   },
   "invite": {
     "title": "Join your restaurant team",
