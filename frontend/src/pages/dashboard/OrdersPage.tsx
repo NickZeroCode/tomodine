@@ -109,6 +109,8 @@ export function OrdersPage() {
       return (Array.isArray(list) ? list : list.results) as Order[];
     },
     enabled: !!restaurant,
+    // Safety net only — WS (order / order.event) drives live updates below.
+    // 10s is the documented minimum staff poll interval. See REALTIME.md.
     refetchInterval: 10_000,
   });
 

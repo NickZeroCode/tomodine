@@ -175,6 +175,10 @@ export function CustomerOrderPage() {
       return (data ?? []).map((o) => ({ ...o, status: o.status.toUpperCase() as Order["status"] }));
     },
     enabled: !!session,
+    // There is NO customer/guest WebSocket (the only WS endpoint is staff-only),
+    // so this 5s poll is the diner's ONLY live status source. Keep it aggressive;
+    // do not relax without first adding a session-scoped guest channel.
+    // See REALTIME.md ("The customer exception").
     refetchInterval: 5000,
   });
 

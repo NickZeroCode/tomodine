@@ -65,7 +65,10 @@ export function NotificationBell() {
       return (Array.isArray(list) ? list : list.results) as NotificationItem[];
     },
     enabled: !!restaurant,
-    refetchInterval: 15000,
+    // Safety net only — WS invalidates this query on every event, so the bell
+    // is never latency-critical. 30s keeps the badge honest across WS outages
+    // without hammering the API. See REALTIME.md.
+    refetchInterval: 30000,
   });
 
   const { play: playSound } = useNotificationSound();
