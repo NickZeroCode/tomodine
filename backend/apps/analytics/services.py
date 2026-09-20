@@ -66,7 +66,10 @@ def popular_dishes(restaurant, limit: int = 10) -> list[dict[str, Any]]:
     rows = (
         OrderItem.objects.filter(order__restaurant=restaurant)
         .values("dish_name_en")
-        .annotate(total_qty=Sum("quantity"), total_revenue=Sum("unit_price"))
+        .annotate(
+            total_qty=Sum("quantity"),
+            total_revenue=Sum(F("unit_price") * F("quantity")),
+        )
         .order_by("-total_qty")[:limit]
     )
     return [

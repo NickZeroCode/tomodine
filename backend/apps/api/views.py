@@ -398,9 +398,10 @@ class RestaurantViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Enforce same organization.
+        # Enforce same organization. Fail closed: when the source branch has
+        # no organization, cross-branch transfer is not permitted at all.
         source_org = restaurant.organization_id
-        if source_org and target.organization_id != source_org:
+        if source_org is None or target.organization_id != source_org:
             return Response(
                 {"target_branch_id": ["Target branch must be in the same organization."]},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -479,8 +480,10 @@ class RestaurantViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # Fail closed: without a source organization, assignment to another
+        # branch is not permitted (prevents cross-tenant escalation).
         source_org = restaurant.organization_id
-        if source_org and target.organization_id != source_org:
+        if source_org is None or target.organization_id != source_org:
             return Response(
                 {"branch_id": ["Target branch must be in the same organization."]},
                 status=status.HTTP_400_BAD_REQUEST,
