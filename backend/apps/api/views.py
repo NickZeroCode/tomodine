@@ -919,13 +919,40 @@ class AnalyticsViewSet(viewsets.ViewSet):
             raise exc
         return restaurant
 
+    # Heavy, non-real-time analytics are cached briefly per-restaurant. The
+    # cache key includes the restaurant id and the endpoint name, so tenants
+    # never see each other's data. 60s keeps the dashboard feeling fresh while
+    # collapsing repeated expensive computations (12-100+ queries) per load.
+    ANALYTICS_CACHE_TTL = 60
+
+    def _cached(self, restaurant: Restaurant, name: str, compute, *args):
+        from django.core.cache import cache
+
+        key = f"analytics:{restaurant.id}:{name}"
+        if args:
+            key += ":" + ":".join(str(a) for a in args)
+        result = cache.get(key)
+        if result is None:
+            result = compute(restaurant, *args)
+            cache.set(key, result, self.ANALYTICS_CACHE_TTL)
+        return result
+
     @action(detail=False, methods=["get"])
     def overview(self, request):
         return Response(analytics_services.overview(self._require_analytics(request)))
 
+    @staticmethod
+    def _days(request, default: int) -> int:
+        """Parse and clamp the ``days`` query param to a sane 1–365 window."""
+        try:
+            days = int(request.query_params.get("days", default))
+        except (TypeError, ValueError):
+            return default
+        return max(1, min(days, 365))
+
     @action(detail=False, methods=["get"])
     def orders_over_time(self, request):
-        days = int(request.query_params.get("days", 14))
+        days = self._days(request, 14)
         return Response(analytics_services.orders_over_time(self._require_analytics(request), days))
 
     @action(detail=False, methods=["get"])
@@ -934,25 +961,30 @@ class AnalyticsViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=["get"])
     def peak_hours(self, request):
-        days = int(request.query_params.get("days", 30))
+        days = self._days(request, 30)
         return Response(analytics_services.peak_hours(self._require_analytics(request), days))
 
     @action(detail=False, methods=["get"])
     def enhanced_overview(self, request):
-        return Response(analytics_services.enhanced_overview(self._require_analytics(request)))
+        restaurant = self._require_analytics(request)
+        return Response(self._cached(restaurant, "enhanced_overview", analytics_services.enhanced_overview))
 
     @action(detail=False, methods=["get"])
     def menu_engineering(self, request):
-        return Response(analytics_services.menu_engineering(self._require_analytics(request)))
+        restaurant = self._require_analytics(request)
+        return Response(self._cached(restaurant, "menu_engineering", analytics_services.menu_engineering))
 
     @action(detail=False, methods=["get"])
     def table_intelligence(self, request):
+        # Real-time: intentionally NOT cached.
         return Response(analytics_services.table_intelligence(self._require_analytics(request)))
 
     @action(detail=False, methods=["get"])
     def demand_forecast(self, request):
-        return Response(analytics_services.demand_forecast(self._require_analytics(request)))
+        restaurant = self._require_analytics(request)
+        return Response(self._cached(restaurant, "demand_forecast", analytics_services.demand_forecast))
 
     @action(detail=False, methods=["get"])
     def ai_insights(self, request):
-        return Response(analytics_services.ai_insights(self._require_analytics(request)))
+        restaurant = self._require_analytics(request)
+        return Response(self._cached(restaurant, "ai_insights", analytics_services.ai_insights))

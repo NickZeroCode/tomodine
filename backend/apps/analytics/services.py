@@ -62,9 +62,15 @@ def orders_over_time(restaurant, days: int = 14) -> list[dict[str, Any]]:
     ]
 
 
-def popular_dishes(restaurant, limit: int = 10) -> list[dict[str, Any]]:
+def popular_dishes(restaurant, limit: int = 10, days: int = 90) -> list[dict[str, Any]]:
+    """Top-selling dishes over a bounded recent window.
+
+    Bounded to the last ``days`` days so the scan does not grow with total
+    order history. Revenue is price x quantity per line item.
+    """
+    since = timezone.now() - timedelta(days=days)
     rows = (
-        OrderItem.objects.filter(order__restaurant=restaurant)
+        OrderItem.objects.filter(order__restaurant=restaurant, order__created_at__gte=since)
         .values("dish_name_en")
         .annotate(
             total_qty=Sum("quantity"),
@@ -374,19 +380,33 @@ def table_intelligence(restaurant) -> dict[str, Any]:
                    "preparing", "ready", "awaiting_service", "served", "awaiting_payment"]
     )
 
+    # ── Aggregate today's orders per table in constant queries (no N+1) ──
+    # One query for the current (most-recent open) order per table, one for
+    # the paid-turnover count per table. Previously this looped per table.
+    open_orders = (
+        Order.objects.filter(restaurant=restaurant, created_at__date=today)
+        .exclude(status__in=["paid", "rejected", "cancelled"])
+        .order_by("table_id", "-created_at")
+    )
+    # Latest open order per table (order_by table + distinct keeps the first).
+    latest_open = {}
+    for order in open_orders:
+        if order.table_id not in latest_open:
+            latest_open[order.table_id] = order
+
+    turnover_rows = (
+        Order.objects.filter(
+            restaurant=restaurant, created_at__date=today, status="paid"
+        )
+        .values("table_id")
+        .annotate(cnt=Count("id"))
+    )
+    turnover_by_table = {row["table_id"]: row["cnt"] for row in turnover_rows}
+
     # Table details with current order info
     table_details = []
     for table in tables:
-        current_order = (
-            Order.objects.filter(
-                restaurant=restaurant,
-                table=table,
-                created_at__date=today,
-            )
-            .exclude(status__in=["paid", "rejected", "cancelled"])
-            .order_by("-created_at")
-            .first()
-        )
+        current_order = latest_open.get(table.id)
 
         detail: dict[str, Any] = {
             "id": str(table.id),
@@ -407,14 +427,7 @@ def table_intelligence(restaurant) -> dict[str, Any]:
                 "order_type": current_order.order_type,
             }
 
-        # Today's turnover: how many completed orders
-        completed_today = Order.objects.filter(
-            restaurant=restaurant,
-            table=table,
-            created_at__date=today,
-            status="paid",
-        ).count()
-        detail["turnovers_today"] = completed_today
+        detail["turnovers_today"] = turnover_by_table.get(table.id, 0)
 
         table_details.append(detail)
 

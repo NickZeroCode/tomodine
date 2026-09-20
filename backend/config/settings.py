@@ -343,6 +343,9 @@ if env_bool("USE_REDIS_CHANNEL_LAYER", False) and not env("VERCEL"):
         "default": {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
             "LOCATION": REDIS_URL,
+            # Namespace all app keys so this project never collides with other
+            # users of the shared Redis instance.
+            "KEY_PREFIX": "tomodine",
         }
     }
 else:
