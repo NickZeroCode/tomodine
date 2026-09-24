@@ -32,7 +32,14 @@ export function useAnalyticsEntitlement(): {
     return { state: "validating", planName: null };
   }
 
-  if (subscription && subscription.is_entitled) {
+  // An empty subscription response is a real, explainable state: this branch
+  // has not started a plan yet. Do not fire analytics and turn that state into
+  // a generic 403/error screen.
+  if (!subscription) {
+    return { state: "locked", planName: null };
+  }
+
+  if (subscription.is_entitled) {
     if (!subscription.plan.has_analytics) {
       return { state: "locked", planName: subscription.plan.name_en ?? null };
     }

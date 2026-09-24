@@ -571,6 +571,7 @@
     "upgrade": "View plans",
     "currentPlan": "your current plan",
     "validating": "Checking your plan…",
+    "noSubscriptionBody": "This branch does not have an active subscription yet. Choose a plan to unlock analytics and reports.",
     "lockedFeature": "{{feature}} isn't included on your current plan ({{plan}}). Upgrade to unlock it.",
     "lockedGeneric": "This feature isn't included on your current plan ({{plan}}). Upgrade to unlock it."
   },

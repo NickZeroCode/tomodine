@@ -32,7 +32,11 @@ export function LockedState({
       </span>
       <h2 className="text-base font-semibold text-ink-900">{t("planGate.title")}</h2>
       <p className="max-w-sm text-sm leading-relaxed text-ink-500">
-        {feature
+        {!planName
+          ? t("planGate.noSubscriptionBody", {
+              defaultValue: "This branch does not have an active subscription yet. Choose a plan to unlock analytics and reports.",
+            })
+          : feature
           ? t("planGate.lockedFeature", {
               feature,
               plan: planName ?? t("planGate.currentPlan"),
