@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from django.shortcuts import get_object_or_404
 from django.db import models
-from django.db.models import Count, Q, Sum
+from django.db.models import Case, Count, F, IntegerField, Q, Sum, Value, When
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from apps.analytics import services as analytics_services
@@ -22,6 +23,31 @@ from apps.ordering.models import Order, OrderStatusHistory
 from apps.ordering.services import transition_order_status
 from apps.restaurants.models import Restaurant, RestaurantMembership
 from apps.tables.models import QRCode, Table
+
+
+class PlanLimitReached(ValidationError):
+    """A plan's resource limit blocks this request (HTTP 400).
+
+    ``api_exception_handler`` builds the envelope's top-level ``code`` from
+    ``exc.default_code``.  A plain ``ValidationError`` always reports
+    ``"invalid"`` — the ``code=`` kwarg is only attached to the inner
+    ``ErrorDetail`` — which the frontend cannot distinguish.  Subclassing
+    preserves the machine-readable ``plan_limit_reached`` contract that
+    ``BranchesPage`` (trial branch limit) relies on.
+    """
+
+    default_code = "plan_limit_reached"
+    default_detail = (
+        "Free trial is limited to 1 branch. "
+        "Upgrade your subscription to add more branches."
+    )
+
+    def __init__(self, detail=None, code=None):
+        if detail is None:
+            # Dict form: the handler only unwraps a ``detail`` key from dict
+            # payloads, so the message reaches the client verbatim.
+            detail = {"detail": self.default_detail}
+        super().__init__(detail, code)
 
 
 class TenantScopedViewSet(viewsets.ModelViewSet):
@@ -86,7 +112,10 @@ class RestaurantViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         # Enforce branch limit: free trial = 1 branch.
-        from apps.billing.entitlements import get_entitlements
+        from apps.billing.entitlements import (
+            resolve_subscription_for_user,
+            subscription_scope,
+        )
         from apps.billing.models import Subscription
 
         existing_branches = Restaurant.objects.filter(
@@ -95,28 +124,51 @@ class RestaurantViewSet(viewsets.ModelViewSet):
             memberships__is_active=True,
         ).count()
 
-        # Check if user is on trial.
-        sub = Subscription.objects.filter(
-            restaurant__memberships__user=self.request.user,
-            restaurant__memberships__is_owner=True,
-            status=Subscription.Status.TRIALING,
-        ).first()
+        # Check if the restaurant's effective subscription is still a trial.
+        # Resolved across ALL of the owner's subscriptions so a stale
+        # per-branch trial row (from before subscriptions were shared
+        # restaurant-wide) can never lock a paid restaurant out of branches.
+        sub = resolve_subscription_for_user(self.request.user)
 
-        if sub and existing_branches >= 1:
-            from rest_framework.exceptions import ValidationError
-            raise ValidationError({
-                "detail": "Free trial is limited to 1 branch. Upgrade your subscription to add more branches.",
-                "code": "plan_limit_reached",
-            })
+        if (
+            sub is not None
+            and sub.status == Subscription.Status.TRIALING
+            and existing_branches >= 1
+        ):
+            raise PlanLimitReached()
 
-        restaurant = serializer.save(owner=self.request.user)
+        # Every branch belongs to the owner's organization so billing,
+        # settings, and membership are shared restaurant-wide.
+        from apps.organizations.models import Organization
+
+        org = getattr(self.request, "organization", None)
+        if org is None:
+            org = (
+                Organization.objects.filter(owner=self.request.user)
+                .order_by("created_at", "id")
+                .first()
+            )
+        if org is None:
+            org = Organization.objects.create(
+                owner=self.request.user,
+                name=(
+                    self.request.user.full_name
+                    or (self.request.user.email or "").split("@")[0]
+                    or "My Restaurant"
+                ),
+            )
+
+        restaurant = serializer.save(owner=self.request.user, organization=org)
         RestaurantMembership.objects.get_or_create(
             restaurant=restaurant,
             user=self.request.user,
             defaults={"is_owner": True},
         )
-        # Every new restaurant starts on the trial plan so it is immediately
-        # entitled to create tables/menu and accept orders.
+        # A brand-new branch starts on the trial plan ONLY when its restaurant
+        # has no subscription yet, so it is immediately entitled to create
+        # tables/menu and accept orders. A restaurant that already has a
+        # subscription (trial or paid) shares it with every new branch —
+        # never mint a second, branch-local subscription.
         from datetime import timedelta
 
         from django.utils import timezone
@@ -127,7 +179,10 @@ class RestaurantViewSet(viewsets.ModelViewSet):
             SubscriptionPlan.objects.filter(code="trial", is_active=True).first()
             or SubscriptionPlan.objects.filter(is_active=True).order_by("display_order").first()
         )
-        if plan is not None:
+        if (
+            plan is not None
+            and not Subscription.objects.filter(subscription_scope(restaurant)).exists()
+        ):
             trial_days = plan.trial_days or 0
             Subscription.objects.get_or_create(
                 restaurant=restaurant,
@@ -812,6 +867,60 @@ class SubscriptionViewSet(TenantScopedViewSet):
     required_permission = "billing.view"
     http_method_names = ["get", "post", "patch", "head", "options"]
 
+    def get_queryset(self):
+        """Every subscription shared by the active branch's restaurant.
+
+        Billing is restaurant-wide, not branch-scoped: a subscription bought
+        on one branch is returned for all of its sibling branches.  This is
+        the deliberate deviation from ``TenantScopedViewSet``'s per-branch
+        filter — the organization/owner IS the billing tenant.  Entitled rows
+        sort first so clients reading ``results[0]`` always get the
+        effective subscription.
+        """
+        from apps.billing.entitlements import subscription_scope
+
+        restaurant = self.get_restaurant()
+        now = timezone.now()
+        # Mirrors Subscription.is_entitled in SQL: active (period open or
+        # unlimited) or trialing (trial open, or trial unset with open period).
+        entitled_rank = Case(
+            When(
+                Q(status=Subscription.Status.ACTIVE)
+                & (
+                    Q(current_period_end__isnull=True)
+                    | Q(current_period_end__gte=now)
+                ),
+                then=Value(0),
+            ),
+            When(
+                Q(status=Subscription.Status.TRIALING)
+                & Q(trial_ends_at__isnull=True)
+                & (
+                    Q(current_period_end__isnull=True)
+                    | Q(current_period_end__gte=now)
+                ),
+                then=Value(0),
+            ),
+            When(
+                Q(status=Subscription.Status.TRIALING)
+                & Q(trial_ends_at__gte=now),
+                then=Value(0),
+            ),
+            default=Value(1),
+            output_field=IntegerField(),
+        )
+        return (
+            Subscription.objects.filter(subscription_scope(restaurant))
+            .select_related("plan")
+            .annotate(entitled_rank=entitled_rank)
+            .order_by(
+                "entitled_rank",
+                F("current_period_end").desc(nulls_last=True),
+                F("trial_ends_at").desc(nulls_last=True),
+                "-started_at",
+            )
+        )
+
     @action(detail=False, methods=["post"], url_path="subscribe")
     def subscribe(self, request):
         """Subscribe the current restaurant to a plan (simulated payment)."""
@@ -832,21 +941,34 @@ class SubscriptionViewSet(TenantScopedViewSet):
 
         restaurant = self.get_restaurant()
         from datetime import timedelta
-        from django.utils import timezone
 
+        from apps.billing.entitlements import resolve_subscription
+
+        now = timezone.now()
         trial_days = plan.trial_days or 14
-        subscription, created = Subscription.objects.update_or_create(
-            restaurant=restaurant,
-            defaults={
-                "plan": plan,
-                "status": Subscription.Status.ACTIVE,
-                "started_at": timezone.now(),
-                "trial_ends_at": timezone.now() + timedelta(days=trial_days),
-                "current_period_end": timezone.now() + timedelta(days=30),
-                "auto_renew": True,
-                "cancelled_at": None,
-            },
-        )
+        defaults = {
+            "plan": plan,
+            "status": Subscription.Status.ACTIVE,
+            "started_at": now,
+            "trial_ends_at": now + timedelta(days=trial_days),
+            "current_period_end": now + timedelta(days=30),
+            "auto_renew": True,
+            "cancelled_at": None,
+        }
+        # One subscription per restaurant: update the existing restaurant-wide
+        # subscription (wherever a sibling branch created it) instead of
+        # minting a second, branch-local row sibling branches would never see.
+        subscription = resolve_subscription(restaurant)
+        if subscription is None:
+            subscription = Subscription.objects.create(
+                restaurant=restaurant, **defaults
+            )
+            created = True
+        else:
+            for field, value in defaults.items():
+                setattr(subscription, field, value)
+            subscription.save()
+            created = False
         return Response(
             self.get_serializer(subscription).data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,

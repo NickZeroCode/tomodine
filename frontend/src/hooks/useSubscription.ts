@@ -21,7 +21,10 @@ async function fetchSubscription(): Promise<Subscription | null> {
   const res = await api.get("/subscriptions/");
   const list = res.data;
   const items = (Array.isArray(list) ? list : list.results) as Subscription[];
-  return items[0] ?? null;
+  // The API returns every subscription shared by this restaurant's branches,
+  // entitled first. Prefer an entitled one explicitly so a stale lapsed row
+  // from a sibling branch can never mask the live subscription.
+  return items.find((item) => item.is_entitled) ?? items[0] ?? null;
 }
 
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "expired" | "cancelled";
@@ -38,9 +41,9 @@ export interface SubscriptionState {
    *  - "none"      → no subscription row at all (show onboarding/trial CTA)
    *  - "trialing"  → in free trial, entitled
    *  - "active"    → paid & entitled
-   *  - "past_due"  → payment failed; entitled until period end
+   *  - "past_due"  → payment failed; NOT entitled (backend blocks until resolved)
    *  - "expired"   → trial/period ended; NOT entitled
-   *  - "cancelled" → cancelled; entitled until period end
+   *  - "cancelled" → cancelled; NOT entitled once the period ends
    */
   status: "none" | SubscriptionStatus;
   /** Convenience: premium features unlocked right now. */

@@ -34,7 +34,8 @@ export function LockedState({
       <p className="max-w-sm text-sm leading-relaxed text-ink-500">
         {!planName
           ? t("planGate.noSubscriptionBody", {
-              defaultValue: "This branch does not have an active subscription yet. Choose a plan to unlock analytics and reports.",
+              defaultValue:
+                "This restaurant does not have an active subscription yet — a subscription applies to all of its branches. Choose a plan to unlock analytics and reports.",
             })
           : feature
           ? t("planGate.lockedFeature", {
