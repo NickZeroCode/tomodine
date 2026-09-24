@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, setTenantSlug } from "@/lib/api";
+import { api, getActiveBranchId, setTenantSlug } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import type { Restaurant } from "@/types";
 
@@ -45,8 +45,19 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
   const restaurants = useMemo(() => data ?? [], [data]);
 
   useEffect(() => {
-    if (restaurants.length > 0 && !selectedSlug) {
-      const slug = restaurants[0].slug;
+    if (restaurants.length === 0) return;
+
+    // The API scopes requests by X-Branch-ID first. Keep the UI selection in
+    // lockstep with that authoritative branch so queries are never disabled
+    // because an old tenant slug remains in localStorage.
+    const activeBranchId = getActiveBranchId();
+    const activeBranch = activeBranchId
+      ? restaurants.find((item) => item.id === activeBranchId)
+      : undefined;
+    const selectedBranch = restaurants.find((item) => item.slug === selectedSlug);
+    const branch = activeBranch ?? selectedBranch ?? restaurants[0];
+    if (branch && branch.slug !== selectedSlug) {
+      const slug = branch.slug;
       setSelectedSlug(slug);
       setTenantSlug(slug);
     }
@@ -56,8 +67,11 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
     setTenantSlug(selectedSlug);
   }, [selectedSlug]);
 
+  const activeBranchId = getActiveBranchId();
   const restaurant =
-    restaurants.find((r) => r.slug === selectedSlug) ?? null;
+    restaurants.find((item) => item.id === activeBranchId) ??
+    restaurants.find((item) => item.slug === selectedSlug) ??
+    null;
 
   const selectRestaurant = (slug: string) => {
     setSelectedSlug(slug);
