@@ -375,6 +375,19 @@ def _build_structured_from_tools(tool_results: list[tuple[str, str]]) -> dict | 
                 "suggest_games": True,
             }
 
+        elif tool_name == "add_to_cart" and data.get("requires_options"):
+            dish = data.get("dish") or {}
+            last_action = {
+                "type": "option_selection",
+                "message": data.get("message", "Please choose the required options."),
+                "items": [{
+                    "id": str(dish.get("id", "")),
+                    "name": dish.get("name", ""),
+                    "price": float(dish.get("price", 0)),
+                    "modifier_groups": dish.get("modifier_groups", []),
+                }],
+            }
+
         elif tool_name == "check_order_status" and "orders" in data:
             last_action = {
                 "type": "order_status",
@@ -488,6 +501,19 @@ def _extract_structured_actions(history: list[dict]) -> dict | None:
                 "order_id": data.get("order_id"),
                 "suggest_more": True,
                 "suggest_games": True,
+            }
+
+        if data.get("requires_options"):
+            dish = data.get("dish") or {}
+            last_action = {
+                "type": "option_selection",
+                "message": data.get("message", "Please choose the required options."),
+                "items": [{
+                    "id": str(dish.get("id", "")),
+                    "name": dish.get("name", ""),
+                    "price": float(dish.get("price", 0)),
+                    "modifier_groups": dish.get("modifier_groups", []),
+                }],
             }
 
         # check_order_status

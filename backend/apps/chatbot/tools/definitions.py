@@ -13,6 +13,8 @@ import logging
 from decimal import Decimal
 from typing import Any
 
+from django.db.models import Q
+
 logger = logging.getLogger(__name__)
 
 # ── OpenAI function schemas ─────────────────────────────────────
@@ -232,6 +234,82 @@ def _abs_image_url(field) -> str:
     """Build an absolute URL for an ImageField (no request needed)."""
     if not field:
         return ""
+
+
+def _modifier_groups_for_dishes(dish_ids: list[str]) -> dict[str, list[dict[str, Any]]]:
+    """Return the complete, UI-ready modifier contract for each dish."""
+    from apps.menus.models import DishModifier, ModifierGroup
+
+    groups_by_dish: dict[str, list[dict[str, Any]]] = {}
+    groups = list(
+        ModifierGroup.objects.filter(
+            dish_id__in=dish_ids, is_active=True
+        ).order_by("display_order", "name_en")
+    )
+    group_ids = [group.pk for group in groups]
+    options_by_group: dict[Any, list[dict[str, Any]]] = {}
+    for option in DishModifier.objects.filter(
+        group_id__in=group_ids, is_available=True
+    ).order_by("display_order", "name_en"):
+        options_by_group.setdefault(option.group_id, []).append({
+            "id": str(option.pk),
+            "name_en": option.name_en,
+            "name_bn": option.name_bn,
+            "price_delta": float(option.price_delta),
+            "is_default": option.is_default,
+        })
+
+    for group in groups:
+        options = options_by_group.get(group.pk, [])
+        if options:
+            groups_by_dish.setdefault(str(group.dish_id), []).append({
+                "id": str(group.pk),
+                "group_name_en": group.name_en,
+                "group_name_bn": group.name_bn,
+                "min_selections": group.min_selections,
+                "max_selections": group.max_selections,
+                "options": options,
+            })
+
+    # Preserve legacy standalone extras as an optional group.
+    for option in DishModifier.objects.filter(
+        dish_id__in=dish_ids, group__isnull=True, is_available=True
+    ).order_by("display_order", "name_en"):
+        groups_by_dish.setdefault(str(option.dish_id), []).append({
+            "id": f"extras-{option.dish_id}",
+            "group_name_en": "Extras",
+            "group_name_bn": "এক্সট্রা",
+            "min_selections": 0,
+            "max_selections": 99,
+            "options": [],
+        })
+        groups_by_dish[str(option.dish_id)][-1]["options"].append({
+            "id": str(option.pk),
+            "name_en": option.name_en,
+            "name_bn": option.name_bn,
+            "price_delta": float(option.price_delta),
+            "is_default": option.is_default,
+        })
+    return groups_by_dish
+
+
+def _dish_search_fallback(restaurant_id: str, query: str, limit: int = 5):
+    """Find live dishes omitted from the embedding index."""
+    from apps.menus.models import Dish
+
+    terms = [term for term in query.split() if len(term) > 2]
+    if not terms:
+        return []
+    condition = Q()
+    for term in terms:
+        condition |= Q(name_en__icontains=term) | Q(name_bn__icontains=term)
+        condition |= Q(description_en__icontains=term) | Q(description_bn__icontains=term)
+        condition |= Q(category__name_en__icontains=term) | Q(category__name_bn__icontains=term)
+    return list(
+        Dish.objects.filter(restaurant_id=restaurant_id, is_available=True)
+        .filter(condition)
+        .select_related("category")[:limit]
+    )
     name = getattr(field, "name", None)
     if not name:
         return ""
@@ -272,23 +350,28 @@ def make_search_menu(restaurant_id: str, query_vector_fn):
             category=category,
         )
         if not results:
+            fallback = _dish_search_fallback(restaurant_id, query)
+            results = [
+                {
+                    "dish_id": str(dish.pk),
+                    "dish_name": dish.name_en or dish.name_bn,
+                    "description": dish.description_en or dish.description_bn or "",
+                    "price": dish.price,
+                    "dish_category": dish.category.name_en if dish.category else "",
+                    "image_url": _abs_image_url(dish.image),
+                    "is_vegetarian": dish.is_vegetarian,
+                    "is_spicy": dish.is_spicy,
+                }
+                for dish in fallback
+            ]
+        if not results:
             return json.dumps({"items": [], "message": "No dishes found matching your query."})
 
         # Enrich with image URLs from the Dish model.
         dish_ids = [r.get("dish_id") for r in results if r.get("dish_id")]
         dishes = {str(d.pk): d for d in Dish.objects.filter(pk__in=dish_ids).select_related("category")}
 
-        # Fetch modifier groups for all dishes in one query.
-        from apps.menus.models import DishModifier, ModifierGroup
-        groups_qs = ModifierGroup.objects.filter(dish_id__in=dish_ids, is_active=True).order_by("display_order")
-        groups_by_dish: dict = {}
-        for g in groups_qs:
-            groups_by_dish.setdefault(str(g.dish_id), []).append(g)
-        group_ids = [g.pk for g in groups_qs]
-        options_qs = DishModifier.objects.filter(group_id__in=group_ids, is_available=True).order_by("display_order")
-        options_by_group: dict = {}
-        for o in options_qs:
-            options_by_group.setdefault(o.group_id, []).append(o)
+        groups_by_dish = _modifier_groups_for_dishes(dish_ids)
 
         for r in results:
             did = str(r.get("dish_id", ""))
@@ -296,17 +379,7 @@ def make_search_menu(restaurant_id: str, query_vector_fn):
             r["image_url"] = _abs_image_url(dish.image) if dish and dish.image else ""
             r["is_vegetarian"] = bool(dish and dish.is_vegetarian)
             r["is_spicy"] = bool(dish and dish.is_spicy)
-            # Attach modifier groups summary.
-            mgroups = []
-            for g in groups_by_dish.get(did, []):
-                opts = options_by_group.get(g.pk, [])
-                mgroups.append({
-                    "group_name_en": g.name_en,
-                    "min_selections": g.min_selections,
-                    "max_selections": g.max_selections,
-                    "option_count": len(opts),
-                })
-            r["modifier_groups"] = mgroups
+            r["modifier_groups"] = groups_by_dish.get(did, [])
 
         return json.dumps({"items": results}, default=str)
 
@@ -318,6 +391,7 @@ def make_get_dish(restaurant_id: str):
 
     def get_dish(dish_name: str) -> str:
         from apps.chatbot.models import MenuEmbedding
+        from apps.menus.models import Dish
 
         # Try exact match first, then fuzzy.
         emb = (
@@ -338,11 +412,31 @@ def make_get_dish(restaurant_id: str):
                 .first()
             )
         if not emb:
-            return json.dumps({"found": False, "message": f"No dish called '{dish_name}' found on the menu."})
+            terms = [term for term in dish_name.split() if len(term) > 1]
+            lookup = Q()
+            for term in terms:
+                lookup |= Q(name_en__icontains=term) | Q(name_bn__icontains=term)
+            dish = Dish.objects.filter(
+                restaurant_id=restaurant_id, is_available=True
+            ).filter(lookup).select_related("category").first()
+            if not dish:
+                return json.dumps({"found": False, "message": f"No dish called '{dish_name}' found on the menu."})
+            dish_id = str(dish.pk)
+            dish_name_value = dish.name_en or dish.name_bn
+            description = dish.description_en or dish.description_bn or ""
+            price = dish.price
+            category = dish.category.name_en if dish.category else ""
+        else:
+            dish_id = str(emb.dish_id)
+            dish_name_value = emb.dish_name
+            description = emb.description
+            price = emb.price
+            category = emb.dish_category
 
         # Fetch the full Dish object for image, extra fields, and modifiers.
-        from apps.menus.models import Dish, DishModifier, ModifierGroup
-        dish = Dish.objects.filter(pk=emb.dish_id).select_related("category").first()
+        from apps.menus.models import DishModifier, ModifierGroup
+        if not dish:
+            dish = Dish.objects.filter(pk=dish_id).select_related("category").first()
 
         image_url = ""
         if dish and dish.image:
@@ -352,64 +446,22 @@ def make_get_dish(restaurant_id: str):
                 pass
 
         # Fetch modifier groups and their options for this dish.
-        modifier_groups = []
-        if dish:
-            groups = ModifierGroup.objects.filter(dish=dish, is_active=True).order_by("display_order")
-            for g in groups:
-                options = DishModifier.objects.filter(
-                    group=g, is_available=True
-                ).order_by("display_order").values("id", "name_en", "name_bn", "price_delta", "is_default")
-                modifier_groups.append({
-                    "group_name_en": g.name_en,
-                    "group_name_bn": g.name_bn,
-                    "min_selections": g.min_selections,
-                    "max_selections": g.max_selections,
-                    "options": [
-                        {
-                            "name_en": o["name_en"],
-                            "name_bn": o["name_bn"],
-                            "price_delta": float(o["price_delta"]),
-                            "is_default": o["is_default"],
-                        }
-                        for o in options
-                    ],
-                })
-
-            # Also include ungrouped modifiers.
-            ungrouped = DishModifier.objects.filter(
-                dish=dish, group__isnull=True, is_available=True
-            ).values("name_en", "name_bn", "price_delta")
-            if ungrouped:
-                modifier_groups.append({
-                    "group_name_en": "Extras",
-                    "group_name_bn": "এক্সট্রা",
-                    "min_selections": 0,
-                    "max_selections": 99,
-                    "options": [
-                        {
-                            "name_en": o["name_en"],
-                            "name_bn": o["name_bn"],
-                            "price_delta": float(o["price_delta"]),
-                            "is_default": False,
-                        }
-                        for o in ungrouped
-                    ],
-                })
+        modifier_groups = _modifier_groups_for_dishes([str(dish.pk)]) if dish else {}
 
         return json.dumps({
             "found": True,
             "dish": {
-                "id": str(emb.dish_id),
-                "name": emb.dish_name,
-                "description": emb.description,
-                "price": float(emb.price),
-                "category": emb.dish_category,
+                "id": dish_id,
+                "name": dish_name_value,
+                "description": description,
+                "price": float(price),
+                "category": category,
                 "image_url": image_url,
                 "is_vegetarian": bool(dish and dish.is_vegetarian),
                 "is_spicy": bool(dish and dish.is_spicy),
                 "min_prep_time": dish.min_prep_time if dish else None,
                 "max_prep_time": dish.max_prep_time if dish else None,
-                "modifier_groups": modifier_groups,
+                "modifier_groups": modifier_groups.get(dish_id, []),
             },
         }, default=str)
 
@@ -474,7 +526,7 @@ def make_add_to_cart(restaurant_id: str, table_id: str | None, customer_session_
                 "error": "No table associated with this session. Please scan a QR code first.",
             })
 
-        from apps.menus.models import Dish, DishModifier
+        from apps.menus.models import Dish, DishModifier, ModifierGroup
         from apps.ordering.models import Cart, CartItem, CartItemModifier, CustomerSession, Order, OrderItem
         from apps.tables.models import Table
 
@@ -494,6 +546,32 @@ def make_add_to_cart(restaurant_id: str, table_id: str | None, customer_session_
                 "success": False,
                 "error": f"Could not find '{dish_name}' on the menu. Please check the spelling.",
             })
+
+        # Never place an order with an incomplete required choice. Return the
+        # same option contract used by menu cards so the agent can ask clearly
+        # or the client can render the chooser immediately.
+        modifier_groups = _modifier_groups_for_dishes([str(dish.pk)]).get(str(dish.pk), [])
+        chosen_names = {name.strip().casefold() for name in (modifier_names or [])}
+        missing_groups = [
+            group for group in modifier_groups
+            if group["min_selections"] > 0 and not any(
+                option["name_en"].casefold() in chosen_names
+                or option.get("name_bn", "").casefold() in chosen_names
+                for option in group["options"]
+            )
+        ]
+        if missing_groups:
+            return json.dumps({
+                "success": False,
+                "requires_options": True,
+                "dish": {
+                    "id": str(dish.pk),
+                    "name": dish.name_en or dish.name_bn,
+                    "price": float(dish.price),
+                    "modifier_groups": modifier_groups,
+                },
+                "message": "Please choose the required options before I add this dish.",
+            }, default=str)
 
         table = Table.objects.filter(pk=table_id, restaurant_id=restaurant_id).first()
         if not table:

@@ -19,7 +19,7 @@ export interface ChatMessage {
 }
 
 export interface StructuredActions {
-  type: "dish_carousel" | "price_comparison" | "confirmation" | "waiter_ping" | "quick_replies" | "order_status";
+  type: "dish_carousel" | "option_selection" | "price_comparison" | "confirmation" | "waiter_ping" | "quick_replies" | "order_status";
   items?: Array<{
     id?: string;
     name: string;
@@ -35,6 +35,7 @@ export interface StructuredActions {
     modifier_groups?: Array<{
       group_name_en: string;
       group_name_bn?: string;
+      id?: string;
       min_selections: number;
       max_selections: number;
       options: Array<{
