@@ -1,15 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { useRestaurant } from "@/context/RestaurantContext";
-import type { Subscription } from "@/types";
+import { useSubscription } from "@/hooks/useSubscription";
 
 /**
  * Proactive analytics entitlement check.
  *
- * Reads the current subscription (the SAME queryKey as SubscriptionPage, so
- * the result is served from the TanStack Query cache once either page has
- * loaded it — no extra request) and resolves a tri-state so analytics pages
- * can decide BEFORE firing analytics queries:
+ * Reads the shared subscription state (see useSubscription — the single
+ * source of truth, shared with SubscriptionPage via one queryKey) and
+ * resolves a tri-state so analytics pages can decide BEFORE firing analytics
+ * queries:
  *
  *   - "validating" → subscription still loading; show a checking state, do
  *     NOT fire analytics queries yet (avoids a guaranteed-failing request).
@@ -29,27 +26,12 @@ export function useAnalyticsEntitlement(): {
   state: AnalyticsEntitlement;
   planName: string | null;
 } {
-  const { restaurant } = useRestaurant();
+  const { subscription, isLoading } = useSubscription();
 
-  const query = useQuery({
-    queryKey: ["subscription", restaurant?.slug],
-    queryFn: async () => {
-      const res = await api.get("/subscriptions/");
-      const list = res.data;
-      const items = (Array.isArray(list) ? list : list.results) as Subscription[];
-      return items[0] ?? null;
-    },
-    enabled: !!restaurant,
-    // Reasonable freshness — plan changes are rare; the cache is shared with
-    // the subscription page so this rarely triggers a network call.
-    staleTime: 60_000,
-  });
-
-  if (query.isLoading) {
+  if (isLoading) {
     return { state: "validating", planName: null };
   }
 
-  const subscription = query.data;
   if (subscription && subscription.is_entitled) {
     if (!subscription.plan.has_analytics) {
       return { state: "locked", planName: subscription.plan.name_en ?? null };
