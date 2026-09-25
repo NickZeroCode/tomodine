@@ -14,7 +14,6 @@ const SOUND_KEY = "bhojon.sound_alerts";
 
 // Shared across all hook instances so we only unlock once per page load.
 let sharedCtx: AudioContext | null = null;
-let unlocked = false;
 
 type Ctor = typeof AudioContext;
 
@@ -35,55 +34,42 @@ function getOrCreateContext(): AudioContext | null {
   }
 }
 
-/** Create + resume + silent-buffer-unlock. MUST be called inside a gesture. */
-function unlockAudio(): void {
+/**
+ * Resume the context and play a silent buffer. Idempotent and safe to call
+ * from both a gesture handler and (as a best-effort fallback) from play().
+ * Returns true when the context is running.
+ */
+function resumeAndPrime(): boolean {
   const ctx = getOrCreateContext();
-  if (!ctx) return;
+  if (!ctx) return false;
   try {
-    // Calling resume() synchronously inside the gesture is what matters on iOS.
-    void ctx.resume();
+    // resume() returns a promise; fire-and-forget. Calling it synchronously
+    // inside a gesture is what matters on iOS.
+    if (ctx.state !== "running") void ctx.resume();
     // Silent buffer: unlocks actual audible playback on iOS Safari.
     const buffer = ctx.createBuffer(1, 1, 22050);
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(ctx.destination);
     source.start(0);
-    unlocked = true;
+    return ctx.state === "running";
   } catch {
-    /* ignore */
+    return false;
   }
 }
 
-export function useNotificationSound() {
-  useEffect(() => {
-    if (unlocked) return;
+/**
+ * Attempt to play the chime. If the context is still suspended (autoplay
+ * blocked because no gesture has happened yet), returns false so the caller
+ * can decide to retry on the next gesture.
+ */
+function playChime(): boolean {
+  if (localStorage.getItem(SOUND_KEY) === "false") return true; // muted = "played"
+  const ctx = getOrCreateContext();
+  if (!ctx) return true; // no audio support — don't keep retrying
 
-    // Capture-phase listeners so we run even if the app stops propagation.
-    const events: Array<keyof DocumentEventMap> = [
-      "touchend",
-      "touchstart",
-      "click",
-      "keydown",
-      "pointerdown",
-    ];
-    const handler = () => {
-      unlockAudio();
-      if (unlocked) {
-        for (const evt of events) document.removeEventListener(evt, handler, true);
-      }
-    };
-    for (const evt of events) document.addEventListener(evt, handler, true);
-    return () => {
-      for (const evt of events) document.removeEventListener(evt, handler, true);
-    };
-  }, []);
-
-  const play = useCallback(() => {
-    if (localStorage.getItem(SOUND_KEY) === "false") return;
-    const ctx = getOrCreateContext();
-    if (!ctx) return;
-    if (ctx.state === "suspended") void ctx.resume();
-
+  // Try to resume. If still suspended, schedule the chime for when it starts.
+  const doPlay = () => {
     try {
       // Two-tone chime (E6 → C6) with gentle attack/decay envelopes.
       const now = ctx.currentTime;
@@ -107,6 +93,44 @@ export function useNotificationSound() {
     } catch {
       /* audio unavailable */
     }
+  };
+
+  if (ctx.state === "running") {
+    doPlay();
+    return true;
+  }
+
+  // Suspended: try to resume (works if we're inside a gesture), then play
+  // once the state flips. If resume is blocked (no gesture yet), return false.
+  void ctx.resume().then(() => {
+    if (ctx.state === "running") doPlay();
+  }).catch(() => { /* blocked */ });
+  return false;
+}
+
+export function useNotificationSound() {
+  useEffect(() => {
+    // Unlock on the first user gesture. Capture-phase listeners so we run even
+    // if the app stops propagation. Keep them attached (not one-shot) so a
+    // missed or blocked unlock gets retried on the next gesture.
+    const events: Array<keyof DocumentEventMap> = [
+      "touchend",
+      "touchstart",
+      "click",
+      "keydown",
+      "pointerdown",
+    ];
+    const handler = () => {
+      resumeAndPrime();
+    };
+    for (const evt of events) document.addEventListener(evt, handler, true);
+    return () => {
+      for (const evt of events) document.removeEventListener(evt, handler, true);
+    };
+  }, []);
+
+  const play = useCallback(() => {
+    const played = playChime();
 
     // Haptic feedback — works even when Web Audio is blocked.
     try {
@@ -114,6 +138,7 @@ export function useNotificationSound() {
     } catch {
       /* not supported */
     }
+    return played;
   }, []);
 
   return { play };
