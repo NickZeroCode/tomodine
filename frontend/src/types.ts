@@ -400,4 +400,6 @@ export interface Membership {
   is_active: boolean;
   created_at: string;
   branches: Array<{ id: string; name: string }>;
+  /** Backend-computed lifecycle: active | pending | removed. */
+  status: "active" | "pending" | "removed";
 }

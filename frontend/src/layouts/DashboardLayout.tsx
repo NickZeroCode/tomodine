@@ -150,7 +150,7 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
     items: [
       { to: "/dashboard/reports", key: "nav.reports", icon: IC.reports, perm: PERM.analyticsView },
       { to: "/dashboard/menu-engineering", key: "nav.menuEngineering", icon: IC.menu, perm: PERM.analyticsView },
-      { to: "/dashboard/subscription", key: "nav.billing", icon: IC.billing, perm: PERM.billingView },
+      { to: "/dashboard/subscription", key: "nav.billing", icon: IC.billing, perm: PERM.billingManage },
     ],
   },
   {
@@ -424,7 +424,7 @@ export function DashboardLayout() {
         {/* Bottom: settings / help / collapse toggle / user */}
         <div className="border-t border-ink-800 px-2 pb-3 pt-2">
           <div className="space-y-0.5">
-            {hasPerm(PERM.staffManage) || hasPerm(PERM.settingsManage) ? (
+            {hasPerm(PERM.settingsManage) ? (
             <NavLink
               to="/dashboard/settings"
               title={sidebarCollapsed ? t("nav.settings") : undefined}
@@ -668,8 +668,8 @@ export function DashboardLayout() {
                 </div>
               </div>
             ))}
-            {/* Settings link — only for managers/owners */}
-            {permissions.has(PERM.staffManage) || permissions.has(PERM.settingsManage) ? (
+            {/* Settings link — only for roles with settings.manage */}
+            {permissions.has(PERM.settingsManage) ? (
             <div>
               <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{t("nav.settings")}</p>
               <NavLink

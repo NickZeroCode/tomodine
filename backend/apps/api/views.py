@@ -217,9 +217,11 @@ class RestaurantViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="members-list")
     def members(self, request, slug=None):
         restaurant = self.get_object()
-        members = RestaurantMembership.objects.filter(restaurant=restaurant).select_related(
-            "user", "role"
-        )
+        # Only surface live members and pending invites. Removed (soft-deleted)
+        # memberships are historical and should not render on the dashboard.
+        members = RestaurantMembership.objects.filter(
+            restaurant=restaurant, is_active=True
+        ).select_related("user", "role")
         return Response(api_serializers.MembershipSerializer(members, many=True).data)
 
     @action(detail=True, methods=["get"])
@@ -245,6 +247,25 @@ class RestaurantViewSet(viewsets.ModelViewSet):
             return True
         role = membership.role
         return bool(role and role.permissions.filter(codename="staff.manage").exists())
+
+    @staticmethod
+    def _revoke_user_tokens(user) -> None:
+        """Blacklist every outstanding refresh token for a user.
+
+        Used when a staff member is removed or transferred so any session they
+        currently hold is invalidated immediately (they are effectively logged
+        out). Safe to call even if the blacklist tables are empty.
+        """
+        try:
+            from rest_framework_simplejwt.token_blacklist.models import (
+                BlacklistedToken,
+                OutstandingToken,
+            )
+
+            for token in OutstandingToken.objects.filter(user=user):
+                BlacklistedToken.objects.get_or_create(token=token)
+        except Exception:  # pragma: no cover - never block the action on token cleanup
+            pass
 
     @staticmethod
     def _resolve_role(restaurant, role_id):
@@ -412,6 +433,8 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         if request.method == "DELETE":
             membership.is_active = False
             membership.save(update_fields=["is_active", "updated_at"])
+            # Log the removed member out of every active session immediately.
+            self._revoke_user_tokens(membership.user)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         role_id = request.data.get("role", None)
@@ -510,6 +533,10 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         # Deactivate at current branch.
         membership.is_active = False
         membership.save(update_fields=["is_active", "updated_at"])
+
+        # A transfer is not a new invitation. Force the member to re-authenticate
+        # so their JWT picks up the new branch claims (and drops the old one).
+        self._revoke_user_tokens(membership.user)
 
         return Response(
             {"detail": f"Transferred to {target.name}."},

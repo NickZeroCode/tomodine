@@ -63,11 +63,28 @@ class MembershipSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source="user.email", read_only=True)
     role_name = serializers.CharField(source="role.name_en", read_only=True)
     branches = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
 
     class Meta:
         model = RestaurantMembership
-        fields = ("id", "user_email", "role", "role_name", "is_owner", "is_active", "created_at", "branches")
+        fields = (
+            "id", "user_email", "role", "role_name", "is_owner", "is_active",
+            "created_at", "branches", "status",
+        )
         read_only_fields = ("id", "created_at")
+
+    def get_status(self, obj):
+        """Lifecycle state of the membership.
+
+        ``active``   — the user has set a password and can use the dashboard.
+        ``pending``  — invited but has not claimed their account yet (unusable password).
+        ``removed``  — deactivated by an owner/manager (soft delete).
+        """
+        if not obj.is_active:
+            return "removed"
+        if not obj.user.has_usable_password():
+            return "pending"
+        return "active"
 
     def get_branches(self, obj):
         """All active branch memberships for this user within the same org."""

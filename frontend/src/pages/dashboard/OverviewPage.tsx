@@ -208,7 +208,7 @@ export function OverviewPage() {
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
           {t(
             "dashboard.noAnalyticsAccess",
-            "Your role doesn't include analytics access. Head to Orders or Kitchen to manage live service."
+            "Your role doesn't include analytics access. Head to Orders to manage live service."
           )}
         </p>
         <div className="mt-6 flex items-center justify-center gap-3">
@@ -217,12 +217,6 @@ export function OverviewPage() {
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
           >
             {t("nav.orders", "Orders")}
-          </Link>
-          <Link
-            to="/dashboard/kitchen"
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            {t("nav.kitchen", "Kitchen")}
           </Link>
         </div>
       </div>

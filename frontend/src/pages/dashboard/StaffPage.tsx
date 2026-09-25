@@ -54,6 +54,9 @@ export function StaffPage() {
       })).data,
     onSuccess: (data) => {
       setErrors({});
+      // Always refresh the list so the new member shows up immediately,
+      // whether they're a pending invite or an existing user.
+      invalidate();
       // If the invited person hasn't claimed an account yet, show the
       // invite link so the owner can share it (WhatsApp/SMS).
       if (data?.invite_url) {
@@ -66,7 +69,6 @@ export function StaffPage() {
         setInviteOpen(false);
         setEmail("");
         setRoleId("");
-        invalidate();
       }
     },
     onError: (err) => {
@@ -110,9 +112,10 @@ export function StaffPage() {
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState onRetry={() => void refetch()} />;
 
-  // Show active members first, then pending (inactive) invitations.
-  const activeList = (members ?? []).filter((m) => m.is_active);
-  const pendingList = (members ?? []).filter((m) => !m.is_active);
+  // The backend already excludes removed members. Split live members from
+  // pending invitations using the backend-computed status.
+  const activeList = (members ?? []).filter((m) => m.status === "active");
+  const pendingList = (members ?? []).filter((m) => m.status === "pending");
   const list = [...activeList, ...pendingList];
 
   return (
@@ -185,7 +188,7 @@ export function StaffPage() {
                         {t("staff.owner")}
                       </span>
                     )}
-                    {!m.is_active && (
+                    {m.status === "pending" && (
                       <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
                         {t("staff.pending", "Pending Invitation")}
                       </span>

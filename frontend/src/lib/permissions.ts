@@ -130,9 +130,11 @@ export function getFeatureAccess(): FeatureAccess {
     customers: p.has(PERM.analyticsView),
     reports: p.has(PERM.analyticsView),
     menuEngineering: p.has(PERM.analyticsView),
-    subscription: p.has(PERM.billingView),
+    // Subscription & settings management are owner-only (billing.manage /
+    // settings.manage). Route guards in App.tsx enforce the same codename.
+    subscription: p.has(PERM.billingManage),
     staff: p.has(PERM.staffManage),
     branches: p.has(PERM.staffManage),
-    settings: p.has(PERM.staffManage) || p.has(PERM.settingsManage),
+    settings: p.has(PERM.settingsManage),
   };
 }
