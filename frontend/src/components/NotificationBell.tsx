@@ -88,28 +88,35 @@ export function NotificationBell() {
       return;
     }
 
-    // Find notifications whose IDs we haven't seen before.
+    // Find notifications whose IDs we haven't seen before, then present them
+    // oldest-first so a burst of status changes surfaces in chronological
+    // order (the API list itself is newest-first).
     const newOnes = notifications.filter((n) => !seenIdsRef.current.has(n.id));
     for (const n of newOnes) seenIdsRef.current.add(n.id);
+    const chronological = [...newOnes].reverse();
 
-    if (newOnes.length === 0) return;
+    if (chronological.length === 0) return;
 
-    // Toast the most recent new notification.
-    const newest = newOnes[0];
-    const table = (newest.metadata?.table as string) ?? "?";
-    const title =
-      newest.kind === "table_alert"
-        ? t("notifications.waiterAlert", { table })
-        : newest.kind === "new_order"
-        ? t("notifications.newOrderAlert", { table })
-        : lang === "bn"
-        ? newest.title_bn || newest.title_en
-        : newest.title_en;
-    showToast({
-      kind: newest.kind === "table_alert" ? "info" : "warning",
-      title,
-      body: lang === "bn" ? newest.body_bn || newest.body_en : newest.body_en,
-    });
+    // Toast EVERY new notification, capped so a burst never floods the
+    // screen — previously only newOnes[0] was shown, which is why several
+    // rapid order updates surfaced no feedback at all.
+    const MAX_BULK_TOASTS = 4;
+    for (const n of chronological.slice(0, MAX_BULK_TOASTS)) {
+      const table = (n.metadata?.table as string) ?? "?";
+      const title =
+        n.kind === "table_alert"
+          ? t("notifications.waiterAlert", { table })
+          : n.kind === "new_order"
+          ? t("notifications.newOrderAlert", { table })
+          : lang === "bn"
+          ? n.title_bn || n.title_en
+          : n.title_en;
+      showToast({
+        kind: n.kind === "table_alert" ? "info" : "warning",
+        title,
+        body: lang === "bn" ? n.body_bn || n.body_en : n.body_en,
+      });
+    }
     playSound();
   }, [data, lang, t, playSound]);
 

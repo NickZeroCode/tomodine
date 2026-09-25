@@ -45,6 +45,17 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
                 },
                 status=status.HTTP_403_FORBIDDEN,
             )
+        # Subscription lapsed (trial or paid period ended) — the frontend
+        # shows the full-screen paywall for this code.
+        if getattr(exc, "subscription_expired", False):
+            return Response(
+                {
+                    "code": "subscription_expired",
+                    "message": str(exc) or "Your subscription has expired.",
+                    "errors": {},
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
         return Response(
             {"code": "permission_denied", "message": str(exc) or "You do not have permission.", "errors": {}},
             status=status.HTTP_403_FORBIDDEN,

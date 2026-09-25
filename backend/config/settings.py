@@ -331,7 +331,16 @@ CSRF_TRUSTED_ORIGINS = env_origin_list(
 # ---------------------------------------------------------------------------
 REDIS_URL = env("REDIS_URL", "redis://localhost:6379/0")
 
-if env_bool("USE_REDIS_CHANNEL_LAYER", False) and not env("VERCEL"):
+# Real-time events MUST cross process boundaries (gunicorn HTTP workers →
+# daphne WS worker), which only works with a shared channel layer. Default to
+# Redis in production; tests and local dev keep the in-memory layer unless
+# USE_REDIS_CHANNEL_LAYER=true is set explicitly.
+TESTING = "test" in sys.argv or bool(os.environ.get("PYTEST_CURRENT_TEST"))
+USE_REDIS_CHANNEL_LAYER = env_bool(
+    "USE_REDIS_CHANNEL_LAYER", (not DEBUG) and not TESTING
+)
+
+if USE_REDIS_CHANNEL_LAYER and not env("VERCEL"):
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -344,7 +353,7 @@ else:
 # ---------------------------------------------------------------------------
 # Caching — use Redis in production, local memory in dev
 # ---------------------------------------------------------------------------
-if env_bool("USE_REDIS_CHANNEL_LAYER", False) and not env("VERCEL"):
+if USE_REDIS_CHANNEL_LAYER and not env("VERCEL"):
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
@@ -422,6 +431,19 @@ CELERY_BEAT_SCHEDULE = {
     "compute-frequently-bought-together": {
         "task": "apps.menus.tasks.compute_frequently_bought_together",
         "schedule": 6 * 60 * 60,  # every 6 hours
+    },
+    # Flip lapsed trial/period rows to EXPIRED so admin + dashboards stay
+    # honest. Entitlement itself is date-driven, so hourly is plenty.
+    "expire-subscriptions": {
+        "task": "apps.billing.tasks.expire_subscriptions",
+        "schedule": 60 * 60,  # every hour
+    },
+    # Backfill embeddings for dishes created while the broker was down or
+    # through bulk writes that bypass signals, so the bot's menu search
+    # never silently misses dishes.
+    "backfill-missing-embeddings": {
+        "task": "apps.chatbot.tasks.sync_missing_embeddings_task",
+        "schedule": 60 * 60,  # every hour
     },
 }
 

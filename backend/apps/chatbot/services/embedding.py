@@ -87,8 +87,12 @@ def sync_dish_embedding(dish_id: str) -> None:
 
     text = build_embedding_text(dish)
     if len(text.strip()) < 5:
-        logger.warning("Dish %s has insufficient text for embedding; skipping.", dish_id)
-        return
+        # Never skip a dish just because its name is short ("Tea", "Rice"):
+        # a short-but-valid embedding still ranks correctly for exact-name
+        # queries, while a missing row makes the dish invisible to the bot.
+        category = getattr(getattr(dish, "category", None), "name_en", "") or ""
+        text = " — ".join(part for part in [text.strip(), category, "dish"] if part)
+        logger.info("Dish %s had short embedding text; padded with context.", dish_id)
 
     try:
         vector = generate_embedding(text)

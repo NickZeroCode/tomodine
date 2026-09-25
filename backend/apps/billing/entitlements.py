@@ -146,6 +146,43 @@ class PlanLimitExceeded(Exception):
         super().__init__(f"Plan limit reached for {resource} (max {limit}).")
 
 
+def ensure_restaurant_entitled(restaurant) -> None:
+    """Raise when ``restaurant``'s subscription no longer grants access.
+
+    The error is a Django ``PermissionDenied`` carrying ``subscription_expired``
+    so ``api_exception_handler`` returns the machine-readable
+    ``subscription_expired`` code the frontend paywall keys on.  Used as the
+    global gate on tenant API access: once a trial or paid period ends, the
+    restaurant is locked out of the dashboard (reads *and* writes) until it
+    renews.  Billing/upgrade surfaces are exempt so the lock can be lifted.
+
+    A restaurant with no subscription row at all is treated as expired: every
+    restaurant created through the API gets a trial row at creation time, so
+    "no row" only happens for lapsed/legacy data and must fail closed.
+    """
+    from django.core.exceptions import PermissionDenied
+
+    if restaurant is None:
+        # No tenant context — nothing tenant-scoped to lock. Viewsets that
+        # require a restaurant raise their own validation error.
+        return
+    subscription = resolve_subscription(restaurant)
+    if subscription is not None and subscription.is_entitled:
+        return
+    # Backwards-compat safety net: legacy rows whose period dates were never
+    # set, or that were renewed in place without touching status, still pass
+    # if the model predicate says "entitled" under any status.
+    candidates = Subscription.objects.filter(subscription_scope(restaurant))
+    if any(candidate.is_entitled for candidate in candidates):
+        return
+    exc = PermissionDenied(
+        "Your free trial or subscription has expired. "
+        "Choose a plan to keep using TomoDine."
+    )
+    exc.subscription_expired = True
+    raise exc
+
+
 def check_table_limit(restaurant) -> None:
     from apps.tables.models import Table
 

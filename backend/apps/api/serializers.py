@@ -375,7 +375,10 @@ class OrderSerializer(serializers.ModelSerializer):
             "id", "order_number", "status", "order_type", "table", "table_number", "table_label",
             "customer_note", "subtotal", "total", "items", "created_at",
         )
-        read_only_fields = ("id", "order_number", "subtotal", "total", "created_at")
+        # "status" is read-only on purpose: every status change must go through
+        # the /transition/ endpoint so the state machine, table sync and staff
+        # notifications can never be bypassed by a bare PATCH.
+        read_only_fields = ("id", "order_number", "status", "subtotal", "total", "created_at")
 
     def get_table_label(self, obj) -> str:
         table = obj.table

@@ -50,7 +50,9 @@ export function ToastContainer() {
       const data = (e as CustomEvent<ToastData>).detail;
       const id = data.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const toast: InternalToast = { ...data, id };
-      setToasts((prev) => [...prev.slice(-4), toast]); // max 5 toasts
+      // Max 7 visible toasts — enough that a burst of order updates all get
+      // a moment on screen instead of being silently evicted.
+      setToasts((prev) => [...prev.slice(-6), toast]);
       // Auto-dismiss only if duration is a positive number.
       const dur = data.duration ?? 6000;
       if (dur > 0) {

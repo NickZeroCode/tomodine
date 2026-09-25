@@ -342,6 +342,16 @@ class CustomerOrderingViewSet(viewsets.ViewSet):
                 "table": order.table.number if order.table else None,
             },
         )
+        from apps.notifications.models import Notification
+        from apps.notifications.services import notify_restaurant
+
+        notify_restaurant(
+            order.restaurant,
+            kind=Notification.Kind.ORDER_STATUS,
+            title_en=f"Order #{order.order_number} → {order.status}",
+            title_bn=f"অর্ডার #{order.order_number} → {order.status}",
+            metadata={"order_id": str(order.id), "status": order.status},
+        )
         return Response(CustomerOrderSerializer(order).data)
 
     @action(detail=False, methods=["post"], url_path="call-waiter")

@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, type FormEvent } from "react";
-import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useRestaurant } from "@/context/RestaurantContext";
+import { useSubscription } from "@/hooks/useSubscription";
+import { SubscriptionExpiredScreen } from "@/components/PlanGate";
 import { api } from "@/lib/api";
 import { getAuthContext, PERM } from "@/lib/permissions";
 import { BranchSwitcher } from "@/components/BranchSwitcher";
@@ -174,6 +176,16 @@ export function DashboardLayout() {
   const { user, logout } = useAuth();
   const { restaurant, restaurants, selectRestaurant, isLoading, refetch } = useRestaurant();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Subscription entitlement (single source of truth, shared with
+  // SubscriptionPage). When the trial/subscription has expired we lock the
+  // whole dashboard behind a full-screen paywall. Fail-OPEN on load/error so
+  // a transient subscription-fetch failure never locks a paying user out.
+  const { isEntitled, isLoading: subLoading, isError: subError } = useSubscription();
+  const isSubscriptionRoute = location.pathname.startsWith("/dashboard/subscription");
+  const subscriptionExpired =
+    !!restaurant && !subLoading && !subError && !isEntitled;
 
   // Resolve auth context (branches, permissions) from the JWT.
   const { branches, canSwitch, permissions } = (() => {
@@ -249,10 +261,12 @@ export function DashboardLayout() {
   }, [userMenuOpen]);
 
   // Read cached orders to detect new ones for sidebar blinking.
+  // Distinct key ("sidebar") so it never collides with OrdersPage's
+  // ["orders","infinite",slug] infinite query.
   const ordersQuery = useQuery({
-    queryKey: ["orders", restaurant?.slug],
+    queryKey: ["orders", "sidebar", restaurant?.slug],
     queryFn: async () => {
-      const res = await api.get("/orders/");
+      const res = await api.get("/orders/", { params: { page_size: 1 } });
       const list = res.data;
       return (Array.isArray(list) ? list : list.results) as Order[];
     },
@@ -320,7 +334,9 @@ export function DashboardLayout() {
   return (
     <div className="flex min-h-screen bg-ink-50">
       {/* ── Sidebar — desktop ──────────────────────────────── */}
-      <aside className={`hidden shrink-0 flex-col border-r border-ink-800 bg-ink-900 transition-all duration-300 md:flex ${sidebarCollapsed ? "w-[68px]" : "w-64"}`}>
+      {/* Sticky, self-scrolling rail: stays put while the main content scrolls,
+          so navigation never scrolls out of view (premium dashboard feel). */}
+      <aside className={`sticky top-0 h-screen overflow-hidden hidden shrink-0 flex-col border-r border-ink-800 bg-ink-900 transition-all duration-300 md:flex ${sidebarCollapsed ? "w-[68px]" : "w-64"}`}>
         {/* Brand + collapse toggle */}
         {sidebarCollapsed ? (
           <div className="flex flex-col items-center gap-2 border-b border-ink-800 px-2 py-3">
@@ -557,7 +573,17 @@ export function DashboardLayout() {
 
         {/* Page content */}
         <main className="flex-1 p-4 pb-24 md:p-6 md:pb-6">
-          <Outlet />
+          {/*
+            Subscription-expired paywall: once the trial/subscription lapses the
+            ONLY reachable surface is the subscription page (so the owner can
+            renew and lift the lock). Every other route renders the full-screen
+            lock. Fail-open above means this only shows on a CONFIRMED expiry.
+          */}
+          {subscriptionExpired && !isSubscriptionRoute ? (
+            <SubscriptionExpiredScreen />
+          ) : (
+            <Outlet />
+          )}
         </main>
 
         {/* ── Bottom nav — mobile ───────────────────────────── */}

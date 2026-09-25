@@ -8,8 +8,8 @@
  * uppercase tracking-wider headers, tabular-nums, status pills with dots.
  */
 
-import { useMemo, useState, useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useMutation, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { formatBDT } from "@/lib/format";
@@ -18,7 +18,7 @@ import { useRestaurantSocket } from "@/hooks/useRestaurantSocket";
 import { LoadingState, ErrorState, EmptyState } from "@/components/States";
 import { showToast } from "@/components/Toast";
 import { ImageWithFallback } from "@/components/ImageWithFallback";
-import type { Order, OrderStatus } from "@/types";
+import type { Order, OrderStatus, Paginated } from "@/types";
 
 /* ── Constants ──────────────────────────────────────────────── */
 
@@ -101,23 +101,36 @@ export function OrdersPage() {
 
   /* ── Data ── */
 
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["orders", restaurant?.slug],
-    queryFn: async () => {
-      const res = await api.get("/orders/");
-      const list = res.data;
-      return (Array.isArray(list) ? list : list.results) as Order[];
+  const PAGE_SIZE = 50;
+
+  const ordersQuery = useInfiniteQuery({
+    queryKey: ["orders", "infinite", restaurant?.slug],
+    queryFn: async ({ pageParam }) => {
+      const res = await api.get<Paginated<Order> | Order[]>("/orders/", {
+        params: { page: pageParam, page_size: PAGE_SIZE },
+      });
+      const payload = res.data;
+      if (Array.isArray(payload)) {
+        // Unpaginated fallback (pagination disabled server-side): single page.
+        return { count: payload.length, next: null, previous: null, results: payload } as Paginated<Order>;
+      }
+      return payload;
     },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+      lastPage.next ? lastPageParam + 1 : undefined,
     enabled: !!restaurant,
     // Safety net only — WS (order / order.event) drives live updates below.
     // 10s is the documented minimum staff poll interval. See REALTIME.md.
     refetchInterval: 10_000,
   });
 
+  const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = ordersQuery;
+
   useRestaurantSocket(restaurant?.slug ?? null, (event) => {
     const type = String(event.type ?? "");
     if (type === "order" || type === "order.event") {
-      void queryClient.invalidateQueries({ queryKey: ["orders", restaurant?.slug] });
+      void queryClient.invalidateQueries({ queryKey: ["orders", "infinite", restaurant?.slug] });
       void queryClient.invalidateQueries({ queryKey: ["tables", restaurant?.slug] });
     }
   });
@@ -139,33 +152,56 @@ export function OrdersPage() {
       }
     },
     onMutate: async ({ id, status: newStatus }) => {
-      // Optimistic update: immediately update the order status in cache.
-      const key = ["orders", restaurant?.slug];
+      // Optimistic update across ALL loaded pages, functional so concurrent
+      // transitions on different orders never clobber each other.
+      const key = ["orders", "infinite", restaurant?.slug];
       await queryClient.cancelQueries({ queryKey: key });
-      const previous = queryClient.getQueryData<Order[]>(key);
-      queryClient.setQueryData<Order[]>(key, (old) =>
-        (old ?? []).map((o) => (o.id === id ? { ...o, status: newStatus } : o))
+      const previous = queryClient.getQueryData<{ pages: Paginated<Order>[]; pageParams: number[] }>(key);
+      queryClient.setQueryData<{ pages: Paginated<Order>[]; pageParams: number[] }>(key, (old) =>
+        old
+          ? {
+              ...old,
+              pages: old.pages.map((p) => ({
+                ...p,
+                results: p.results.map((o) => (o.id === id ? { ...o, status: newStatus } : o)),
+              })),
+            }
+          : old
       );
       return { previous };
+    },
+    onSuccess: (_data, vars) => {
+      // Immediate, per-action confirmation — staff must never wonder whether
+      // a status change went through, independent of the notification bell.
+      showToast({
+        kind: "success",
+        title: t("orders.statusUpdated"),
+        body: `#${vars.id.slice(0, 8)} → ${t(STATUS_I18N[vars.status])}`,
+        duration: 3000,
+      });
     },
     onError: (_err, _vars, context) => {
       // Roll back on error.
       if (context?.previous) {
-        queryClient.setQueryData(["orders", restaurant?.slug], context.previous);
+        queryClient.setQueryData(["orders", "infinite", restaurant?.slug], context.previous);
       }
       showToast({ kind: "error", title: t("common.error"), body: "Could not update order status. Please check your connection and try again." });
     },
     onSettled: () => {
       // Refetch to ensure consistency after the round-trip.
-      void queryClient.invalidateQueries({ queryKey: ["orders", restaurant?.slug] });
+      void queryClient.invalidateQueries({ queryKey: ["orders", "infinite", restaurant?.slug] });
     },
   });
 
   /* ── Derived ── */
 
+  // Flatten every loaded page into a single list.
   const orders = useMemo(() => {
-    return (data ?? []).map((o) => ({ ...o, _status: o.status.toUpperCase() as OrderStatus }));
+    const all = (data?.pages ?? []).flatMap((p) => p.results);
+    return all.map((o) => ({ ...o, _status: o.status.toUpperCase() as OrderStatus }));
   }, [data]);
+
+  const totalCount = data?.pages?.[0]?.count ?? orders.length;
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { ALL: orders.length };
@@ -190,6 +226,23 @@ export function OrdersPage() {
   const filtered = useMemo(() => {
     return filter === "ALL" ? orders : orders.filter((o) => o._status === filter);
   }, [orders, filter]);
+
+  // Infinite-scroll sentinel: fetch the next page as it scrolls into view.
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const onLoadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || !hasNextPage) return;
+    const observer = new IntersectionObserver(
+      (entries) => entries.some((e) => e.isIntersecting) && onLoadMore(),
+      { rootMargin: "300px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasNextPage, onLoadMore]);
 
   function toggleExpand(id: string) {
     setExpanded((prev) => {
@@ -240,7 +293,7 @@ export function OrdersPage() {
           {t("orders.title")}
         </h2>
         <span className="text-sm text-ink-500">
-          {orders.length} {t("orders.total")}
+          {totalCount} {t("orders.total")}
         </span>
       </div>
 
@@ -569,6 +622,24 @@ export function OrdersPage() {
           </table>
         </div>
       )}
+
+      {/* ── Infinite scroll footer ── */}
+      {filter === "ALL" && (hasNextPage || isFetchingNextPage) && (
+        <div className="flex flex-col items-center gap-2 py-4">
+          <button
+            type="button"
+            onClick={onLoadMore}
+            disabled={isFetchingNextPage}
+            className="btn-ghost px-5 py-2 text-sm font-semibold"
+          >
+            {isFetchingNextPage ? t("common.loading") : `${t("orders.loadMore")}`}
+          </button>
+          <p className="text-[0.65rem] text-ink-400">
+            {t("orders.showing", { shown: orders.length, total: totalCount })}
+          </p>
+        </div>
+      )}
+      <div ref={sentinelRef} aria-hidden="true" className="h-1" />
     </section>
   );
 }

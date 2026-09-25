@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 
+from channels.consumer import get_handler_name
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
@@ -56,6 +57,30 @@ class RestaurantEventsConsumer(AsyncJsonWebsocketConsumer):
         # Staff dashboards are receive-only; ignore client-sent messages.
         return
 
+    async def dispatch(self, message):
+        """Route group events defensively.
+
+        Channels raises ``ValueError`` when a message type has no matching
+        handler — which would kill this socket silently every time a new
+        event type is broadcast. Instead, forward any unknown event type
+        generically so the client stays connected, and never let a handler
+        exception tear the connection down.
+        """
+        handler = getattr(self, get_handler_name(message), None)
+        if handler is not None:
+            try:
+                await handler(message)
+            except Exception:  # pragma: no cover — never drop the socket on a bad frame
+                if not str(message.get("type", "")).startswith("websocket."):
+                    logger.exception("WebSocket handler %r failed", message.get("type"))
+                else:
+                    raise
+            return
+        etype = str(message.get("type", "event"))
+        if etype.endswith(".event"):
+            etype = etype[: -len(".event")]
+        await self.send_json({"type": etype, "payload": message.get("payload", {})})
+
     # Handlers for group events (type="order.event" -> order_event)
     async def order_event(self, event):
         await self.send_json({"type": "order", "payload": event.get("payload", {})})
@@ -65,3 +90,9 @@ class RestaurantEventsConsumer(AsyncJsonWebsocketConsumer):
 
     async def notification_event(self, event):
         await self.send_json({"type": "notification", "payload": event.get("payload", {})})
+
+    async def inventory_event(self, event):
+        await self.send_json({"type": "inventory", "payload": event.get("payload", {})})
+
+    async def menu_event(self, event):
+        await self.send_json({"type": "menu", "payload": event.get("payload", {})})

@@ -13,6 +13,39 @@ function LockIcon() {
 }
 
 /**
+ * Full-screen subscription-expired paywall. Rendered at the layout level so an
+ * expired trial/subscription locks the whole dashboard, not just one feature.
+ * The ONLY reachable route is /dashboard/subscription (to renew). Fail-open:
+ * callers must NOT render this while subscription state is loading/errored.
+ */
+export function SubscriptionExpiredScreen() {
+  const { t } = useTranslation();
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink-50 px-4"
+      role="alert"
+      aria-live="assertive"
+    >
+      <div className="card mx-auto flex w-full max-w-md flex-col items-center gap-4 p-10 text-center">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 text-brand-600">
+          <span className="scale-[1.35]">
+            <LockIcon />
+          </span>
+        </span>
+        <h1 className="text-xl font-semibold text-ink-900">{t("planGate.expiredTitle")}</h1>
+        <p className="max-w-sm text-sm leading-relaxed text-ink-500">
+          {t("planGate.expiredBody")}
+        </p>
+        <Link to="/dashboard/subscription" className="btn-primary mt-1 w-full">
+          {t("planGate.expiredRenew")}
+        </Link>
+        <p className="text-xs text-ink-400">{t("planGate.expiredNote")}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Proactive locked-tier state. Rendered BEFORE any analytics query fires when
  * the current plan is known to exclude analytics. Designed, not a bare alert:
  * icon, title, body, and a clear upgrade action — on the design system.

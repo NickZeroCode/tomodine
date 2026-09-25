@@ -361,12 +361,25 @@ export interface ApiError {
  * is not available on the restaurant's current subscription plan. */
 export const PLAN_UPGRADE_REQUIRED = "plan_upgrade_required";
 
+/** Structured error returned by the backend when the restaurant's
+ * subscription / free trial has expired. Drives the full-screen paywall. */
+export const SUBSCRIPTION_EXPIRED = "subscription_expired";
+
 export function isPlanUpgradeRequired(error: unknown): error is ApiError {
   return (
     typeof error === "object" &&
     error !== null &&
     "code" in error &&
     (error as ApiError).code === PLAN_UPGRADE_REQUIRED
+  );
+}
+
+export function isSubscriptionExpired(error: unknown): error is ApiError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as ApiError).code === SUBSCRIPTION_EXPIRED
   );
 }
 

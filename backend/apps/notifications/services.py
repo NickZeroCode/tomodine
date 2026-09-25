@@ -65,6 +65,7 @@ def notify_restaurant(
             "title_bn": notification.title_bn,
             "body_en": notification.body_en,
             "body_bn": notification.body_bn,
+            "metadata": notification.metadata,
             "is_read": notification.is_read,
             "created_at": notification.created_at.isoformat(),
         },

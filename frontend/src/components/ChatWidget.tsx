@@ -278,7 +278,7 @@ function StructuredActionsRenderer({
                 {item.image_url ? (
                   <ImageWithFallback src={item.image_url} alt={item.name} className="h-24 w-full object-cover" placeholder="dish" />
                 ) : (
-                  <div className="flex h-28 items-center justify-center bg-gradient-to-br from-ink-50 to-ink-100">
+                  <div className="flex h-24 w-full items-center justify-center bg-gradient-to-br from-ink-50 to-ink-100">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="h-8 w-8 text-ink-200">
                       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
                     </svg>

@@ -234,6 +234,21 @@ def _abs_image_url(field) -> str:
     """Build an absolute URL for an ImageField (no request needed)."""
     if not field:
         return ""
+    name = getattr(field, "name", None)
+    if not name:
+        return ""
+    from django.conf import settings
+    if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
+        try:
+            return field.url
+        except ValueError:
+            return ""
+    # Local storage — build URL from MEDIA_URL + relative path.
+    media_url = getattr(settings, "MEDIA_URL", "/media/") or "/media/"
+    try:
+        return f"{media_url.rstrip('/')}/{name.lstrip('/')}"
+    except Exception:
+        return ""
 
 
 def _modifier_groups_for_dishes(dish_ids: list[str]) -> dict[str, list[dict[str, Any]]]:
@@ -310,21 +325,6 @@ def _dish_search_fallback(restaurant_id: str, query: str, limit: int = 5):
         .filter(condition)
         .select_related("category")[:limit]
     )
-    name = getattr(field, "name", None)
-    if not name:
-        return ""
-    from django.conf import settings
-    if getattr(settings, "AWS_STORAGE_BUCKET_NAME", None):
-        try:
-            return field.url
-        except ValueError:
-            return ""
-    # Local storage — build URL from MEDIA_URL + relative path.
-    media_url = getattr(settings, "MEDIA_URL", "/media/") or "/media/"
-    try:
-        return f"{media_url.rstrip('/')}/{name.lstrip('/')}"
-    except Exception:
-        return ""
 
 
 def make_search_menu(restaurant_id: str, query_vector_fn):
@@ -341,29 +341,52 @@ def make_search_menu(restaurant_id: str, query_vector_fn):
         from apps.chatbot.services.retrieval import MenuRetriever
         from apps.menus.models import Dish
 
-        retriever = MenuRetriever(restaurant_id)
-        vector = query_vector_fn(query)
-        results = retriever.search(
-            vector,
-            limit=5,
-            max_price=max_price,
-            category=category,
+        def _serialize(dish) -> dict:
+            return {
+                "dish_id": str(dish.pk),
+                "dish_name": dish.name_en or dish.name_bn,
+                "description": dish.description_en or dish.description_bn or "",
+                "price": dish.price,
+                "dish_category": dish.category.name_en if dish.category else "",
+                "image_url": _abs_image_url(dish.image),
+                "is_vegetarian": dish.is_vegetarian,
+                "is_spicy": dish.is_spicy,
+            }
+
+        # Broad "show me the menu" queries must list the menu, not do a
+        # semantic similarity search (a generic query vector is a poor match
+        # for every dish, so semantic search returns arbitrary/missing rows).
+        broad = (
+            max_price is None
+            and not category
+            and len([w for w in query.split() if len(w) > 2]) <= 1
         )
-        if not results:
-            fallback = _dish_search_fallback(restaurant_id, query)
-            results = [
-                {
-                    "dish_id": str(dish.pk),
-                    "dish_name": dish.name_en or dish.name_bn,
-                    "description": dish.description_en or dish.description_bn or "",
-                    "price": dish.price,
-                    "dish_category": dish.category.name_en if dish.category else "",
-                    "image_url": _abs_image_url(dish.image),
-                    "is_vegetarian": dish.is_vegetarian,
-                    "is_spicy": dish.is_spicy,
-                }
-                for dish in fallback
-            ]
+        if broad:
+            dishes = (
+                Dish.objects.filter(restaurant_id=restaurant_id, is_available=True)
+                .select_related("category")
+                .order_by("category__display_order", "category__name_en", "name_en")[:30]
+            )
+            results = [_serialize(dish) for dish in dishes]
+        else:
+            retriever = MenuRetriever(restaurant_id)
+            vector = query_vector_fn(query)
+            results = retriever.search(
+                vector,
+                limit=8,
+                max_price=max_price,
+                category=category,
+            )
+            # Always merge the text fallback: dishes still missing an
+            # embedding row (short names, broker downtime, bulk imports)
+            # must never be invisible to the bot.
+            seen_ids = {str(r.get("dish_id")) for r in results if r.get("dish_id")}
+            for dish in _dish_search_fallback(restaurant_id, query):
+                if str(dish.pk) not in seen_ids:
+                    seen_ids.add(str(dish.pk))
+                    results.append(_serialize(dish))
+                if len(results) >= 8:
+                    break
         if not results:
             return json.dumps({"items": [], "message": "No dishes found matching your query."})
 
@@ -392,6 +415,8 @@ def make_get_dish(restaurant_id: str):
     def get_dish(dish_name: str) -> str:
         from apps.chatbot.models import MenuEmbedding
         from apps.menus.models import Dish
+
+        dish = None
 
         # Try exact match first, then fuzzy.
         emb = (
@@ -434,16 +459,10 @@ def make_get_dish(restaurant_id: str):
             category = emb.dish_category
 
         # Fetch the full Dish object for image, extra fields, and modifiers.
-        from apps.menus.models import DishModifier, ModifierGroup
-        if not dish:
+        if dish is None:
             dish = Dish.objects.filter(pk=dish_id).select_related("category").first()
 
-        image_url = ""
-        if dish and dish.image:
-            try:
-                image_url = dish.image.url if hasattr(dish.image, "url") else str(dish.image)
-            except Exception:
-                pass
+        image_url = _abs_image_url(dish.image) if dish and dish.image else ""
 
         # Fetch modifier groups and their options for this dish.
         modifier_groups = _modifier_groups_for_dishes([str(dish.pk)]) if dish else {}

@@ -173,21 +173,39 @@ export function TablesPage() {
     },
     onMutate: async ({ id, status: newStatus }) => {
       // Optimistic update: immediately update order status in all relevant caches.
+      // The orders list lives under the infinite-query cache ["orders","infinite",slug]
+      // (paginated {pages:[{results}]}), so patch each page functionally.
       await queryClient.cancelQueries({ queryKey: ["table-orders"] });
       await queryClient.cancelQueries({ queryKey: ["orders"] });
       const prevTableOrders = queryClient.getQueryData(["table-orders", ordersForTable?.id]);
-      const prevOrders = queryClient.getQueryData(["orders"]);
+      const prevOrders = queryClient.getQueryData<{ pages: Array<{ results: Order[] }> }>(["orders", "infinite", restaurant?.slug]);
       queryClient.setQueryData(["table-orders", ordersForTable?.id], (old: Order[] | undefined) =>
         (old ?? []).map((o) => (o.id === id ? { ...o, status: newStatus } : o))
       );
-      queryClient.setQueryData(["orders"], (old: Order[] | undefined) =>
-        (old ?? []).map((o) => (o.id === id ? { ...o, status: newStatus } : o))
+      queryClient.setQueryData<{ pages: Array<{ results: Order[] }> }>(["orders", "infinite", restaurant?.slug], (old) =>
+        old
+          ? {
+              ...old,
+              pages: old.pages.map((p) => ({
+                ...p,
+                results: p.results.map((o) => (o.id === id ? { ...o, status: newStatus } : o)),
+              })),
+            }
+          : old
       );
       return { prevTableOrders, prevOrders };
     },
+    onSuccess: (_data, vars) => {
+      showToast({
+        kind: "success",
+        title: t("orders.statusUpdated"),
+        body: `#${vars.id.slice(0, 8)} → ${vars.status}`,
+        duration: 3000,
+      });
+    },
     onError: (_err, _vars, context) => {
       if (context?.prevTableOrders) queryClient.setQueryData(["table-orders", ordersForTable?.id], context.prevTableOrders);
-      if (context?.prevOrders) queryClient.setQueryData(["orders"], context.prevOrders);
+      if (context?.prevOrders) queryClient.setQueryData(["orders", "infinite", restaurant?.slug], context.prevOrders);
       showToast({ kind: "error", title: t("common.error"), body: "Could not update order status. Please check your connection and try again." });
     },
     onSettled: () => {

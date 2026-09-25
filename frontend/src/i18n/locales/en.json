@@ -16,6 +16,7 @@
     "retry": "Retry",
     "empty": "Nothing here yet",
     "error": "Something went wrong",
+    "success": "Success",
     "currency": "৳",
     "language": "Language",
     "copy": "Copy",
@@ -94,6 +95,8 @@
     "items": "Items",
     "total": "Total",
     "noOrders": "No orders yet",
+    "loadMore": "Load more",
+    "showing": "Showing {{shown}} of {{total}}",
     "orderPlaced": "Order placed successfully",
     "statusUpdated": "Order status updated",
     "todayOrders": "Today",
@@ -573,7 +576,11 @@
     "validating": "Checking your plan…",
     "noSubscriptionBody": "This restaurant does not have an active subscription yet — a subscription applies to all of its branches. Choose a plan to unlock analytics and reports.",
     "lockedFeature": "{{feature}} isn't included on your current plan ({{plan}}). Upgrade to unlock it.",
-    "lockedGeneric": "This feature isn't included on your current plan ({{plan}}). Upgrade to unlock it."
+    "lockedGeneric": "This feature isn't included on your current plan ({{plan}}). Upgrade to unlock it.",
+    "expiredTitle": "Your subscription has expired",
+    "expiredBody": "Your free trial or subscription has ended. To keep using TomoDine and access your data, please renew your plan.",
+    "expiredRenew": "Renew subscription",
+    "expiredNote": "Your data is safe. Renew to regain full access."
   },
   "invite": {
     "title": "Join your restaurant team",

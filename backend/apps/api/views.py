@@ -50,7 +50,27 @@ class PlanLimitReached(ValidationError):
         super().__init__(detail, code)
 
 
-class TenantScopedViewSet(viewsets.ModelViewSet):
+class EntitlementGateMixin:
+    """Blocks tenant access once the restaurant's subscription has lapsed.
+
+    Every request runs through ``initial`` after authentication/permission
+    checks, so an expired trial or paid period locks the whole tenant surface
+    (reads *and* writes) instead of only new-order placement. Billing and
+    upgrade surfaces opt out with ``entitlement_exempt = True`` so the lock
+    can be lifted by subscribing again.
+    """
+
+    entitlement_exempt: bool = False
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if not self.entitlement_exempt:
+            from apps.billing.entitlements import ensure_restaurant_entitled
+
+            ensure_restaurant_entitled(getattr(request, "restaurant", None))
+
+
+class TenantScopedViewSet(EntitlementGateMixin, viewsets.ModelViewSet):
     """Base viewset that always scopes queries to ``request.restaurant``.
 
     Subclasses must not override ``get_queryset`` without calling super and
@@ -124,15 +144,16 @@ class RestaurantViewSet(viewsets.ModelViewSet):
             memberships__is_active=True,
         ).count()
 
-        # Check if the restaurant's effective subscription is still a trial.
-        # Resolved across ALL of the owner's subscriptions so a stale
-        # per-branch trial row (from before subscriptions were shared
-        # restaurant-wide) can never lock a paid restaurant out of branches.
+        # Only a *live* trial is branch-limited — a paid subscription never
+        # is, and an EXPIRED row must not lock the restaurant out of branch
+        # creation after it renews (status no longer TRIALING post-renewal,
+        # but date-driven checks stay correct for legacy in-place renewals).
         sub = resolve_subscription_for_user(self.request.user)
 
         if (
             sub is not None
             and sub.status == Subscription.Status.TRIALING
+            and sub.is_entitled
             and existing_branches >= 1
         ):
             raise PlanLimitReached()
@@ -866,6 +887,9 @@ class SubscriptionViewSet(TenantScopedViewSet):
     queryset = Subscription.objects.select_related("plan")
     required_permission = "billing.view"
     http_method_names = ["get", "post", "patch", "head", "options"]
+    # Must stay reachable when the subscription lapsed — this is where the
+    # lock gets lifted (subscribe action) and where the paywall reads state.
+    entitlement_exempt = True
 
     def get_queryset(self):
         """Every subscription shared by the active branch's restaurant.
@@ -980,6 +1004,9 @@ class BillingRecordViewSet(TenantScopedViewSet):
     queryset = BillingRecord.objects.all()
     required_permission = "billing.view"
     http_method_names = ["get", "head", "options"]
+    # Billing history must stay readable when the subscription lapsed so the
+    # owner can review past invoices before renewing.
+    entitlement_exempt = True
 
 
 class OfferViewSet(TenantScopedViewSet):
@@ -1015,7 +1042,7 @@ class NotificationViewSet(TenantScopedViewSet):
 # ---------------------------------------------------------------------------
 # Analytics
 # ---------------------------------------------------------------------------
-class AnalyticsViewSet(viewsets.ViewSet):
+class AnalyticsViewSet(EntitlementGateMixin, viewsets.ViewSet):
     permission_classes = (IsRestaurantMember, HasRestaurantPermission)
     required_permission = "analytics.view"
 

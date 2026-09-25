@@ -47,3 +47,33 @@ def sync_all_embeddings_task(restaurant_id: str):
     count = sync_all_embeddings(restaurant_id)
     logger.info("Bulk sync complete for restaurant %s: %d dishes", restaurant_id, count)
     return count
+
+
+@shared_task(ignore_result=True)
+def sync_missing_embeddings_task():
+    """Backfill embeddings for available dishes that don't have one yet.
+
+    Covers the gaps per-dish signals miss: bulk ``queryset.update()`` writes,
+    saves made while the broker was down, and dishes whose embedding text was
+    previously too short to embed. Cheap on the common path — dishes that
+    already have an embedding row are skipped without loading vectors.
+    """
+    from apps.chatbot.models import MenuEmbedding
+    from apps.chatbot.services.embedding import sync_dish_embedding
+    from apps.menus.models import Dish
+
+    missing_ids = list(
+        Dish.objects.filter(is_available=True)
+        .exclude(pk__in=MenuEmbedding.objects.values("dish_id"))
+        .values_list("pk", flat=True)
+    )
+    synced = 0
+    for dish_id in missing_ids:
+        try:
+            sync_dish_embedding(dish_id)
+            synced += 1
+        except Exception as exc:  # keep backfilling the rest
+            logger.warning("Embedding backfill failed for dish %s: %s", dish_id, exc)
+    if synced:
+        logger.info("Backfilled %d missing dish embedding(s)", synced)
+    return {"synced": synced, "missing": len(missing_ids)}
