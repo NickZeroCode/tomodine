@@ -28,8 +28,14 @@ if sys.version_info >= (3, 14):
     try:
         from django.template.context import BaseContext
         def _patched_copy(self):
+            # Replicate `copy(super())` semantics: shallow-copy ALL instance
+            # attributes (render_context, autoescape, use_l10n, use_tz, template,
+            # request, ...) so copied contexts are complete. Dropping them breaks
+            # admin changelists (AttributeError on 'template'). Then give dicts a
+            # fresh list, matching BaseContext.__copy__.
             cls = self.__class__
             duplicate = cls.__new__(cls)
+            duplicate.__dict__.update(self.__dict__)
             duplicate.dicts = self.dicts[:]
             return duplicate
         BaseContext.__copy__ = _patched_copy
